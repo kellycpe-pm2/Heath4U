@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun InputTextFieldTheme(content: @Composable () -> Unit) {
+fun colorTheme(content: @Composable () -> Unit) {
     val customColors = lightColorScheme(
         primary = Color(0xFFE9FCFF),
         onPrimary = Color(0xFF011792),

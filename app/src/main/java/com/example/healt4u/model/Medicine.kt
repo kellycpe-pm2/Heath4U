@@ -1,6 +1,7 @@
 package com.example.healt4u.model
 
 data class Medicine(
+    val id : Int,
     val name_medicine: String,
     val category : String,
     val dosage : String,

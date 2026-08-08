@@ -18,8 +18,9 @@ fun colorTheme(content: @Composable () -> Unit) {
         onBackground = Color(0xFF011792),
         surface = Color(0xFFFFFFFF),
         onSurface = Color(0xFF011792),
+        onSurfaceVariant =Color(0xFF293D9D),
         error = Color(0xFFD32F2F),
-        onError = Color(0xFFFFFFFF)
+        onError = Color(0xFFF44336)
     )
 
     val customType = Typography(

@@ -1,18 +1,13 @@
 package com.example.healt4u.screen.componentUI
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
@@ -21,18 +16,18 @@ fun InputTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    onClick : () ->Unit ={},
-    id : Int =0,
-    contentDescription : String ="",
-    imageEnable : Boolean = false,
-    modifier: Modifier = Modifier
-) {
+    modifier: Modifier = Modifier,
+    readOnly: Boolean,
+    trailingIcon: @Composable (() -> Unit)? = null
+)
+{
     colorTheme(
 
         content = {
             OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
+                readOnly = readOnly,
         label = { Text(text = label) },
         placeholder={Text(text = label)},
         singleLine = true,
@@ -63,18 +58,8 @@ fun InputTextField(
             // Cursor color - From theme
             cursorColor = MaterialTheme.colorScheme.onBackground
         ),
-                trailingIcon = {
-
-                    IconButton (onClick = {onClick}, modifier = Modifier.padding(5.dp))
-
-                {
-                    if(imageEnable){
-                        Image(painter = painterResource(id), contentDescription = contentDescription, modifier = Modifier.padding(10.dp))
-
-                    }
-                }
-                },
-        modifier = modifier.fillMaxWidth()
+                trailingIcon = trailingIcon,
+        modifier = modifier
     )
         }
 

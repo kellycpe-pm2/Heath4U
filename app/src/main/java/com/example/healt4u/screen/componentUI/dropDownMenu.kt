@@ -32,7 +32,8 @@ import com.example.healt4u.screen.componentUI.Theme.colorTheme
 fun dropDownMenu(
     modifier: Modifier = Modifier,
     categories : List<String>,
-    label: String =""
+    label: String ="",
+    onValueChange: (String) -> Unit = {}
 ){
     var expanded by remember { mutableStateOf <Boolean>(false) }
     var selectedItem by remember { mutableStateOf(categories.first()) }
@@ -46,7 +47,8 @@ fun dropDownMenu(
             ) {
                 InputTextField(
                     value = selectedItem,
-                    onValueChange = {}, label = label,
+                    onValueChange = {},
+                    label = label,
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(
@@ -89,6 +91,8 @@ fun dropDownMenu(
                             onClick = {
                                 selectedItem = category
                                 expanded = false
+                                onValueChange(selectedItem)
+
                             }
                         )
 
@@ -117,11 +121,13 @@ fun PreviewDropDownMenu() {
     // Sample data for preview
     val sampleCategories = listOf("Category A", "Category B", "Category C", "Category D")
     val sampleSelectedItem = "Category A"
+    var c by remember { mutableStateOf("") }
 
     dropDownMenu(
         modifier=Modifier.fillMaxSize(),
         categories = sampleCategories,
-    label="dd"
+    label="dd",
+        onValueChange = {newValue ->c = newValue }
     )
 
 }

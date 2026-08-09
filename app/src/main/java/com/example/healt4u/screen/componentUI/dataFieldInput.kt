@@ -33,10 +33,10 @@ fun InputTextField(
         singleLine = true,
         shape = RoundedCornerShape(20.dp),
         colors = TextFieldDefaults.colors(
-            // Container colors - From theme surface (White)
-            focusedContainerColor = MaterialTheme.colorScheme.onSurface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.onSurface,
-            disabledContainerColor = MaterialTheme.colorScheme.onSurface,
+            // Container colors - From theme onSurface
+            focusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+            unfocusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = MaterialTheme.colorScheme.onPrimary,
 
             // Indicator colors - From theme
             focusedIndicatorColor = MaterialTheme.colorScheme.onBackground,

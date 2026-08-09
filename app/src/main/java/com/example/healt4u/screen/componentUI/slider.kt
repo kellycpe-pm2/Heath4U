@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -28,7 +28,7 @@ fun slider(){
                 onValueChange = { sliderValue = it },
                 valueRange = 0f..5f,
                 steps = 4,
-                colors = SliderColors(
+                colors = SliderDefaults.colors(
                     thumbColor = MaterialTheme.colorScheme.onBackground,
                     activeTrackColor = MaterialTheme.colorScheme.onBackground,
                     activeTickColor = MaterialTheme.colorScheme.secondary,

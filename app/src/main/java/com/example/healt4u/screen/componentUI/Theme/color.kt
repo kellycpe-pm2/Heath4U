@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.sp
 fun colorTheme(content: @Composable () -> Unit) {
     val customColors = lightColorScheme(
         primary = Color(0xFFE9FCFF),
-        onPrimary = Color(0xFF011792),
+        onPrimary = Color(0xFFFFFFFF),
         secondary = Color(0xFF3674EE),
         onSecondary = Color(0xFFFFFFFF),
         background = Color(0xFFE9FCFF),

@@ -1,7 +1,6 @@
 package com.example.healt4u.screen.componentUI
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -50,7 +49,7 @@ fun dropDownMenu(
                     value = selectedItem,
                     onValueChange = {},
                     label = label,
-                    modifier = Modifier.border(3.dp, color = Color(0))
+                    modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor(
                             type = ExposedDropdownMenuAnchorType.PrimaryNotEditable,
@@ -80,7 +79,7 @@ fun dropDownMenu(
                     expanded = expanded, onDismissRequest = { expanded = false },
                     modifier = Modifier
                         .background(
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             RoundedCornerShape(20.dp)
                         )
                         .shadow(4.dp, RoundedCornerShape(12.dp))
@@ -88,7 +87,7 @@ fun dropDownMenu(
                 ) {
                     categories.forEach { category ->
                         DropdownMenuItem(
-                            text = { Text(category) },
+                            text = { Text(text=category, color= MaterialTheme.colorScheme.onBackground) },
                             onClick = {
                                 selectedItem = category
                                 expanded = false

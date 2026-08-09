@@ -16,8 +16,8 @@ fun colorTheme(content: @Composable () -> Unit) {
         onSecondary = Color(0xFFFFFFFF),
         background = Color(0xFFE9FCFF),
         onBackground = Color(0xFF011792),
-        surface = Color(0xFFFFFFFF),
-        onSurface = Color(0xFF011792),
+        surface = Color(0xFFE9FCFF),
+        onSurface = Color(0xFFFFFFFF),
         onSurfaceVariant =Color(0xFF293D9D),
         error = Color(0xFFD32F2F),
         onError = Color(0xFFF44336)

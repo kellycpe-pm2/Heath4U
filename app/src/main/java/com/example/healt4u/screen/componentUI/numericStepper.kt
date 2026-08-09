@@ -28,8 +28,8 @@ import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
 @Composable
 fun NumericStepper(
-    minNum: Int = 0,
-    maxNum: Int = 10,
+    minNum: Int ,
+    maxNum: Int ,
     currentValue: Int = 0,
     onValueChange: (Int) -> Unit = {}
 ) {

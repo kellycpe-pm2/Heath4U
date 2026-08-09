@@ -13,7 +13,7 @@ import androidx.compose.ui.unit.sp
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
 @Composable
-fun button(text:String, onClick : ()-> Unit){
+fun button(text:String, onClick : ()-> Unit, modifier  : Modifier = Modifier.fillMaxWidth()){
     colorTheme {
         Button(
             onClick = {onClick},
@@ -23,7 +23,7 @@ fun button(text:String, onClick : ()-> Unit){
                 disabledContentColor = Color.Transparent,
                 disabledContainerColor = Color.Transparent
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = modifier
         ) {
             Text(text = text, fontSize = 20.sp)
         }

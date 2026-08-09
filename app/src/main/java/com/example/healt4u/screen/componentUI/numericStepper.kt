@@ -112,8 +112,8 @@ fun NumericStepper(
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = when (value) {
-                    1 -> MaterialTheme.colorScheme.error
-                    10 -> MaterialTheme.colorScheme.error
+                    minNum -> MaterialTheme.colorScheme.error
+                    maxNum -> MaterialTheme.colorScheme.error
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
             )

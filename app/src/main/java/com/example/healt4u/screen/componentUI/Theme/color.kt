@@ -4,8 +4,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
+import com.example.healt4u.R
 
 @Composable
 fun colorTheme(content: @Composable () -> Unit) {
@@ -31,8 +36,18 @@ fun colorTheme(content: @Composable () -> Unit) {
         bodyLarge = TextStyle(
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp
+        ),
+        titleLarge = TextStyle(
+            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp,
+            color = Color(0xFF011792),
+            textAlign = TextAlign.Center,
+            letterSpacing = 1.5.sp,
+            textDecoration = TextDecoration.Underline,
+            fontFamily = FontFamily(Font(R.font.bungee))
+
+            )
         )
-    )
 
     MaterialTheme(
         colorScheme = customColors,

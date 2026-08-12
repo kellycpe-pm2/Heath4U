@@ -2,22 +2,26 @@ package com.example.healt4u.screen.componentUI
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
 @Composable
-fun InputTextField(
+fun TextFieldInput(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
     modifier: Modifier = Modifier,
     readOnly: Boolean,
+    keyboardType : KeyboardType = KeyboardType.Unspecified,
+    singleLine : Boolean,
     trailingIcon: @Composable (() -> Unit)? = null
 )
 {
@@ -30,7 +34,7 @@ fun InputTextField(
                 readOnly = readOnly,
         label = { Text(text = label) },
         placeholder={Text(text = label)},
-        singleLine = true,
+        singleLine = singleLine,
         shape = RoundedCornerShape(20.dp),
         colors = TextFieldDefaults.colors(
             // Container colors - From theme onSurface
@@ -52,13 +56,14 @@ fun InputTextField(
             unfocusedLabelColor = MaterialTheme.colorScheme.secondary,
 
             // Placeholder colors - From theme
-            focusedPlaceholderColor = MaterialTheme.colorScheme.onBackground,
+            focusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
             unfocusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
 
             // Cursor color - From theme
             cursorColor = MaterialTheme.colorScheme.onBackground
         ),
                 trailingIcon = trailingIcon,
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = modifier
     )
         }

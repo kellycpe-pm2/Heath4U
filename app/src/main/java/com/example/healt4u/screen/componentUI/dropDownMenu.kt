@@ -45,7 +45,7 @@ fun dropDownMenu(
                 expanded = expanded,
                 onExpandedChange = { expanded = it }
             ) {
-                InputTextField(
+                TextFieldInput(
                     value = selectedItem,
                     onValueChange = {},
                     label = label,
@@ -73,7 +73,7 @@ fun dropDownMenu(
                             )
 
                         }
-                    }
+                    }, singleLine = true
                 )
                 ExposedDropdownMenu(
                     expanded = expanded, onDismissRequest = { expanded = false },

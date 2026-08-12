@@ -4,11 +4,12 @@ data class Medicine(
     val id : Int,
     val name_medicine: String,
     val category : String,
-    val dosage : String,
+    val dosage : Int,
     val quantity : Int,
-    val quantityLeft : Int,
+    val quantityLeft : Int ?= quantity,
     val remark : String ? = null,
-    val expiredDate : Long,
-    val afterEat :Boolean = true,
-    val create_Date :Long = System.currentTimeMillis(),
+    val expiredDate : Long ?=System.currentTimeMillis(),
+    val afterEat :Boolean ?= true,
+    val create_Date :Long ?= System.currentTimeMillis(),
+    val priority : Int ?= 0
 )

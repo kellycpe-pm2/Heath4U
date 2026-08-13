@@ -20,17 +20,28 @@ import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.TextFieldInput
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.dropDownMenu
+import com.example.healt4u.ViewModel.ViewModelMedicine
+
+fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
+    return (categories.find{it.first== id})?.second ?: ""
+
+}
+
 
 
 
 @Composable
 fun AddMedicineScreen(){
     var med_name by remember {mutableStateOf("")}
-    val categories : List <Pair<Char, String>> = listOf('A'.to("Controlled medicines"),
+    var med_category by remember {mutableStateOf("")}
+
+    val categories : List <Pair<Char, String>> = listOf(
+        'A'.to("Controlled medicines"),
         'B'.to("Natural Products with Therapeutic Claim"),
         'X'.to("Non-scheduled Poisons"),
         'N'.to("Health Supplements"),
-        'H'.to("Veterinary Products"))
+        'H'.to("Veterinary Products")
+    )
     colorTheme(
         {
             Column(
@@ -47,7 +58,8 @@ fun AddMedicineScreen(){
 
                 TextFieldInput("Medicine Name",{med_name=it},"Medicine Name",Modifier.fillMaxWidth(),true, singleLine = true)
 
-                //dropDownMenu(Modifier.fillMaxWidth(), )
+                dropDownMenu(Modifier.fillMaxWidth(),categories.map { it.second } ,"Category",{newValue ->med_category = newValue
+                })
 
             }
 

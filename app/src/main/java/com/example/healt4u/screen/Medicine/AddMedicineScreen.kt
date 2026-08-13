@@ -16,7 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.healt4u.model.Medicine
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.screen.componentUI.TextFieldInput
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.dropDownMenu
@@ -31,17 +32,20 @@ fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
 
 
 @Composable
-fun AddMedicineScreen(){
-    var med_name by remember {mutableStateOf("")}
-    var med_category by remember {mutableStateOf("")}
-
+fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
     val categories : List <Pair<Char, String>> = listOf(
-        'A'.to("Controlled medicines"),
-        'B'.to("Natural Products with Therapeutic Claim"),
-        'X'.to("Non-scheduled Poisons"),
-        'N'.to("Health Supplements"),
-        'H'.to("Veterinary Products")
-    )
+    'A'.to("Controlled medicines"),
+    'B'.to("Natural Products with Therapeutic Claim"),
+    'X'.to("Non-scheduled Poisons"),
+    'N'.to("Health Supplements"),
+    'H'.to("Veterinary Products")
+)
+    val medicinesList by vm.medicines.collectAsStateWithLifecycle()
+    val med_name by vm.input_med_name.collectAsStateWithLifecycle()
+    val med_category by vm.input_category.collectAsStateWithLifecycle()
+
+
+
     colorTheme(
         {
             Column(
@@ -56,10 +60,13 @@ fun AddMedicineScreen(){
 
                 Spacer(Modifier.height(25.dp))
 
-                TextFieldInput("Medicine Name",{med_name=it},"Medicine Name",Modifier.fillMaxWidth(),true, singleLine = true)
+                TextFieldInput(med_name,vm::on_Med_Name_Change,"Medicine Name",Modifier.fillMaxWidth(),false, singleLine = true)
 
-                dropDownMenu(Modifier.fillMaxWidth(),categories.map { it.second } ,"Category",{newValue ->med_category = newValue
-                })
+                dropDownMenu(Modifier.fillMaxWidth(),med_category ,categories.map { it.second } ,"Category",vm::on_Category_Change )
+
+
+
+
 
             }
 

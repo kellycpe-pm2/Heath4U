@@ -16,13 +16,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.TextFieldInput
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.dropDownMenu
 
+
+
 @Composable
 fun AddMedicineScreen(){
     var med_name by remember {mutableStateOf("")}
+    val categories : List <Pair<Char, String>> = listOf('A'.to("Controlled medicines"),
+        'B'.to("Natural Products with Therapeutic Claim"),
+        'X'.to("Non-scheduled Poisons"),
+        'N'.to("Health Supplements"),
+        'H'.to("Veterinary Products"))
     colorTheme(
         {
             Column(
@@ -39,6 +47,7 @@ fun AddMedicineScreen(){
 
                 TextFieldInput("Medicine Name",{med_name=it},"Medicine Name",Modifier.fillMaxWidth(),true, singleLine = true)
 
+                //dropDownMenu(Modifier.fillMaxWidth(), )
 
             }
 

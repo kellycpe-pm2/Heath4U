@@ -1,13 +1,11 @@
 package com.example.healt4u.Service
 
 import com.example.healt4u.model.NPRAMedicine
-import com.opencsv.CSVReader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.StringReader
-import kotlin.text.get
+
 
 class NPRADataService {
     private val client = OkHttpClient()

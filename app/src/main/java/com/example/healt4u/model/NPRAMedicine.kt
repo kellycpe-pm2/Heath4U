@@ -19,3 +19,4 @@ data class NPRAMedicine(
     val genericName: String         // generic_name
 
         )
+

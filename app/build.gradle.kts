@@ -1,6 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    //id("com.google.devtools.ksp") version "2.0.21-1.0.28"
+    //id("com.google.dagger.hilt.android") version "2.52"
+
 }
 
 android {
@@ -59,4 +62,12 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0") //download Parquet
+    implementation("com.opencsv:opencsv:5.9") // download csv
+
+    implementation("com.google.dagger:hilt-android:2.52")
+    //ksp("com.google.dagger:hilt-android-compiler:2.52")
+    implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
 }

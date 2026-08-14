@@ -59,11 +59,21 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
 
                 TextFieldInput(med_name,vm::on_Med_Name_Change,"Medicine Name",Modifier.fillMaxWidth(),false, singleLine = true)
 
-                dropDownMenu(Modifier.fillMaxSize(),med_category , MedicineData.categories.map { it.second } ,"Category",vm::on_Category_Change )
+                Spacer(Modifier.height(10.dp))
+
+                Column(
+                    modifier = Modifier.fillMaxWidth().height(70.dp)
+                ) {
+                    dropDownMenu(Modifier.fillMaxSize(),med_category , MedicineData.categories.map { it.second } ,"Category",vm::on_Category_Change )
+
+                }
+
 
                 NumericStepper(0,10000,50,50,vm::on_Dos_Change)
 
                 NumericStepper(0,100,1,1,vm::on_Quantity_Change)
+
+
 
 
 

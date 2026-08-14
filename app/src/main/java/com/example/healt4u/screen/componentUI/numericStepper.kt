@@ -8,10 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.overscroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.healt4u.R
@@ -43,12 +49,9 @@ fun NumericStepper(
     val isEnableDecrease = value > minNum
     val isEnableIncrease = value < maxNum
     colorTheme {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -62,6 +65,7 @@ fun NumericStepper(
                         }
                     },
                     enabled = isEnableDecrease
+                    , modifier = Modifier.padding(1.dp)
                 ) {
                     Icon(
                         painter = painterResource(
@@ -72,16 +76,44 @@ fun NumericStepper(
                     )
                 }
 
-                Text(
-                    text = value.toString(),
-                    color = when (value) {
-                        minNum -> MaterialTheme.colorScheme.onError
-                        maxNum -> MaterialTheme.colorScheme.onError
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                TextField(
+                    value = value.toString(),
+                    onValueChange ={newValue -> value = newValue.toIntOrNull() ?: value},
 
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    textStyle = MaterialTheme.typography.labelLarge.copy(
+                        color = when (value) {
+                            minNum -> MaterialTheme.colorScheme.onError
+                            maxNum -> MaterialTheme.colorScheme.onError
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    ),
+                    colors = TextFieldDefaults.colors(
+                        // Container colors - From theme onSurface
+                        focusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+                        disabledContainerColor = MaterialTheme.colorScheme.onPrimary,
+
+                        // Indicator colors - From theme
+                        focusedIndicatorColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedIndicatorColor = MaterialTheme.colorScheme.secondary,
+                        disabledIndicatorColor = MaterialTheme.colorScheme.secondary,
+
+                        // Text colors - From theme
+                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedTextColor = MaterialTheme.colorScheme.secondary,
+
+                        // Label colors - From theme
+                        focusedLabelColor = MaterialTheme.colorScheme.onBackground,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.secondary,
+
+                        // Placeholder colors - From theme
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
+
+                        // Cursor color - From theme
+                        cursorColor = MaterialTheme.colorScheme.onBackground
+                    ),
+                    modifier = Modifier.padding(  15.dp).size(width = 75.dp, height = 50.dp)
                 )
 
                 IconButton(
@@ -101,11 +133,10 @@ fun NumericStepper(
                         tint = Color.Unspecified
                     )
                 }
+                Spacer(Modifier.padding(1.dp))
+
             }
-
-            Spacer(Modifier.height(10.dp))
-
-            Text(
+             /*Text(
                 text = when (value) {
                     minNum -> " Minimum reached"
                     maxNum -> " Maximum reached"
@@ -116,11 +147,12 @@ fun NumericStepper(
                     minNum -> MaterialTheme.colorScheme.error
                     maxNum -> MaterialTheme.colorScheme.error
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
+            }
+        )*/
+
         }
     }
-}
+
 
 @Preview(
     showBackground = true,

@@ -1,4 +1,9 @@
 package com.example.healt4u.nav
 
-class AppNavGraph {
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavHost
+
+@Composable
+fun AppNavGraph(navHost : NavHost){
+
 }

@@ -48,7 +48,7 @@ class ViewModelMedicine : ViewModel(){
     fun on_Dos_Change (m_Dos :Int){ _input_dosage.value = m_Dos }
     fun on_Quantity_Change (m_quantity :Int){ _input_quantity.value = m_quantity }
     fun on_Remark_Change (m_remark :String){ _input_remark.value = m_remark }
-    fun on_Remark_Change (m_ExpiredDate :Long){ _input_ExpiredDate.value = m_ExpiredDate }
+    fun on_ExpiredDate_Change (m_ExpiredDate :Long){ _input_ExpiredDate.value = m_ExpiredDate }
     fun on_AfterEat_Change (m_afterEat :Boolean){ _input_afterEat.value = m_afterEat }
     fun on_Priority_Change (m_priority :Int){ _input_priority.value = m_priority }
 

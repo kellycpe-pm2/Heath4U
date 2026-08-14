@@ -2,6 +2,7 @@ package com.example.healt4u.screen.Medicine
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +23,8 @@ import com.example.healt4u.screen.componentUI.TextFieldInput
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.dropDownMenu
 import com.example.healt4u.ViewModel.ViewModelMedicine
+import com.example.healt4u.data.MedicineData
+import com.example.healt4u.screen.componentUI.NumericStepper
 
 fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
     return (categories.find{it.first== id})?.second ?: ""
@@ -33,13 +36,7 @@ fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
 
 @Composable
 fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
-    val categories : List <Pair<Char, String>> = listOf(
-    'A'.to("Controlled medicines"),
-    'B'.to("Natural Products with Therapeutic Claim"),
-    'X'.to("Non-scheduled Poisons"),
-    'N'.to("Health Supplements"),
-    'H'.to("Veterinary Products")
-)
+
     val medicinesList by vm.medicines.collectAsStateWithLifecycle()
     val med_name by vm.input_med_name.collectAsStateWithLifecycle()
     val med_category by vm.input_category.collectAsStateWithLifecycle()
@@ -62,7 +59,14 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
 
                 TextFieldInput(med_name,vm::on_Med_Name_Change,"Medicine Name",Modifier.fillMaxWidth(),false, singleLine = true)
 
-                dropDownMenu(Modifier.fillMaxWidth(),med_category ,categories.map { it.second } ,"Category",vm::on_Category_Change )
+                dropDownMenu(Modifier.fillMaxSize(),med_category , MedicineData.categories.map { it.second } ,"Category",vm::on_Category_Change )
+
+                NumericStepper(0,10000,50,50,vm::on_Dos_Change)
+
+                NumericStepper(0,100,1,1,vm::on_Quantity_Change)
+
+
+
 
 
 

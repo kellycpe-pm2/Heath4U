@@ -124,6 +124,7 @@ fun PreviewDropDownMenu() {
     val sampleSelectedItem = "Category A"
     var c by remember { mutableStateOf("") }
 
+    dropDownMenu(modifier=Modifier.fillMaxSize(),value = sampleSelectedItem, categories = sampleCategories, label = "s", onValueChange = {})
 
 
 }

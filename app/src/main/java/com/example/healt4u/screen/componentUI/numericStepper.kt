@@ -31,6 +31,7 @@ fun NumericStepper(
     minNum: Int ,
     maxNum: Int ,
     currentValue: Int = 0,
+    step : Int =1,
     onValueChange: (Int) -> Unit = {}
 ) {
     var value by remember { mutableStateOf(currentValue.coerceIn(minNum, maxNum)) }
@@ -56,7 +57,7 @@ fun NumericStepper(
                 IconButton(
                     onClick = {
                         if (value > minNum) {
-                            value--
+                            value-=step
                             onValueChange(value)
                         }
                     },
@@ -86,7 +87,7 @@ fun NumericStepper(
                 IconButton(
                     onClick = {
                         if (value < maxNum) {
-                            value++
+                            value+=step
                             onValueChange(value)
                         }
                     },

@@ -1,4 +1,9 @@
 package com.example.healt4u.screen.Medicine
 
-class SearchMedicineScreen {
+import androidx.compose.runtime.Composable
+
+@Composable
+fun SearchMedicineScreen(){
+
+
 }

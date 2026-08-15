@@ -4,22 +4,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
+import com.example.healt4u.R
 
 @Composable
 fun colorTheme(content: @Composable () -> Unit) {
     val customColors = lightColorScheme(
         primary = Color(0xFFE9FCFF),
-        onPrimary = Color(0xFF011792),
+        onPrimary = Color(0xFFFFFFFF),
         secondary = Color(0xFF3674EE),
         onSecondary = Color(0xFFFFFFFF),
         background = Color(0xFFE9FCFF),
         onBackground = Color(0xFF011792),
-        surface = Color(0xFFFFFFFF),
-        onSurface = Color(0xFF011792),
+        surface = Color(0xFFE9FCFF),
+        onSurface = Color(0xFFFFFFFF),
+        onSurfaceVariant =Color(0xFF293D9D),
         error = Color(0xFFD32F2F),
-        onError = Color(0xFFFFFFFF)
+        onError = Color(0xFFF44336)
     )
 
     val customType = Typography(
@@ -30,8 +36,18 @@ fun colorTheme(content: @Composable () -> Unit) {
         bodyLarge = TextStyle(
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp
+        ),
+        titleLarge = TextStyle(
+            fontWeight = FontWeight.Bold,
+            fontSize = 30.sp,
+            color = Color(0xFF011792),
+            textAlign = TextAlign.Center,
+            letterSpacing = 1.5.sp,
+            textDecoration = TextDecoration.Underline,
+            fontFamily = FontFamily(Font(R.font.bungee))
+
+            )
         )
-    )
 
     MaterialTheme(
         colorScheme = customColors,

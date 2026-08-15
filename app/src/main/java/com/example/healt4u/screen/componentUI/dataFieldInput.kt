@@ -1,40 +1,46 @@
 package com.example.healt4u.screen.componentUI
 
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
 @Composable
-fun InputTextField(
+fun TextFieldInput(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    modifier: Modifier = Modifier
-) {
+    modifier: Modifier = Modifier,
+    readOnly: Boolean,
+    keyboardType : KeyboardType = KeyboardType.Unspecified,
+    singleLine : Boolean,
+    trailingIcon: @Composable (() -> Unit)? = null
+)
+{
     colorTheme(
 
         content = {
             OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
+                readOnly = readOnly,
         label = { Text(text = label) },
         placeholder={Text(text = label)},
-        singleLine = true,
+        singleLine = singleLine,
         shape = RoundedCornerShape(20.dp),
         colors = TextFieldDefaults.colors(
-            // Container colors - From theme surface (White)
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            disabledContainerColor = MaterialTheme.colorScheme.surface,
+            // Container colors - From theme onSurface
+            focusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+            unfocusedContainerColor = MaterialTheme.colorScheme.onPrimary,
+            disabledContainerColor = MaterialTheme.colorScheme.onPrimary,
 
             // Indicator colors - From theme
             focusedIndicatorColor = MaterialTheme.colorScheme.onBackground,
@@ -50,30 +56,17 @@ fun InputTextField(
             unfocusedLabelColor = MaterialTheme.colorScheme.secondary,
 
             // Placeholder colors - From theme
-            focusedPlaceholderColor = MaterialTheme.colorScheme.onBackground,
+            focusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
             unfocusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
 
             // Cursor color - From theme
             cursorColor = MaterialTheme.colorScheme.onBackground
         ),
-        modifier = modifier.fillMaxWidth()
+                trailingIcon = trailingIcon,
+                keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        modifier = modifier
     )
         }
 
         )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewInputTextField() {
-
-    // Wrap with theme for preview
-
-        InputTextField(
-            value = "Sample Text",
-            onValueChange = {},
-            label = "Username",
-            modifier = Modifier.padding(16.dp)
-        )
-
 }

@@ -27,68 +27,7 @@ import com.example.healt4u.screen.componentUI.Theme.colorTheme
 @Composable
 fun MedicineListScreen() {
     val medicines = remember {
-        mutableStateListOf(
-            Medicine(
-                id = 1,
-                name_medicine = "Paracetamol 500mg",
-                category = "A",
-                dosage = 500,
-                quantity = 100,
-                quantityLeft = 45,
-                remark = "Take with food",
-                expiredDate = parseDateToLong("15-12-2026"),
-                afterEat = true,
-                priority = 1
-            ),
-            Medicine(
-                id = 2,
-                name_medicine = "Vitamin C 1000mg",
-                category = "N",
-                dosage = 1000,
-                quantity = 50,
-                quantityLeft = 12,
-                remark = null,
-                expiredDate = parseDateToLong("01-01-2027"),
-                afterEat = false,
-                priority = 0
-            ),
-            Medicine(
-                id = 3,
-                name_medicine = "Amoxicillin 250mg",
-                category = "X",
-                dosage = 250,
-                quantity = 30,
-                quantityLeft = 3,
-                remark = "Expiring soon!",
-                expiredDate = parseDateToLong("01-09-2026"),
-                afterEat = true,
-                priority = 2
-            ),
-            Medicine(
-                id = 4,
-                name_medicine = "Herbal Tea Extract",
-                category = "T",
-                dosage = 200,
-                quantity = 20,
-                quantityLeft = 20,
-                remark = null,
-                expiredDate = parseDateToLong("20-12-2026"),
-                afterEat = false,
-                priority = 0
-            ),
-            Medicine(
-                id = 5,
-                name_medicine = "Dog Pain Relief",
-                category = "H",
-                dosage = 100,
-                quantity = 15,
-                quantityLeft = 3,
-                remark = "Veterinary use only",
-                expiredDate = parseDateToLong("10-10-2026"),
-                afterEat = true,
-                priority = 0
-            )
-        )
+        mutableStateListOf<Medicine>()
     }
 
     var searchQuery by remember { mutableStateOf("") }
@@ -228,6 +167,7 @@ fun SearchBar(
 
 @Composable
 fun EmptyStateView() {
+    colorTheme {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -241,14 +181,15 @@ fun EmptyStateView() {
             text = "No Medicines Found",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFF1A1A2E)
+            color =MaterialTheme.colorScheme.onBackground
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Tap the + button to add your first medicine",
             fontSize = 14.sp,
-            color = Color(0xFF78909C)
+            color = MaterialTheme.colorScheme.onBackground
         )
+    }
     }
 }
 

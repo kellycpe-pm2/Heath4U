@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.overscroll
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.healt4u.R
@@ -41,13 +44,20 @@ fun NumericStepper(
     onValueChange: (Int) -> Unit = {}
 ) {
     var value by remember { mutableStateOf(currentValue.coerceIn(minNum, maxNum)) }
-
-    if (value != currentValue && currentValue in minNum..maxNum) {
-        value = currentValue
-    }
-
+    var text by remember { mutableStateOf(value.toString()) }
     val isEnableDecrease = value > minNum
     val isEnableIncrease = value < maxNum
+
+    LaunchedEffect(value) {
+        text = value.toString()
+    }
+
+    LaunchedEffect(currentValue) {
+        if (currentValue in minNum..maxNum && currentValue != value) {
+            value = currentValue
+            text = currentValue.toString()
+        }
+    }
     colorTheme {
 
             Row(
@@ -77,16 +87,34 @@ fun NumericStepper(
                 }
 
                 TextField(
-                    value = value.toString(),
-                    onValueChange ={newValue -> value = newValue.toIntOrNull() ?: value},
-
-                    textStyle = MaterialTheme.typography.labelLarge.copy(
-                        color = when (value) {
-                            minNum -> MaterialTheme.colorScheme.onError
-                            maxNum -> MaterialTheme.colorScheme.onError
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    value = text,
+                    onValueChange = { newText ->
+                        if (newText.isEmpty()) {
+                            text = ""
+                            onValueChange(0)
+                        } else {
+                            val intValue = newText.toIntOrNull()
+                            if (intValue != null && intValue in minNum..maxNum) {
+                                text = newText
+                                value = intValue
+                                onValueChange(value)
+                            } else {
+                                text = newText
+                            }
                         }
+                    },
+                            // ...
+                    textStyle = MaterialTheme.typography.labelLarge.copy(
+                        color = if (!(value in (minNum..maxNum))) {
+                            MaterialTheme.colorScheme.onError
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+
                     ),
+                    singleLine = true,
+                    readOnly = false,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     colors = TextFieldDefaults.colors(
                         // Container colors - From theme onSurface
                         focusedContainerColor = MaterialTheme.colorScheme.onPrimary,

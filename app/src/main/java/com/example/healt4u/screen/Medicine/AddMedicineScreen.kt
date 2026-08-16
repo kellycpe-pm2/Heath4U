@@ -32,6 +32,7 @@ import com.example.healt4u.data.MedicineData
 import com.example.healt4u.screen.componentUI.DatePickerPopupOnClick
 import com.example.healt4u.screen.componentUI.NumericStepper
 import com.example.healt4u.screen.componentUI.TimingButton
+import com.example.healt4u.screen.componentUI.button
 import com.example.healt4u.screen.componentUI.slider
 
 fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
@@ -133,6 +134,7 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
                     false,
                     singleLine = false
                 )
+                button(modifier = Modifier.fillMaxWidth(), text = "Submit", onClick = vm::addMedicneForm)
 
             }
         }

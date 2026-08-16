@@ -105,7 +105,7 @@ fun DatePickerPopupOnClick(
                 cursorColor = MaterialTheme.colorScheme.onBackground
             ),
             trailingIcon = {
-                if (showPopup) {
+                if (!showPopup) {
                     Icon(
                         painter = painterResource(R.drawable.calendar_unfocus),
                         contentDescription = "Select date"
@@ -139,7 +139,7 @@ fun DatePickerPopupOnClick(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .offset(y = 64.dp)
+                        .padding(20.dp)
                         .shadow(elevation = 4.dp)
                         .padding(16.dp)
                 ) {

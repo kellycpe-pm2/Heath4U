@@ -54,92 +54,101 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
 
     colorTheme(
         {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 50.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Add Medicine",
-                    style = MaterialTheme.typography.titleLarge
-                )
+            Column(Modifier.fillMaxSize()) {
 
-                Spacer(Modifier.height(25.dp))
-
-                TextFieldInput(
-                    med_name,
-                    vm::on_Med_Name_Change,
-                    "Medicine Name",
-                    Modifier.fillMaxWidth(),
-                    false,
-                    singleLine = true
-                )
-
-                Spacer(Modifier.height(10.dp))
 
                 Column(
-                    modifier = Modifier.fillMaxWidth().height(70.dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 50.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    dropDownMenu(
-                        Modifier.fillMaxSize(),
-                        med_category,
-                        MedicineData.categories.map { it.second },
-                        "Category",
-                        vm::on_Category_Change
+                    Text(
+                        text = "Add Medicine",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+
+                    Spacer(Modifier.height(25.dp))
+
+                    TextFieldInput(
+                        med_name,
+                        vm::on_Med_Name_Change,
+                        "Medicine Name",
+                        Modifier.fillMaxWidth(),
+                        false,
+                        singleLine = true
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth().height(70.dp)
+                    ) {
+                        dropDownMenu(
+                            Modifier.fillMaxSize(),
+                            med_category,
+                            MedicineData.categories.map { it.second },
+                            "Category",
+                            vm::on_Category_Change
+                        )
+
+                    }
+
+
+                    NumericStepper(0, 10000, 50, 50, vm::on_Dos_Change)
+
+                    NumericStepper(0, 100, 1, 1, vm::on_Quantity_Change)
+
+                    DatePickerPopupOnClick(modifier = Modifier.fillMaxWidth(), "Expired Date")
+
+                    var isBeforeEating by remember { mutableStateOf(true) }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // BUTTON 1: Before Eating
+                        TimingButton(
+                            text = "Before Eating",
+                            isSelected = isBeforeEating,
+                            id = R.drawable.eatbefore,
+                            onClick = { isBeforeEating = true },
+                        )
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        TimingButton(
+                            text = "After Eating",
+                            isSelected = !isBeforeEating,
+                            id = R.drawable.eatafter,
+                            onClick = { isBeforeEating = false }
+                        )
+
+
+                    }
+                    slider()
+                    TextFieldInput(
+                        med_name,
+                        vm::on_Med_Name_Change,
+                        "Remark",
+                        Modifier.fillMaxWidth().padding(15.dp),
+                        false,
+                        singleLine = false
+                    )
+                    button(
+                        modifier = Modifier.fillMaxWidth(),
+                        text = "Submit",
+                        onClick = onAddClick
                     )
 
                 }
-
-
-                NumericStepper(0, 10000, 50, 50, vm::on_Dos_Change)
-
-                NumericStepper(0, 100, 1, 1, vm::on_Quantity_Change)
-
-                DatePickerPopupOnClick(modifier = Modifier.fillMaxWidth(), "Expired Date")
-
-                var isBeforeEating by remember { mutableStateOf(true) }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // BUTTON 1: Before Eating
-                    TimingButton(
-                        text = "Before Eating",
-                        isSelected = isBeforeEating,
-                        id = R.drawable.eatbefore,
-                        onClick = { isBeforeEating = true },
-                    )
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    TimingButton(
-                        text = "After Eating",
-                        isSelected = !isBeforeEating,
-                        id = R.drawable.eatafter,
-                        onClick = { isBeforeEating = false }
-                    )
-
-
-                }
-                slider()
-                TextFieldInput(
-                    med_name,
-                    vm::on_Med_Name_Change,
-                    "Remark",
-                    Modifier.fillMaxWidth().padding(15.dp),
-                    false,
-                    singleLine = false
-                )
-                button(modifier = Modifier.fillMaxWidth(), text = "Submit", onClick = onAddClick)
-
             }
         }
 
     )
+
             }
 
 

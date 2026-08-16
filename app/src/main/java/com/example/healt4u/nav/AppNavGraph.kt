@@ -14,9 +14,8 @@ import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
 
 @Composable
-fun AppNavGraph(navHost: NavHostController = rememberNavController()) {
-    val vm: ViewModelMedicine = viewModel()
-    val vm_NPRA: NPRAMedicineViewModel = viewModel()
+fun AppNavGraph(navHost: NavHostController = rememberNavController(),vm: ViewModelMedicine = viewModel(),vm_NPRA: NPRAMedicineViewModel = viewModel()) {
+
 
     NavHost(
         navController = navHost,
@@ -40,7 +39,6 @@ fun AppNavGraph(navHost: NavHostController = rememberNavController()) {
 @Preview(showBackground = true, name = "Medicine List Preview")
 @Composable
 fun PreviewMedicineListScreen() {
-
 
     AppNavGraph()
 }

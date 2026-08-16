@@ -3,6 +3,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -22,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
+import com.example.healt4u.screen.componentUI.button
 
 
 @Composable
@@ -48,9 +50,7 @@ fun MedicineListScreen() {
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            // Search Bar
 
-            // List Header with count
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -93,8 +93,24 @@ fun MedicineListScreen() {
                     }
                 }
             }
+
+
+            }
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(40.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.End
+        ) {
+            button(
+                text = "+",
+                onClick = {  },
+                modifier = Modifier.size(56.dp)
+            )
         }
-    }
+        }
+
 }
 
 @Composable
@@ -156,8 +172,7 @@ fun SearchBar(
                     Icon(
                         painterResource(R.drawable.close),
                         contentDescription = "Clear",
-                        modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF78909C)
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }

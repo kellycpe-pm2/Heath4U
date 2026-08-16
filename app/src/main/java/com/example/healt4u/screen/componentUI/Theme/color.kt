@@ -29,13 +29,35 @@ fun colorTheme(content: @Composable () -> Unit) {
     )
 
     val customType = Typography(
-        headlineMedium = TextStyle(
+        displayLarge = TextStyle(
             fontWeight = FontWeight.Bold,
-            fontSize = 26.sp
+            fontSize = 32.sp,
+            color = Color(0xFF011792)
         ),
-        bodyLarge = TextStyle(
-            fontWeight = FontWeight.Normal,
-            fontSize = 16.sp
+        displayMedium = TextStyle(
+            fontWeight = FontWeight.Bold,
+            fontSize = 28.sp,
+            color = Color(0xFF011792)
+        ),
+        displaySmall = TextStyle(
+            fontWeight = FontWeight.Bold,
+            fontSize = 24.sp,
+            color = Color(0xFF011792)
+        ),
+        headlineLarge = TextStyle(
+            fontWeight = FontWeight.Bold,
+            fontSize = 26.sp,
+            color = Color(0xFF011792)
+        ),
+        headlineMedium = TextStyle(
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 22.sp,
+            color = Color(0xFF011792)
+        ),
+        headlineSmall = TextStyle(
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp,
+            color = Color(0xFF011792)
         ),
         titleLarge = TextStyle(
             fontWeight = FontWeight.Bold,
@@ -45,9 +67,48 @@ fun colorTheme(content: @Composable () -> Unit) {
             letterSpacing = 1.5.sp,
             textDecoration = TextDecoration.Underline,
             fontFamily = FontFamily(Font(R.font.bungee))
-
-            )
+        ),
+        titleMedium = TextStyle(
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
+            color = Color(0xFF011792)
+        ),
+        titleSmall = TextStyle(
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            color = Color(0xFF293D9D)
+        ),
+        bodyLarge = TextStyle(
+            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            color = Color(0xFF011792)
+        ),
+        bodyMedium = TextStyle(
+            fontWeight = FontWeight.Normal,
+            fontSize = 14.sp,
+            color = Color(0xFF293D9D)
+        ),
+        bodySmall = TextStyle(
+            fontWeight = FontWeight.Normal,
+            fontSize = 12.sp,
+            color = Color(0xFF293D9D)
+        ),
+        labelLarge = TextStyle(
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            color = Color(0xFFFFFFFF)
+        ),
+        labelMedium = TextStyle(
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            color = Color(0xFF293D9D)
+        ),
+        labelSmall = TextStyle(
+            fontWeight = FontWeight.Medium,
+            fontSize = 10.sp,
+            color = Color(0xFF293D9D)
         )
+    )
 
     MaterialTheme(
         colorScheme = customColors,

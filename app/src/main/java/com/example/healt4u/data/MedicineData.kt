@@ -8,4 +8,8 @@ object MedicineData {
         'N'.to("Health Supplements"),
         'H'.to("Veterinary Products")
     )
+    fun getCategoryName(code: String): String {
+        return categories.find { it.first.toString() == code }?.second ?: code
+    }
+
 }

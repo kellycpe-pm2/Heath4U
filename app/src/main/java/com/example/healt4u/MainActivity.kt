@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.healt4u.nav.AppNavGraph
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.ui.theme.Healt4UTheme
 
@@ -24,11 +27,15 @@ class MainActivity : ComponentActivity() {
                         Surface(
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface).fillMaxSize()
                         ) {
-
+                            AppNavGraph()
                         }
                     })
             }
         }
     }
 }
-
+@Preview(showBackground = true, name = "Medicine List Preview")
+@Composable
+fun PreviewMedicineListScreen() {
+    AppNavGraph()
+}

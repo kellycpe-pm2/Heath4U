@@ -27,7 +27,7 @@ import com.example.healt4u.screen.componentUI.button
 
 
 @Composable
-fun MedicineListScreen() {
+fun MedicineListScreen(oAddnClick : ()-> Unit ) {
     val medicines = remember {
         mutableStateListOf<Medicine>()
     }
@@ -105,7 +105,7 @@ fun MedicineListScreen() {
         ) {
             button(
                 text = "+",
-                onClick = {  },
+                onClick = oAddnClick,
                 modifier = Modifier.size(56.dp)
             )
         }
@@ -211,6 +211,6 @@ fun EmptyStateView() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewMedicineListScreen() {
-        MedicineListScreen()
+        MedicineListScreen({})
 
 }

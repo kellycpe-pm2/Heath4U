@@ -44,7 +44,7 @@ fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
 
 
 @Composable
-fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
+fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
 
     val medicinesList by vm.medicines.collectAsStateWithLifecycle()
     val med_name by vm.input_med_name.collectAsStateWithLifecycle()
@@ -134,7 +134,7 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
                     false,
                     singleLine = false
                 )
-                button(modifier = Modifier.fillMaxWidth(), text = "Submit", onClick = vm::addMedicneForm)
+                button(modifier = Modifier.fillMaxWidth(), text = "Submit", onClick = onAddClick)
 
             }
         }
@@ -148,5 +148,6 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel()){
 @Preview (showBackground = true)
 @Composable
 fun add(){
-    AddMedicineScreen()
+    AddMedicineScreen(onAddClick = {})
+
 }

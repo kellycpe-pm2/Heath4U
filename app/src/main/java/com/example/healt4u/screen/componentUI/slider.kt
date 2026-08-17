@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
 @Composable
-fun slider(){
+fun slider(value : Float,onChange:(Float)->Unit ={ } ){
     var sliderValue by remember { mutableFloatStateOf(0f) }
     colorTheme(
         {
@@ -24,8 +24,8 @@ fun slider(){
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 40.dp, vertical = 5.dp),
-                value = sliderValue,
-                onValueChange = { sliderValue = it },
+                value = value,
+                onValueChange = onChange,
                 valueRange = 0f..5f,
                 steps = 4,
                 colors = SliderDefaults.colors(
@@ -49,5 +49,5 @@ fun slider(){
 @Preview(showBackground =  true)
 @Composable
 fun s (){
-    slider()
+    slider(1f,{})
 }

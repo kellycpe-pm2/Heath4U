@@ -1,5 +1,6 @@
 package com.example.healt4u.nav
 
+import android.annotation.SuppressLint
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.tooling.preview.Preview
@@ -14,31 +15,29 @@ import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
 
 @Composable
-fun AppNavGraph(navHost: NavHostController = rememberNavController(),vm: ViewModelMedicine = viewModel(),vm_NPRA: NPRAMedicineViewModel = viewModel()) {
-
-
+fun AppNavGraph(navController: NavHostController = rememberNavController(),vm_med : ViewModelMedicine = viewModel()) {
     NavHost(
-        navController = navHost,
+        navController = navController,
         startDestination = "MedicineList"
     ) {
         composable("MedicineList") {
-            MedicineListScreen {
-                navHost.navigate("AddMedicine")
-            }
+            MedicineListScreen (oAddnClick =
+                { navController.navigate("AddMedicine") }
+            )
         }
 
         composable("AddMedicine") {
             AddMedicineScreen(
-                vm,
-                onAddClick = { navHost.popBackStack() }
+                vm=vm_med,
+                onAddClick = { navController.popBackStack() }
             )
         }
     }
 }
 
-@Preview(showBackground = true, name = "Medicine List Preview")
+@Preview(showBackground = true)
 @Composable
-fun PreviewMedicineListScreen() {
-
+fun PreviewAppNavGraph() {
     AppNavGraph()
+
 }

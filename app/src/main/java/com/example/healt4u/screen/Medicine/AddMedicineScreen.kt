@@ -46,10 +46,15 @@ fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
 @Composable
 fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
 
-    val medicinesList by vm.medicines.collectAsStateWithLifecycle()
     val med_name by vm.input_med_name.collectAsStateWithLifecycle()
     val med_category by vm.input_category.collectAsStateWithLifecycle()
-
+    val med_dosage by vm.input_dosage.collectAsStateWithLifecycle()
+    val med_quantity by vm.input_quantity.collectAsStateWithLifecycle()
+    val med_expiredDate by vm.input_ExpiredDate.collectAsStateWithLifecycle()
+    val med_isBeforeEating by vm.input_afterEat.collectAsStateWithLifecycle()
+    val med_priority by vm.input_priority.collectAsStateWithLifecycle()
+    val med_createDate by vm.input_CreateDate.collectAsStateWithLifecycle()
+    val med_remark by vm.input_remark.collectAsStateWithLifecycle()
 
 
     colorTheme(
@@ -58,7 +63,9 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
 
 
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 50.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 50.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -81,7 +88,9 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
                     Spacer(Modifier.height(10.dp))
 
                     Column(
-                        modifier = Modifier.fillMaxWidth().height(70.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(70.dp)
                     ) {
                         dropDownMenu(
                             Modifier.fillMaxSize(),
@@ -94,13 +103,12 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
                     }
 
 
-                    NumericStepper(0, 10000, 50, 50, vm::on_Dos_Change)
+                    NumericStepper(0, 10000, med_dosage, 50, vm::on_Dos_Change)
 
-                    NumericStepper(0, 100, 1, 1, vm::on_Quantity_Change)
+                    NumericStepper(0, 100, med_quantity, 1, vm::on_Quantity_Change)
 
-                    DatePickerPopupOnClick(modifier = Modifier.fillMaxWidth(), "Expired Date")
+                    DatePickerPopupOnClick(modifier = Modifier.fillMaxWidth(), "Expired Date",value = med_expiredDate,vm::on_ExpiredDate_Change)
 
-                    var isBeforeEating by remember { mutableStateOf(true) }
 
                     Row(
                         modifier = Modifier
@@ -112,28 +120,33 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
                         // BUTTON 1: Before Eating
                         TimingButton(
                             text = "Before Eating",
-                            isSelected = isBeforeEating,
+                            isSelected = med_isBeforeEating,
                             id = R.drawable.eatbefore,
-                            onClick = { isBeforeEating = true },
+                            onClick = { var afterEat = false
+                                vm.on_AfterEat_Change(afterEat) },
                         )
 
                         Spacer(modifier = Modifier.width(16.dp))
 
                         TimingButton(
                             text = "After Eating",
-                            isSelected = !isBeforeEating,
+                            isSelected = !med_isBeforeEating,
                             id = R.drawable.eatafter,
-                            onClick = { isBeforeEating = false }
+                            onClick = { var beforeEat = false
+                            vm.on_AfterEat_Change(beforeEat)}
+
                         )
 
 
                     }
-                    slider()
+                    slider(med_priority,vm::on_Priority_Change)
                     TextFieldInput(
-                        med_name,
-                        vm::on_Med_Name_Change,
+                        med_remark,
+                        vm::on_Remark_Change,
                         "Remark",
-                        Modifier.fillMaxWidth().padding(15.dp),
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(15.dp),
                         false,
                         singleLine = false
                     )

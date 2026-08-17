@@ -81,16 +81,16 @@ fun MedicineRow(med: Medicine, onClick: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     ) {
                         // Priority indicator
-                        if (med.priority != null && med.priority > 0) {
+                        if (med.priority != null && med.priority > 0f) {
                             Box(
                                 modifier = Modifier
                                     .size(10.dp)
                                     .background(
                                         when (med.priority) {
-                                            0 -> Color.Green
-                                            1 -> Color.Yellow
-                                            2 -> Color.Yellow
-                                            3 -> Color(0xFFFF9800)
+                                            0f -> Color.Green
+                                            1f -> Color.Yellow
+                                            2f -> Color.Yellow
+                                            3f -> Color(0xFFFF9800)
                                             else -> Color.Red
                                         },
                                         shape = CircleShape
@@ -369,7 +369,7 @@ fun PreviewMedicineRowStates() {
                     remark = "Take with food",
                     expiredDate = parseDateToLong("15-12-2026"),
                     afterEat = true,
-                    priority = 1
+                    priority = 1f
                 ),
                 onClick = {}
             )
@@ -386,7 +386,7 @@ fun PreviewMedicineRowStates() {
                     remark = null,
                     expiredDate = parseDateToLong("01-01-2027"),
                     afterEat = false,
-                    priority = 0
+                    priority = 0f
                 ),
                 onClick = {}
             )
@@ -403,7 +403,7 @@ fun PreviewMedicineRowStates() {
                     remark = "Expiring soon!",
                     expiredDate = parseDateToLong("01-09-2026"),
                     afterEat = true,
-                    priority = 2
+                    priority = 2f
                 ),
                 onClick = {}
             )
@@ -420,7 +420,7 @@ fun PreviewMedicineRowStates() {
                     remark = "Do not use",
                     expiredDate = parseDateToLong("01-01-2024"),
                     afterEat = false,
-                    priority = 0
+                    priority = 0f
                 ),
                 onClick = {}
             )

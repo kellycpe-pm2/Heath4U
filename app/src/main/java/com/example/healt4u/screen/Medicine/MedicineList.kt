@@ -12,6 +12,7 @@ import com.example.healt4u.R
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -21,16 +22,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.button
 
 
 @Composable
-fun MedicineListScreen(oAddnClick : ()-> Unit ) {
-    val medicines = remember {
-        mutableStateListOf<Medicine>()
-    }
+fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> Unit ) {
+    val medicines  by vm.medicines.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
 
@@ -211,6 +213,6 @@ fun EmptyStateView() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewMedicineListScreen() {
-        MedicineListScreen({})
+        MedicineListScreen(oAddnClick= {})
 
 }

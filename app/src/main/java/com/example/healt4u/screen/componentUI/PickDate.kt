@@ -52,27 +52,25 @@ fun convertMillisToDate(millis: Long): String {
 
 @Composable
 fun DatePickerPopupOnClick(
-    modifier: Modifier = Modifier,label: String,
-    onDateSelected: (String) -> Unit = {}
+    modifier: Modifier = Modifier,label: String, value : Long, onDateChange: (Long)-> Unit = {}
 ) {
     colorTheme({
-        var selectedDate by remember { mutableStateOf<Long?>(null) }
         var showPopup by remember { mutableStateOf(false) }
 
 
-        val popupState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
+        val popupState = rememberDatePickerState(initialSelectedDateMillis = value)
 
         // Auto-close when date is selected
         LaunchedEffect(popupState.selectedDateMillis) {
             popupState.selectedDateMillis?.let {
-                selectedDate = it
-                onDateSelected(convertMillisToDate(it))
+                convertMillisToDate(it)
+                onDateChange(it)
                 showPopup = false
             }
         }
 
         OutlinedTextField(
-            value = selectedDate?.let { convertMillisToDate(it) } ?: "",
+            value = value?.let { convertMillisToDate(it) } ?: "",
             onValueChange = { /* Read-only */ },
             label =  { Text("$label") },
             placeholder = { Text("MM/DD/YYYY") },
@@ -192,11 +190,7 @@ fun DatePickerPopupOnClick(
 @Composable
 fun sds() {
 
-    DatePickerPopupOnClick(
-            modifier = Modifier.fillMaxSize(),
-        "",
-            onDateSelected = { println("Selected: $it") }
-        )
+    DatePickerPopupOnClick(label="", value = System.currentTimeMillis(), onDateChange = {})
 
 }
 

@@ -40,8 +40,13 @@ class ViewModelMedicine : ViewModel(){
     private val _input_afterEat= MutableStateFlow(true)
     val input_afterEat : StateFlow<Boolean> = _input_afterEat
 
-    private val _input_priority= MutableStateFlow(0)
-    val input_priority : StateFlow<Int> = _input_priority
+    private val _input_priority= MutableStateFlow(0f)
+    val input_priority : StateFlow<Float> = _input_priority
+
+
+    private val _input_CreateDate= MutableStateFlow("")
+    val input_CreateDate : StateFlow<Boolean> = _input_afterEat
+
 
     fun on_Med_Name_Change (m_name :String){ _input_med_name.value = m_name }
     fun on_Category_Change (m_category :String){ _input_category.value = m_category }
@@ -50,7 +55,7 @@ class ViewModelMedicine : ViewModel(){
     fun on_Remark_Change (m_remark :String){ _input_remark.value = m_remark }
     fun on_ExpiredDate_Change (m_ExpiredDate :Long){ _input_ExpiredDate.value = m_ExpiredDate }
     fun on_AfterEat_Change (m_afterEat :Boolean){ _input_afterEat.value = m_afterEat }
-    fun on_Priority_Change (m_priority :Int){ _input_priority.value = m_priority }
+    fun on_Priority_Change (m_priority :Float){ _input_priority.value = m_priority }
 
     private var nextId = 0
 
@@ -69,7 +74,7 @@ class ViewModelMedicine : ViewModel(){
         _input_category.value=""
         _input_remark.value =""
         _input_ExpiredDate.value=0
-        _input_priority.value =0
+        _input_priority.value =0f
     }
 
 

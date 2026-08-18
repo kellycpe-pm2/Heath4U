@@ -97,15 +97,15 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
                             med_category,
                             MedicineData.categories.map { it.second },
                             "Category",
-                            vm::on_Category_Change
+                            { category-> vm.on_Category_Change(category) }
                         )
 
                     }
 
 
-                    NumericStepper(0, 10000, med_dosage, 50, vm::on_Dos_Change)
+                    NumericStepper(0, 10000, med_dosage, 50, { dos-> vm.on_Dos_Change(dos) })
 
-                    NumericStepper(0, 100, med_quantity, 1, vm::on_Quantity_Change)
+                    NumericStepper(0, 100, med_quantity, 1, {quantity-> vm.on_Quantity_Change(quantity) })
 
                     DatePickerPopupOnClick(modifier = Modifier.fillMaxWidth(), "Expired Date",value = med_expiredDate,vm::on_ExpiredDate_Change)
 
@@ -122,7 +122,7 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
                             text = "Before Eating",
                             isSelected = med_isBeforeEating,
                             id = R.drawable.eatbefore,
-                            onClick = { var afterEat = false
+                            onClick = { var afterEat = true
                                 vm.on_AfterEat_Change(afterEat) },
                         )
 

@@ -35,6 +35,22 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
     val medicines  by vm.medicines.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
+    val filteredMedicines by remember {
+        derivedStateOf {
+            if (searchQuery.isEmpty()) {
+                medicines
+            } else {
+                medicines.filter { medicine ->
+                    medicine.name_medicine.contains(searchQuery, ignoreCase = true) ||
+                            medicine.category.contains(searchQuery, ignoreCase = true) ||
+                            medicine.remark?.contains(searchQuery, ignoreCase = true) == true
+                }
+            }
+        }
+    }
+
+
+
 
     colorTheme {
         Column(
@@ -71,21 +87,14 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
                     )
                 }
             }
-            SearchMedicineScreen(searchQuery, {
-                val filteredMedicines = if (searchQuery.isEmpty()) {
-                medicines
-            } else {
-                medicines.filter { medicine ->
-                    medicine.name_medicine.contains(searchQuery, ignoreCase = true) ||
-                            medicine.category.contains(searchQuery, ignoreCase = true) ||
-                            medicine.remark?.contains(searchQuery, ignoreCase = true) == true
-                }
-            }
-            })
+            SearchMedicineScreen(
+                searchQuery = searchQuery,
+                onSearchChange = { searchQuery = it }
+            )
 
             Spacer(Modifier.height(0.5f.dp))
             // Medicine List
-            if (medicines.isEmpty()) {
+            if (filteredMedicines.isEmpty()) {
                 EmptyStateView()
             } else {
                 LazyColumn(
@@ -93,7 +102,7 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(medicines) { medicine ->
+                    items(filteredMedicines) { medicine ->
                         MedicineRow(medicine, {})
                     }
                 }
@@ -110,7 +119,7 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
         ) {
             button(
                 text = "+",
-                onClick = oAddnClick,
+                onClick ={oAddnClick()} ,
                 modifier = Modifier.size(56.dp)
             )
         }

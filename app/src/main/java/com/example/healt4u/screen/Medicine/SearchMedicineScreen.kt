@@ -51,7 +51,7 @@ fun SearchMedicineScreen(
                 Icon(
                     painter = painterResource(R.drawable.search),
                     contentDescription = "Search",
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.size(20.dp),
 
                     tint = MaterialTheme.colorScheme.onBackground
                 )
@@ -74,7 +74,7 @@ fun SearchMedicineScreen(
                         unfocusedIndicatorColor = Color.Transparent,
                         cursorColor = MaterialTheme.colorScheme.secondary,
                         focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.secondary
+                        unfocusedTextColor = Color(0xFF1A1A2E)
                     ),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
                         fontSize = 14.sp,

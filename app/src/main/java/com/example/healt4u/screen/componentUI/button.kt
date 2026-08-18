@@ -16,7 +16,7 @@ import com.example.healt4u.screen.componentUI.Theme.colorTheme
 fun button(text:String, onClick : ()-> Unit, modifier  : Modifier = Modifier.fillMaxWidth()){
     colorTheme {
         Button(
-            onClick = {onClick},
+            onClick = {onClick()},
             colors = ButtonColors (
                 containerColor = MaterialTheme.colorScheme.secondary,
                 contentColor = MaterialTheme.colorScheme.primary,

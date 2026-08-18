@@ -18,18 +18,18 @@ import com.example.healt4u.screen.Medicine.MedicineListScreen
 fun AppNavGraph(navController: NavHostController = rememberNavController(),vm_med : ViewModelMedicine = viewModel()) {
     NavHost(
         navController = navController,
-        startDestination = "MedicineList"
+        startDestination = "list"
     ) {
-        composable("MedicineList") {
-            MedicineListScreen (oAddnClick =
-                { navController.navigate("AddMedicine") }
+        composable("list") {
+            MedicineListScreen (oAddnClick = { navController.navigate("add") }
             )
         }
 
-        composable("AddMedicine") {
+        composable("add") {
             AddMedicineScreen(
                 vm=vm_med,
-                onAddClick = { navController.popBackStack() }
+                onAddClick = {vm_med.addMedicneForm()
+                    navController.popBackStack() }
             )
         }
     }

@@ -153,7 +153,7 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
                     button(
                         modifier = Modifier.fillMaxWidth(),
                         text = "Submit",
-                        onClick = onAddClick
+                        onClick = { onAddClick() }
                     )
 
                 }

@@ -36,16 +36,6 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
 
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredMedicines = if (searchQuery.isEmpty()) {
-        medicines
-    } else {
-        medicines.filter { medicine ->
-            medicine.name_medicine.contains(searchQuery, ignoreCase = true) ||
-                    medicine.category.contains(searchQuery, ignoreCase = true) ||
-                    medicine.remark?.contains(searchQuery, ignoreCase = true) == true
-        }
-    }
-
     colorTheme {
         Column(
             modifier = Modifier
@@ -66,13 +56,14 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF1A1A2E)
                 )
+
                 Surface(
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier
                 ) {
                     Text(
-                        text = "${filteredMedicines.size}",
+                        text = "${medicines.size}",
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
                         color = Color.White,
                         fontSize = 12.sp,
@@ -80,9 +71,21 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
                     )
                 }
             }
+            SearchMedicineScreen(searchQuery, {
+                val filteredMedicines = if (searchQuery.isEmpty()) {
+                medicines
+            } else {
+                medicines.filter { medicine ->
+                    medicine.name_medicine.contains(searchQuery, ignoreCase = true) ||
+                            medicine.category.contains(searchQuery, ignoreCase = true) ||
+                            medicine.remark?.contains(searchQuery, ignoreCase = true) == true
+                }
+            }
+            })
 
+            Spacer(Modifier.height(0.5f.dp))
             // Medicine List
-            if (filteredMedicines.isEmpty()) {
+            if (medicines.isEmpty()) {
                 EmptyStateView()
             } else {
                 LazyColumn(
@@ -90,7 +93,7 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(filteredMedicines) { medicine ->
+                    items(medicines) { medicine ->
                         MedicineRow(medicine, {})
                     }
                 }
@@ -114,74 +117,6 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
         }
 
 }
-
-@Composable
-fun SearchBar(
-    searchQuery: String,
-    onSearchChange: (String) -> Unit
-) {
-    Surface(
-        shape = RoundedCornerShape(12.dp),
-        color = Color.White,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .shadow(2.dp, RoundedCornerShape(12.dp))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.search),
-                contentDescription = "Search",
-                modifier = Modifier.size(20.dp)
-            )
-            TextField(
-                value = searchQuery,
-                onValueChange = onSearchChange,
-                placeholder = {
-                    Text(
-                        "Search medicines...",
-                        color = Color(0xFFB0BEC5),
-                        fontSize = 14.sp
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colorScheme.secondary,
-                    focusedTextColor = Color(0xFF1A1A2E),
-                    unfocusedTextColor = Color(0xFF1A1A2E)
-                ),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 14.sp,
-                    color = Color(0xFF1A1A2E)
-                )
-            )
-            if (searchQuery.isNotEmpty()) {
-                IconButton(
-                    onClick = { onSearchChange("") },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        painterResource(R.drawable.close),
-                        contentDescription = "Clear",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun EmptyStateView() {
     colorTheme {

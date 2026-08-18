@@ -87,8 +87,7 @@ fun MedicineRow(med: Medicine, onClick: () -> Unit) {
                                     .size(10.dp)
                                     .background(
                                         when (med.priority) {
-                                            0f -> Color.Green
-                                            1f -> Color.Yellow
+                                            1f -> Color.Green
                                             2f -> Color.Yellow
                                             3f -> Color(0xFFFF9800)
                                             else -> Color.Red

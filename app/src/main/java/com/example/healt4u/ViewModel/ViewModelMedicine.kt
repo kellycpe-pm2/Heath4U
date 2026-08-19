@@ -27,6 +27,12 @@ class ViewModelMedicine : ViewModel(){
         }
     }
 
+    fun testadd(m : Medicine){
+        _medicines.update { currentList ->
+
+            currentList + m
+        }
+    }
 
     fun remove_m (m :Medicine){
         viewModelScope.launch(Dispatchers.IO) {
@@ -88,7 +94,7 @@ class ViewModelMedicine : ViewModel(){
         if (med_name.isEmpty() && dos ==0 && quantity == 0  ){
             return
         }
-        add_m(Medicine(id = nextId++, name_medicine = med_name, category = _input_category.value, dosage = dos, quantity = quantity, remark = _input_remark.value, expiredDate = _input_ExpiredDate.value, afterEat = _input_afterEat.value, create_Date =System.currentTimeMillis() , priority = _input_priority.value))
+        testadd(Medicine(id = nextId++, name_medicine = med_name, category = _input_category.value, dosage = dos, quantity = quantity, remark = _input_remark.value, expiredDate = _input_ExpiredDate.value, afterEat = _input_afterEat.value, create_Date =System.currentTimeMillis() , priority = _input_priority.value))
         _input_med_name.value=""
         _input_dosage.value =0
         _input_quantity.value =0

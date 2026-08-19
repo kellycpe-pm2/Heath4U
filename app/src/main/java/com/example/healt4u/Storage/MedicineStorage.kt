@@ -1,74 +1,126 @@
 package com.example.healt4u.Storage
 
-import android.annotation.SuppressLint
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import com.example.healt4u.model.Medicine
+import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.Locale.filter
-import kotlin.collections.mapOf
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 
-@Composable
-fun MedicineStorage() {
+// ✅ FIXED: Remove /rest/v1/ from URL
+private const val SUPABASE_URL = "https://jotudzheiwopavprryxx.supabase.co"
+private const val SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvdHVkemhlaXdvcGF2cHJyeXh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NDU1ODgsImV4cCI6MjEwMjEyMTU4OH0.Q4R0_c94lxfUKcMTVoIOdhilsDA6YfffQt7-dNoA1zM"
 
-    val supabaseURL = "https://jotudzheiwopavprryxx.supabase.co/rest/v1/"
-
-    val supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvdHVkemhlaXdvcGF2cHJyeXh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NDU1ODgsImV4cCI6MjEwMjEyMTU4OH0.Q4R0_c94lxfUKcMTVoIOdhilsDA6YfffQt7-dNoA1zM"
-    val supabase = createSupabaseClient(supabaseURL,supabaseKey){
-
-    }
-}
-val supabaseURL = "https://jotudzheiwopavprryxx.supabase.co/rest/v1/"
-
-val supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvdHVkemhlaXdvcGF2cHJyeXh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1NDU1ODgsImV4cCI6MjEwMjEyMTU4OH0.Q4R0_c94lxfUKcMTVoIOdhilsDA6YfffQt7-dNoA1zM"
-val supabase = createSupabaseClient(supabaseURL,supabaseKey){
+// ✅ FIXED: Single client instance
+val supabase = createSupabaseClient(
+    supabaseUrl = SUPABASE_URL,
+    supabaseKey = SUPABASE_KEY
+) {
     install(Postgrest)
-
+    install(Auth)
 }
-@Composable
-fun Med_Retrieve(){
-    val meds = remember { mutableListOf<Medicine>() }
 
-    LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO){
-            val result = supabase.from("Medicine").select().decodeList<Medicine>()
-            meds.addAll(result)
-        }
-    }
+// ✅ FIXED: JSON serializer
+private val json = Json {
+    ignoreUnknownKeys = true
+    encodeDefaults = true
 }
-@SuppressLint("CoroutineCreationDuringComposition")
+
+// ✅ FIXED: Insert Single Medicine
 suspend fun insertSingleMedicine(medicine: Medicine): Boolean {
     return try {
-        supabase.from("Medicine")
-            .insert(medicine)
-            .decodeSingle<Medicine>()
-        true
+        withContext(Dispatchers.IO) {
+            val medicineMap = mapOf(
+                "name_medicine" to medicine.name_medicine,
+                "category" to medicine.category,
+                "dosage" to medicine.dosage,
+                "quantity" to medicine.quantity,
+                "quantity_left" to (medicine.quantityLeft ?: medicine.quantity),
+                "remark" to medicine.remark,
+                "expired_date" to medicine.expiredDate,
+                "after_eat" to medicine.afterEat,
+                "create_date" to medicine.create_Date,
+                "priority" to medicine.priority,
+                "ic" to (medicine.ic ?: "1")
+            )
+
+            val result = supabase
+                .from("medicines")
+                .insert(json.encodeToString(medicineMap))
+
+            true
+        }
     } catch (e: Exception) {
-        e.printStackTrace()
         false
     }
 }
 
-
-@SuppressLint("CoroutineCreationDuringComposition")
 suspend fun deleteMedicine(medicineId: Int): Boolean {
-
     return try {
-        supabase.from("Medicine")
-            .delete() {
-                filter {
-                    eq("id", medicineId)
+        withContext(Dispatchers.IO) {
+            supabase
+                .from("medicines")
+                .delete {
+                    filter {
+                        eq("id", medicineId)
+                    }
                 }
-            }.decodeList<Medicine>()
-        true
+            true
+        }
+    } catch (e: Exception) {
+        false
+    }
+}
+
+suspend fun getAllMedicines(): List<Medicine> {
+    return try {
+        withContext(Dispatchers.IO) {
+            val result = supabase
+                .from("medicines")
+                .select()
+            val medicines = result.decodeList<Medicine>()
+            medicines
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
+
+suspend fun getMedicinesByIC(ic: String = "1"): List<Medicine> {
+    return try {
+        withContext(Dispatchers.IO) {
+            val result = supabase
+                .from("medicines")
+                .select {
+                    filter {
+                        eq("ic", ic)
+                    }
+                }
+            result.decodeList<Medicine>()
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
+
+suspend fun updateMedicineQuantity(id: Int, newQuantity: Int): Boolean {
+    return try {
+        withContext(Dispatchers.IO) {
+            val updateMap = mapOf("quantityLeft" to newQuantity)
+            supabase
+                .from("medicines")
+                .update(json.encodeToString(updateMap)) {
+                    filter {
+                        eq("id", id)
+                    }
+                }
+            true
+        }
     } catch (e: Exception) {
         false
     }

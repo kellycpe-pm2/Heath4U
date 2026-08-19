@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
                         Surface(
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface).fillMaxSize()
                         ) {
+
                             AppNavGraph()
                         }
                     })

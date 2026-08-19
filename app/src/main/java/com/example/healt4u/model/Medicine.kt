@@ -4,6 +4,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlinx.serialization.Serializable
 
 //A – Controlled medicines
 //B - Natural Products with Therapeutic Claim
@@ -13,7 +14,7 @@ import androidx.compose.runtime.remember
 //N – Health Supplements
 //H - Veterinary Products
 
-
+@Serializable
 data class Medicine(
 
     val id : Int,

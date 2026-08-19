@@ -65,14 +65,14 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0") //download Parquet
     implementation("com.opencsv:opencsv:5.9") // download csv
     implementation("com.google.dagger:hilt-android:2.52")
-    //ksp("com.google.dagger:hilt-android-compiler:2.52")
+
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7")
 
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     //supabase
-    implementation(platform("io.github.jan-tennert.supabase:bom:3.7.0"))
+    implementation(platform("io.github.jan-tennert.supabase:bom:3.5.0"))
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")

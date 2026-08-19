@@ -2,22 +2,43 @@ package com.example.healt4u.ViewModel
 
 import androidx.compose.runtime.MutableState
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.healt4u.Storage.deleteMedicine
+import com.example.healt4u.Storage.insertSingleMedicine
 import com.example.healt4u.model.Medicine
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 class ViewModelMedicine : ViewModel(){
     private val _medicines = MutableStateFlow<List<Medicine>>(emptyList())
     val medicines : StateFlow<List<Medicine>> = _medicines
 
-    fun add_m(m: Medicine){
-        _medicines.update { current -> current + m  }
+    fun add_m(m: Medicine) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = insertSingleMedicine(m)
+            if (success) {
+                _medicines.update { currentList ->
+                    currentList + m
+                }
+            }
+        }
     }
 
+
     fun remove_m (m :Medicine){
-        _medicines.update {current -> current - m}
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = deleteMedicine(m.id)
+            if (success) {
+                _medicines.update { currentList ->
+                    currentList - m
+                }
+            }
+        }
     }
+
     private val _input_med_name = MutableStateFlow("")
     val input_med_name : StateFlow<String> = _input_med_name
     private val _input_category= MutableStateFlow("")

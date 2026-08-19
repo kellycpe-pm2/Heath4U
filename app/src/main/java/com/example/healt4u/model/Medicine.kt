@@ -26,6 +26,7 @@ data class Medicine(
     val expiredDate : Long ?=System.currentTimeMillis(),
     val afterEat :Boolean ?= true,
     val create_Date :Long ?= System.currentTimeMillis(),
-    val priority : Float ?= 0f
+    val priority : Float ?= 0f,
+    val ic : String ?= "1"
 )
 

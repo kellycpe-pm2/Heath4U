@@ -10,29 +10,17 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.healt4u.Storage.getAllMedicines
 import com.example.healt4u.ViewModel.NPRAMedicineViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppNavGraph(navController: NavHostController = rememberNavController(),vm_med : ViewModelMedicine = viewModel()) {
-        LaunchedEffect(Unit) {
-        vm_med.add_m(
-            Medicine(
-                id = 1,
-                name_medicine = "Test Medicine ${System.currentTimeMillis() / 1000}",
-                category = "Test Category",
-                dosage = 100,
-                quantity = 50,
-                remark = "Test insert at ${System.currentTimeMillis()}",
-                afterEat = true,
-                priority = 1.0f,
-                ic = "1"
-            )
-        )
-    }
+
 
         NavHost(
         navController = navController,

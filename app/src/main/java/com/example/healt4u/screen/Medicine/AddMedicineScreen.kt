@@ -53,7 +53,6 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
     val med_expiredDate by vm.input_ExpiredDate.collectAsStateWithLifecycle()
     val med_isBeforeEating by vm.input_afterEat.collectAsStateWithLifecycle()
     val med_priority by vm.input_priority.collectAsStateWithLifecycle()
-    val med_createDate by vm.input_CreateDate.collectAsStateWithLifecycle()
     val med_remark by vm.input_remark.collectAsStateWithLifecycle()
 
 

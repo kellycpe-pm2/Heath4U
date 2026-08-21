@@ -27,11 +27,6 @@ val supabase = createSupabaseClient(
     httpEngine = Android.create()
 }
 
-
-/* ============================================================
-   GET NEXT ID
-   ============================================================ */
-
 suspend fun getNextMedicineId(): Int {
 
     return try {
@@ -125,8 +120,6 @@ suspend fun getAllMedicines(): List<Medicine> {
         }
 
     } catch (e: Exception) {
-
-        e.printStackTrace()
 
         emptyList()
     }

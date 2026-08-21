@@ -20,9 +20,8 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun AppNavGraph(navController: NavHostController = rememberNavController(),vm_med : ViewModelMedicine = viewModel()) {
-
-
-        NavHost(
+    vm_med.loadMedicines()
+    NavHost(
         navController = navController,
         startDestination = "list"
     ) {

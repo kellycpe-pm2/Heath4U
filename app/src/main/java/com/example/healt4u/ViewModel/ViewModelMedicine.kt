@@ -42,7 +42,7 @@ class ViewModelMedicine : ViewModel() {
     }
 
 
-    fun add_m(
+    fun add_m( //currently juz for supabase after will change to local and then supabase for cloud pattern
         medicine: Medicine
     ) {
 
@@ -55,10 +55,7 @@ class ViewModelMedicine : ViewModel() {
 
 
             if (success) {
-
-
-                loadMedicines()
-
+                _medicines.update { medicines -> medicines + medicine  }
             } else {
 
             }
@@ -85,12 +82,8 @@ class ViewModelMedicine : ViewModel() {
 
             if (success) {
 
-                _medicines.update { list ->
+                _medicines.update { medicines -> medicines - medicine  }
 
-                    list.filter {
-                        it.id != medicineId
-                    }
-                }
             }
         }
     }
@@ -406,9 +399,6 @@ class ViewModelMedicine : ViewModel() {
     }
 
 
-    /* ========================================================
-       UPDATE LIST MANUALLY
-       ======================================================== */
 
     fun updateList(
         newList: List<Medicine>

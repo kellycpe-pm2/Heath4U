@@ -1,23 +1,17 @@
 package com.example.healt4u.screen.Medicine
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.example.healt4u.R
 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -31,7 +25,13 @@ import com.example.healt4u.screen.componentUI.button
 
 
 @Composable
-fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> Unit ) {
+fun MedicineListScreen(
+    vm: ViewModelMedicine = viewModel(),
+    oAddnClick: () -> Unit,
+    onDel: (Medicine) -> Unit,
+    onEdit: (Medicine) -> Unit,
+    onClickRow: (Medicine) -> Unit
+) {
     val medicines  by vm.medicines.collectAsStateWithLifecycle()
 
     var searchQuery by remember { mutableStateOf("") }
@@ -103,7 +103,7 @@ fun MedicineListScreen(vm: ViewModelMedicine = viewModel() , oAddnClick : ()-> U
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filteredMedicines) { medicine ->
-                        MedicineRow(medicine, {})
+                        MedicineRow(medicine, onDel = { onDel(medicine)}, onClick = { onClickRow(medicine) }, onEdit = { onEdit(medicine)})
                     }
                 }
             }
@@ -157,6 +157,5 @@ fun EmptyStateView() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewMedicineListScreen() {
-        MedicineListScreen(oAddnClick= {})
 
 }

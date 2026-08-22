@@ -77,4 +77,6 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")
     implementation("io.ktor:ktor-client-android:3.5.2")
+    implementation("androidx.compose.foundation:foundation:1.7.0")
+    implementation("andriodx.compose.material:material-icons-core")
 }

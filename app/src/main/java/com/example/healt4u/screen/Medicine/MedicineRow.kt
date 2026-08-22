@@ -1,14 +1,13 @@
 package com.example.healt4u.screen.Medicine
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -17,21 +16,28 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.R
@@ -39,7 +45,8 @@ import com.example.healt4u.data.MedicineData
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 @Composable
-fun MedicineRow(med: Medicine, onClick: () -> Unit) {
+fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) -> Unit, onEdit: (Medicine) -> Unit) {
+    var expand by remember{ mutableStateOf(false) }
     colorTheme {
         val progress = if (med.quantity > 0) {
             (med.quantityLeft?.toFloat() ?: med.quantity.toFloat()) / med.quantity.toFloat()
@@ -55,8 +62,9 @@ fun MedicineRow(med: Medicine, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp)
-                .clickable { onClick() }
-                .shadow(3.dp),
+                .clickable { onClick(med) }
+                .shadow(3.dp)
+            ,
 
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
@@ -66,9 +74,39 @@ fun MedicineRow(med: Medicine, onClick: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(16.dp).pointerInput(Unit){
+                        detectTapGestures (
+                            onLongPress = {
+                                expand = true
+                            })
+                    }
             ) {
-                // Top row: Name, Priority, and Category
+                Row(modifier = Modifier.fillMaxWidth(),
+                 horizontalArrangement = Arrangement.End){
+                    IconButton(onClick={expand = true}) {
+                        Icon(painter = painterResource(R.drawable.leftarrow_unfocus),"Left")
+                    }
+
+                }
+                DropdownMenu(
+                    expanded = expand,
+                    onDismissRequest = {expand = false}
+                ) {
+
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            onDel(med)
+                            expand = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            onEdit(med)
+                            expand = false }
+                    )
+
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -346,83 +384,3 @@ fun MedicineRow(med: Medicine, onClick: () -> Unit) {
 
 
 
-@Preview(showBackground = true, name = "Medicine Row States")
-@Composable
-fun PreviewMedicineRowStates() {
-    colorTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Normal - After Eat
-            MedicineRow(
-                Medicine(
-                    id = 1,
-                    name_medicine = "Paracetamol 500mg",
-                    category = "A",
-                    dosage = 500,
-                    quantity = 100,
-                    quantityLeft = 50,
-                    remark = "Take with food",
-                    expiredDate = parseDateToLong("15-12-2026"),
-                    afterEat = true,
-                    priority = 1f
-                ),
-                onClick = {}
-            )
-
-            // Before Eat
-            MedicineRow(
-                Medicine(
-                    id = 2,
-                    name_medicine = "Vitamin C 1000mg",
-                    category = "N",
-                    dosage = 1000,
-                    quantity = 20,
-                    quantityLeft = 15,
-                    remark = null,
-                    expiredDate = parseDateToLong("01-01-2027"),
-                    afterEat = false,
-                    priority = 0f
-                ),
-                onClick = {}
-            )
-
-            // Low Stock + Expiring Soon
-            MedicineRow(
-                Medicine(
-                    id = 3,
-                    name_medicine = "Amoxicillin 250mg",
-                    category = "X",
-                    dosage = 250,
-                    quantity = 30,
-                    quantityLeft = 3,
-                    remark = "Expiring soon!",
-                    expiredDate = parseDateToLong("01-09-2026"),
-                    afterEat = true,
-                    priority = 2f
-                ),
-                onClick = {}
-            )
-
-            // Expired
-            MedicineRow(
-                Medicine(
-                    id = 4,
-                    name_medicine = "Expired Medicine",
-                    category = "T",
-                    dosage = 200,
-                    quantity = 10,
-                    quantityLeft = 10,
-                    remark = "Do not use",
-                    expiredDate = parseDateToLong("01-01-2024"),
-                    afterEat = false,
-                    priority = 0f
-                ),
-                onClick = {}
-            )
-        }
-    }
-}

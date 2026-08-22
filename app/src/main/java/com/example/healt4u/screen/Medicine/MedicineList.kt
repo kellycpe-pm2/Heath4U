@@ -1,11 +1,14 @@
 package com.example.healt4u.screen.Medicine
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -23,18 +26,21 @@ import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.button
 
-
 @Composable
 fun MedicineListScreen(
     vm: ViewModelMedicine = viewModel(),
-    oAddnClick: () -> Unit,
+    onAddClick: () -> Unit,
     onDel: (Medicine) -> Unit,
     onEdit: (Medicine) -> Unit,
-    onClickRow: (Medicine) -> Unit
-) {
-    val medicines  by vm.medicines.collectAsStateWithLifecycle()
+    onClickRow: (Medicine) -> Unit,
+    onCloudSync :()->Unit,
+    onUploadToCloud :()->Unit
 
+    ) {
+    val medicines by vm.medicines.collectAsStateWithLifecycle()
+    val isPendingDel = remember { mutableStateListOf<Medicine>() }
     var searchQuery by remember { mutableStateOf("") }
+
     val filteredMedicines by remember {
         derivedStateOf {
             if (searchQuery.isEmpty()) {
@@ -49,16 +55,12 @@ fun MedicineListScreen(
         }
     }
 
-
-
-
     colorTheme {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background)
         ) {
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -73,26 +75,57 @@ fun MedicineListScreen(
                     color = Color(0xFF1A1A2E)
                 )
 
-                Surface(
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "${medicines.size}",
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    IconButton(
+                        onClick = onCloudSync,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Cloud,
+                            contentDescription = "Sync from Cloud",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color(0xFF6750A4)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = onUploadToCloud,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.CloudUpload,
+                            contentDescription = "Upload to Cloud",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color(0xFF6750A4)
+                        )
+                    }
+
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier
+                    ) {
+                        Text(
+                            text = "${medicines.size}",
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
+
             SearchMedicineScreen(
                 searchQuery = searchQuery,
                 onSearchChange = { searchQuery = it }
             )
 
             Spacer(Modifier.height(0.5f.dp))
+
             // Medicine List
             if (filteredMedicines.isEmpty()) {
                 EmptyStateView()
@@ -103,13 +136,17 @@ fun MedicineListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filteredMedicines) { medicine ->
-                        MedicineRow(medicine, onDel = { onDel(medicine)}, onClick = { onClickRow(medicine) }, onEdit = { onEdit(medicine)})
+                        MedicineRow(
+                            medicine,
+                            onDel = { med -> isPendingDel.add(med) },
+                            onClick = { med -> onClickRow(med) },
+                            onEdit = { med -> onEdit(med) }
+                        )
                     }
                 }
             }
+        }
 
-
-            }
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -119,12 +156,52 @@ fun MedicineListScreen(
         ) {
             button(
                 text = "+",
-                onClick ={oAddnClick()} ,
+                onClick = { onAddClick() },
                 modifier = Modifier.size(56.dp)
             )
         }
-        }
 
+        isPendingDel?.let {
+            it.forEach { med ->
+                AlertDialog(
+                    onDismissRequest = { isPendingDel.clear() },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                onDel(med)
+                                isPendingDel.clear()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.onError,
+                                contentColor = MaterialTheme.colorScheme.onPrimary,
+                                disabledContainerColor = MaterialTheme.colorScheme.onError,
+                                disabledContentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text("DELETE", color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    },
+                    dismissButton = {
+                        Button(
+                            onClick = {
+                                isPendingDel.clear()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.onPrimary,
+                                contentColor = MaterialTheme.colorScheme.onBackground,
+                                disabledContainerColor = MaterialTheme.colorScheme.onPrimary,
+                                disabledContentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
+                            Text("CANCEL", color = MaterialTheme.colorScheme.onBackground)
+                        }
+                    },
+                    title = { Text("Delete Medicine") },
+                    text = { Text("Do you want to delete ${med.name_medicine}?") }
+                )
+            }
+        }
+    }
 }
 @Composable
 fun EmptyStateView() {

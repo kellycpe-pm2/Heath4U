@@ -14,8 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -76,6 +82,7 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                     .fillMaxWidth()
                     .padding(16.dp).pointerInput(Unit){
                         detectTapGestures (
+                            onTap = {onClick(med)},
                             onLongPress = {
                                 expand = true
                             })
@@ -84,27 +91,54 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                 Row(modifier = Modifier.fillMaxWidth(),
                  horizontalArrangement = Arrangement.End){
                     IconButton(onClick={expand = true}) {
-                        Icon(painter = painterResource(R.drawable.leftarrow_unfocus),"Left")
+                        Icon(Icons.Filled.MoreVert,"Left",tint=MaterialTheme.colorScheme.secondary)
                     }
-
                 }
+
                 DropdownMenu(
                     expanded = expand,
-                    onDismissRequest = {expand = false}
+                    onDismissRequest = {expand = false},
+                    modifier = Modifier
+                        .background(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            RoundedCornerShape(20.dp)
+                        ).padding(30.dp)
+
+
                 ) {
 
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text("Delete", color = MaterialTheme.colorScheme.onBackground,style = MaterialTheme.typography.labelMedium) },
+                        leadingIcon = {Icon(Icons.Filled.Delete,"list",tint= MaterialTheme.colorScheme.secondary) },
+                        modifier= Modifier.padding(15.dp),
                         onClick = {
                             onDel(med)
                             expand = false }
+
                     )
+                    Divider()
+
                     DropdownMenuItem(
-                        text = { Text("Edit") },
+                        text = { Text("Edit",color = MaterialTheme.colorScheme.onBackground,style = MaterialTheme.typography.labelMedium) },
+                        leadingIcon = {Icon(Icons.Filled.Edit,"list",tint= MaterialTheme.colorScheme.secondary) },
+                        modifier= Modifier.padding(15.dp),
+
                         onClick = {
                             onEdit(med)
                             expand = false }
                     )
+
+                    Divider()
+
+                    DropdownMenuItem(
+                        text = { Text("View More",color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)  },
+                        leadingIcon = {Icon(Icons.Filled.List,"list",tint= MaterialTheme.colorScheme.secondary) },
+                        modifier= Modifier.padding(15.dp),
+                        onClick = {
+                            onClick(med)
+                            expand = false }
+                    )
+
 
                 }
                 Row(
@@ -126,8 +160,8 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                                     .background(
                                         when (med.priority) {
                                             1f -> Color.Green
-                                            2f -> Color.Yellow
-                                            3f -> Color(0xFFFF9800)
+                                            2f -> Color(0xFFFF9800)
+                                            3f -> Color(0xFFB92D16)
                                             else -> Color.Red
                                         },
                                         shape = CircleShape
@@ -234,7 +268,7 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                 // Middle row: Dosage and Eating indicator
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.Start,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Dosage
@@ -255,38 +289,40 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                         )
                     }
 
-                    // Eating indicator - BIGGER ICON
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            painter = if (med.afterEat == true) {
-                                painterResource(R.drawable.eatafter)
-                            } else {
-                                painterResource(R.drawable.eatbefore)
-                            },
-                            contentDescription = if (med.afterEat == true) "After Eat" else "Before Eat",
-                            modifier = Modifier.size(50.dp),
-                            tint = if (med.afterEat == true) {
-                                MaterialTheme.colorScheme.tertiary
-                            } else {
-                                MaterialTheme.colorScheme.secondary
-                            }
-                        )
-                        Text(
-                            text = if (med.afterEat == true) "After meal" else "Before meal",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (med.afterEat == true) {
-                                MaterialTheme.colorScheme.tertiary
-                            } else {
-                                MaterialTheme.colorScheme.secondary
-                            },
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp
-                        )
+
                     }
 
+                // Eating indicator - BIGGER ICON
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        painter = if (med.afterEat == true) {
+                            painterResource(R.drawable.eatafter)
+                        } else {
+                            painterResource(R.drawable.eatbefore)
+                        },
+                        contentDescription = if (med.afterEat == true) "After Eat" else "Before Eat",
+                        modifier = Modifier.size(50.dp),
+                        tint = if (med.afterEat == true) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.secondary
+                        }
+                    )
+                    Text(
+                        text = if (med.afterEat == true) "After meal" else "Before meal",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (med.afterEat == true) {
+                            MaterialTheme.colorScheme.tertiary
+                        } else {
+                            MaterialTheme.colorScheme.secondary
+                        },
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp
+                    )
                     // Low Stock Warning
                     if (med.quantityLeft != null && med.quantityLeft <= 5) {
                         Surface(

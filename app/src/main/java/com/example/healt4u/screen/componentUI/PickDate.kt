@@ -1,25 +1,18 @@
 package com.example.healt4u.screen.componentUI
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
@@ -52,7 +45,7 @@ fun convertMillisToDate(millis: Long): String {
 
 @Composable
 fun DatePickerPopupOnClick(
-    modifier: Modifier = Modifier,label: String, value : Long, onDateChange: (Long)-> Unit = {}
+    modifier: Modifier = Modifier, label: String, value: Long?, onDateChange: (Long) -> Unit = {}
 ) {
     colorTheme({
         var showPopup by remember { mutableStateOf(false) }
@@ -152,7 +145,7 @@ fun DatePickerPopupOnClick(
 
                             navigationContentColor = MaterialTheme.colorScheme.onBackground,
 
-                            weekdayContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            weekdayContentColor = MaterialTheme.colorScheme.onBackground,
 
                             yearContentColor = MaterialTheme.colorScheme.onBackground,
                             disabledYearContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
@@ -190,7 +183,7 @@ fun DatePickerPopupOnClick(
 @Composable
 fun sds() {
 
-    DatePickerPopupOnClick(label="", value = System.currentTimeMillis(), onDateChange = {})
+    DatePickerPopupOnClick(label ="", value = System.currentTimeMillis(), onDateChange = {})
 
 }
 

@@ -1,5 +1,4 @@
 package com.example.healt4u.screen.Medicine
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,14 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -106,7 +101,9 @@ fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
 
                     NumericStepper(0, 100, med_quantity, 1, {quantity-> vm.on_Quantity_Change(quantity) })
 
-                    DatePickerPopupOnClick(modifier = Modifier.fillMaxWidth(), "Expired Date",value = med_expiredDate,vm::on_ExpiredDate_Change)
+                    DatePickerPopupOnClick(
+                        modifier = Modifier.fillMaxWidth(), "Expired Date",
+                        value = med_expiredDate,vm::on_ExpiredDate_Change)
 
 
                     Row(

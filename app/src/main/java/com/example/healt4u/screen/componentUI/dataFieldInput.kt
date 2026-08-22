@@ -26,7 +26,6 @@ fun TextFieldInput(
 )
 {
     colorTheme(
-
         content = {
             OutlinedTextField(
         value = value,

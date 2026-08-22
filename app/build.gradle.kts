@@ -8,7 +8,9 @@ plugins {
 android {
     namespace = "com.example.healt4u"
     compileSdk {
-        version = release(37)
+        version = release(37) {
+            minorApiLevel = 1
+        }
     }
 
     defaultConfig {
@@ -47,6 +49,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.material3)
+    implementation(libs.litert.support.api)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
@@ -78,5 +81,8 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:realtime-kt")
     implementation("io.ktor:ktor-client-android:3.5.2")
     implementation("androidx.compose.foundation:foundation:1.7.0")
-    implementation("andriodx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
+
+    implementation("androidx.compose.material:material-icons-core")
+
 }

@@ -1,5 +1,7 @@
 package com.example.healt4u.screen.Medicine
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -39,4 +41,25 @@ fun isExpiringSoon(timestamp: Long?): Boolean {
 fun parseDateToLong(dateString: String): Long {
     val format = SimpleDateFormat("dd-MM-yyyy", Locale.getDefault())
     return format.parse(dateString)?.time ?: 0L
+}
+@Composable
+fun getExpiryColor(expiredDate: Long?): Color {
+    if (expiredDate == null) return MaterialTheme.colorScheme.onSurface
+
+    val currentTime = System.currentTimeMillis()
+    val thirtyDays = 30L * 24 * 60 * 60 * 1000
+
+    return when {
+        expiredDate < currentTime -> Color.Red
+        expiredDate < currentTime + thirtyDays -> Color(0xFFFF9800)
+        else -> Color(0xFF4CAF50)
+    }
+}
+
+fun getPriorityColor(priority: Float): Color {
+    return when {
+        priority >= 8f -> Color.Red
+        priority >= 5f -> Color(0xFFFF9800)
+        else -> Color(0xFF4CAF50)
+    }
 }

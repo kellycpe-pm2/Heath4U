@@ -1,5 +1,6 @@
 package com.example.healt4u.Storage
 
+import androidx.lifecycle.viewModelScope
 import com.example.healt4u.model.Medicine
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
@@ -8,6 +9,8 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import io.ktor.client.engine.android.Android
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val SUPABASE_URL =
@@ -157,35 +160,22 @@ suspend fun getMedicinesByIC(
 
 
 
-suspend fun updateMedicineQuantity(
-    id: Int,
-    newQuantity: Int
+suspend fun update_Medicine(
+    medicine: Medicine
 ): Boolean {
 
     return try {
-
-        if (newQuantity < 0) {
-
-            return false
-        }
-
-
-        val updateData =
-            mapOf(
-                "quantity_left" to newQuantity
-            )
-
 
         withContext(Dispatchers.IO) {
 
             supabase
                 .from("medicine")
-                .update(updateData) {
+                .update(medicine) {
 
                     filter {
                         eq(
                             column = "id",
-                            value = id
+                            value = medicine.id
                         )
                     }
                 }
@@ -200,9 +190,7 @@ suspend fun updateMedicineQuantity(
         false
     }
 }
-
-
-suspend fun deleteMedicine(
+suspend fun delete_Medicine(
     id: Int
 ): Boolean {
 
@@ -227,8 +215,6 @@ suspend fun deleteMedicine(
         true
 
     } catch (e: Exception) {
-
-        e.printStackTrace()
 
         false
     }

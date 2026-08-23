@@ -76,30 +76,35 @@ fun MedicineListScreen(
                 )
 
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
                         onClick = onCloudSync,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             Icons.Default.Cloud,
                             contentDescription = "Sync from Cloud",
-                            modifier = Modifier.size(18.dp),
-                            tint = Color(0xFF6750A4)
+                            modifier = Modifier.size(30.dp),
+                            tint = MaterialTheme.colorScheme.secondary
                         )
+                        Text("Upload", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 30.dp)
+                        )
+
                     }
 
                     IconButton(
                         onClick = onUploadToCloud,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             Icons.Default.CloudUpload,
                             contentDescription = "Upload to Cloud",
-                            modifier = Modifier.size(18.dp),
-                            tint = Color(0xFF6750A4)
+                            modifier = Modifier.size(30.dp),
+                            tint = MaterialTheme.colorScheme.secondary
+                        )
+                        Text("Upload", style = MaterialTheme.typography.labelSmall, color =MaterialTheme.colorScheme.secondary,modifier = Modifier.padding(top = 30.dp)
                         )
                     }
 

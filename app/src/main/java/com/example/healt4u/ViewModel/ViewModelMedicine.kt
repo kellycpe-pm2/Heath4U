@@ -22,11 +22,11 @@ class ViewModelMedicine(
     private val application: Application
 ) : AndroidViewModel(application) {
 
-    // ========== Medicine List ==========
+
     private val _medicines = MutableStateFlow<List<Medicine>>(emptyList())
     val medicines: StateFlow<List<Medicine>> = _medicines
 
-    // ========== Loading & Error States ==========
+
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
 
@@ -36,7 +36,7 @@ class ViewModelMedicine(
     private val _successMessage = MutableStateFlow<String?>(null)
     val successMessage: StateFlow<String?> = _successMessage
 
-    // ========== Form Fields ==========
+
     private val _input_med_name = MutableStateFlow("")
     val input_med_name: StateFlow<String> = _input_med_name
 
@@ -61,28 +61,23 @@ class ViewModelMedicine(
     private val _input_priority = MutableStateFlow(0f)
     val input_priority: StateFlow<Float> = _input_priority
 
-    // ========== Init ==========
-    init {
-        loadMedicines()
-    }
 
-    // ========== Load Functions ==========
 
     // Load from local JSON first, then sync with server
-    fun loadMedicines() {
+    fun loadMedicines(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _error.value = null
 
             try {
                 // 1. Load from local JSON
-                val localMedicines = loadMedicines(application)
+                val localMedicines = load_Medicines(context)
                 if (localMedicines.isNotEmpty()) {
                     _medicines.value = localMedicines
                 }
 
                 // 2. Sync with server (optional)
-                syncWithServer()
+                syncWithServer(context)
             } catch (e: Exception) {
                 _error.value = "Failed to load medicines: ${e.message}"
             } finally {
@@ -98,7 +93,7 @@ class ViewModelMedicine(
             _error.value = null
 
             try {
-                val localMedicines = loadMedicines(context)
+                val localMedicines = load_Medicines(context)
                 _medicines.value = localMedicines
             } catch (e: Exception) {
                 _error.value = "Failed to load local data: ${e.message}"
@@ -111,13 +106,13 @@ class ViewModelMedicine(
     // ========== Local CRUD Operations ==========
 
     // Add to local JSON only
-    fun addMedicineLocal(medicine: Medicine) {
+    fun addMedicineLocal(medicine: Medicine, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val success = insertMedicine(application, medicine)
+                val success = insertMedicine(context, medicine)
                 if (success) {
                     _medicines.update { current -> current + medicine }
                     _successMessage.value = "Medicine added locally!"
@@ -133,13 +128,13 @@ class ViewModelMedicine(
     }
 
     // Delete from local JSON only
-    fun deleteMedicineLocal(medicine: Medicine) {
+    fun deleteMedicineLocal(medicine: Medicine, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val success = deleteMedicine(application, medicine.id)
+                val success = deleteMedicine(context, medicine.id)
                 if (success) {
                     _medicines.update { current ->
                         current.filter { it.id != medicine.id }
@@ -157,13 +152,13 @@ class ViewModelMedicine(
     }
 
     // Update in local JSON only
-    fun updateMedicineLocal(medicine: Medicine) {
+    fun updateMedicineLocal(medicine: Medicine, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val success = updateMedicine(application, medicine)
+                val success = updateMedicine(context, medicine)
                 if (success) {
                     _medicines.update { current ->
                         current.map { if (it.id == medicine.id) medicine else it }
@@ -179,8 +174,6 @@ class ViewModelMedicine(
             }
         }
     }
-
-    // ========== Cloud (Supabase) Operations ==========
 
     // Add to cloud only (Supabase)
     fun addMedicineCloud(medicine: Medicine) {
@@ -252,7 +245,6 @@ class ViewModelMedicine(
         }
     }
 
-    // ========== Hybrid Operations (Local + Cloud) ==========
 
     // Add to both local and cloud
     fun addMedicineBoth(medicine: Medicine,context: Context) {
@@ -285,13 +277,13 @@ class ViewModelMedicine(
     }
 
     // Delete from both local and cloud
-    fun deleteMedicineBoth(medicine: Medicine) {
+    fun deleteMedicineBoth(medicine: Medicine, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val localSuccess = deleteMedicine(application, medicine.id)
+                val localSuccess = deleteMedicine(context, medicine.id)
                 val cloudSuccess = delete_Medicine(medicine.id)
 
                 if (localSuccess || cloudSuccess) {
@@ -311,13 +303,13 @@ class ViewModelMedicine(
     }
 
     // Update in both local and cloud
-    fun updateMedicineBoth(medicine: Medicine) {
+    fun updateMedicineBoth(medicine: Medicine, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _error.value = null
 
             try {
-                val localSuccess = updateMedicine(application, medicine)
+                val localSuccess = updateMedicine(context, medicine)
                 val cloudSuccess = update_Medicine(medicine)
 
                 if (localSuccess || cloudSuccess) {
@@ -336,31 +328,31 @@ class ViewModelMedicine(
         }
     }
 
-    // ========== Sync Functions ==========
 
     // Sync local data with server
-    fun syncWithServer() {
+    fun syncWithServer(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val serverMedicines = getAllMedicines()
+
                 if (serverMedicines.isNotEmpty()) {
                     // Replace local with server data
-                    saveMedicines(application, serverMedicines)
+                    saveMedicines(context, serverMedicines)
                     _medicines.value = serverMedicines
                     _successMessage.value = "Synced with server!"
                 }
             } catch (e: Exception) {
-                // Silent fail - keep local data
+
             }
         }
     }
 
     // Upload local data to server
-    fun uploadToServer() {
+    fun uploadToServer(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val localMedicines = loadMedicines(application)
+                val localMedicines = load_Medicines(context)
                 var successCount = 0
 
                 for (medicine in localMedicines) {
@@ -368,6 +360,7 @@ class ViewModelMedicine(
                         successCount++
                     }
                 }
+                updateExistingInCloud(context)
 
                 _successMessage.value = "Uploaded $successCount/${localMedicines.size} medicines to cloud!"
             } catch (e: Exception) {
@@ -378,27 +371,59 @@ class ViewModelMedicine(
         }
     }
 
-    // Download server data to local
-    fun downloadFromServer() {
+    fun updateExistingInCloud(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
+            _error.value = null
+
             try {
-                val serverMedicines = getAllMedicines()
-                if (serverMedicines.isNotEmpty()) {
-                    saveMedicines(application, serverMedicines)
-                    _medicines.value = serverMedicines
-                    _successMessage.value = "Downloaded ${serverMedicines.size} medicines from cloud!"
+                // 1. Get local medicines
+                val localMedicines = load_Medicines(context )
+                if (localMedicines.isEmpty()) {
+                    _error.value = "No local medicines"
+                    _isLoading.value = false
+                    return@launch
                 }
+
+                // 2. Get cloud medicines
+                val cloudMedicines = getAllMedicines()
+                if (cloudMedicines.isEmpty()) {
+                    _error.value = "No medicines in cloud to update"
+                    _isLoading.value = false
+                    return@launch
+                }
+
+                var updatedCount = 0
+                var skippedCount = 0
+                var notFoundCount = 0
+
+                // 3. Update only medicines that exist in BOTH places and have changes
+                for (localMedicine in localMedicines) {
+                    val cloudMedicine = cloudMedicines.find { it.id == localMedicine.id }
+
+                    if (cloudMedicine != null) {
+                        // Medicine exists in cloud - check if changed
+                        if (localMedicine != cloudMedicine) {
+                            if (update_Medicine(localMedicine)) {
+                                updatedCount++
+                            }
+                        } else {
+                            skippedCount++  // No changes needed
+                        }
+                    } else {
+                        notFoundCount++  // In local but not in cloud (need upload)
+                    }
+                }
+
+                _successMessage.value = "Updated $updatedCount medicines (Skipped $skippedCount unchanged, $notFoundCount not in cloud)"
+
             } catch (e: Exception) {
-                _error.value = "Download failed: ${e.message}"
+                _error.value = "Update failed: ${e.message}"
             } finally {
                 _isLoading.value = false
             }
         }
     }
-
-    // ========== Form Functions ==========
-
     fun on_Med_Name_Change(value: String) { _input_med_name.value = value }
     fun on_Category_Change(value: String) { _input_category.value = value }
     fun on_Dos_Change(value: Int) { _input_dosage.value = value }
@@ -423,7 +448,7 @@ class ViewModelMedicine(
                 return@launch
             }
 
-            val nextId = getNextMedicineId(application)
+            val nextId = getNextMedicineId(context)
             val medicine = Medicine(
                 id = nextId,
                 name_medicine = name,
@@ -446,7 +471,7 @@ class ViewModelMedicine(
     }
 
     // Add from form - local only
-    fun addMedicineFormLocal() {
+    fun addMedicineFormLocal(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             val name = _input_med_name.value.trim()
             val dosage = _input_dosage.value
@@ -457,7 +482,7 @@ class ViewModelMedicine(
                 return@launch
             }
 
-            val nextId = getNextMedicineId(application)
+            val nextId = getNextMedicineId(context)
             val medicine = Medicine(
                 id = nextId,
                 name_medicine = name,
@@ -473,7 +498,7 @@ class ViewModelMedicine(
                 ic = "1"
             )
 
-            addMedicineLocal(medicine)
+            addMedicineLocal(medicine,context)
             clearForm()
         }
     }
@@ -491,11 +516,11 @@ class ViewModelMedicine(
 
     // ========== Query Functions ==========
 
-    fun searchMedicines(query: String) {
+    fun searchMedicines(query: String,context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = searchMedicines(application, query)
+                val results = searchMedicines(context, query)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Search failed: ${e.message}"
@@ -505,11 +530,11 @@ class ViewModelMedicine(
         }
     }
 
-    fun getExpiredMedicines() {
+    fun get_ExpiredMedicines(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = getExpiredMedicines(application)
+                val results = getExpiredMedicines(context)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Failed to get expired: ${e.message}"
@@ -519,11 +544,11 @@ class ViewModelMedicine(
         }
     }
 
-    fun getLowStockMedicines(threshold: Int = 10) {
+    fun getLowStockMedicines(threshold: Int = 10, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = getLowStockMedicines(application, threshold)
+                val results = getLowStockMedicines(context, threshold)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Failed to get low stock: ${e.message}"
@@ -533,11 +558,11 @@ class ViewModelMedicine(
         }
     }
 
-    fun getMedicinesByCategory(category: String) {
+    fun getMedicinesByCategory(category: String,context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = getMedicinesByCategory(application, category)
+                val results = getMedicinesByCategory(context, category)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Filter failed: ${e.message}"
@@ -547,11 +572,11 @@ class ViewModelMedicine(
         }
     }
 
-    fun getMedicinesByIc(ic: String) {
+    fun getMedicinesByIc(ic: String, context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = getMedicinesByIc(application, ic)
+                val results = getMedicinesByIc(context, ic)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Failed to get by IC: ${e.message}"
@@ -561,22 +586,8 @@ class ViewModelMedicine(
         }
     }
 
-    fun getMedicineById(medicineId: Int): Medicine? {
+    fun get_MedicineById(medicineId: Int, context: Context): Medicine? {
         return _medicines.value.find { it.id == medicineId }
-    }
-
-    fun getMedicineCount(): Int {
-        return _medicines.value.size
-    }
-
-    fun getNextId(): Int {
-        return getNextMedicineId(application)
-    }
-
-    // ========== Utility Functions ==========
-
-    fun updateList(newList: List<Medicine>) {
-        _medicines.value = newList
     }
 
     fun clearError() {

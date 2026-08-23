@@ -14,7 +14,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.healt4u.ViewModel.ViewModelMedicine
-import com.example.healt4u.data.local.loadMedicines
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
@@ -28,7 +27,7 @@ fun AppNavGraph(
 ) {
     val context = LocalContext.current
     LaunchedEffect(Unit) {
-        loadMedicines(context)
+        vm_med.loadMedicines(context)
 
     }
 
@@ -38,13 +37,13 @@ fun AppNavGraph(
         navController = navController,
         startDestination = "list"
     ) {
-        // ========== List Screen ==========
+
         composable("list") {
             MedicineListScreen(
                 vm = vm_med,
                 onAddClick = { navController.navigate("add") },
                 onDel = { medicine ->
-                    vm_med.deleteMedicineLocal(medicine)  // Local only
+                    vm_med.deleteMedicineBoth(medicine,context)  // Local only
 
                 },
                 onEdit = { medicine ->
@@ -55,15 +54,15 @@ fun AppNavGraph(
                     navController.navigate("viewMedicine/${medicine?.id ?: -1}")
                 },
                 onCloudSync = {
-                    vm_med.syncWithServer()
+                    vm_med.syncWithServer(context)
                 },
                 onUploadToCloud = {
-                    vm_med.uploadToServer()
+                    vm_med.uploadToServer(context)
                 }
             )
         }
 
-        // ========== Add Screen ==========
+
         composable("add") {
             AddMedicineScreen(
                 vm = vm_med,
@@ -89,7 +88,7 @@ fun AppNavGraph(
                 EditMedicineScreen(
                     medicine = medicine,
                     onEdit = { updatedMedicine ->
-                        vm_med.updateMedicineLocal(updatedMedicine)  // Local only
+                        vm_med.updateMedicineBoth(updatedMedicine,context)
 
                         navController.popBackStack()
                     },
@@ -102,7 +101,6 @@ fun AppNavGraph(
             }
         }
 
-        // ========== Detail Screen ==========
         composable(
             route = "viewMedicine/{medicineId}",
             arguments = listOf(

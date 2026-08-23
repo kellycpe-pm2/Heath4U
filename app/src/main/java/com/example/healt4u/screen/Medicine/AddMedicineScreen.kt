@@ -1,171 +1,322 @@
 package com.example.healt4u.screen.Medicine
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.R
-import com.example.healt4u.screen.componentUI.TextFieldInput
-import com.example.healt4u.screen.componentUI.Theme.colorTheme
-import com.example.healt4u.screen.componentUI.dropDownMenu
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.data.MedicineData
-import com.example.healt4u.screen.componentUI.DatePickerPopupOnClick
-import com.example.healt4u.screen.componentUI.NumericStepper
-import com.example.healt4u.screen.componentUI.TimingButton
-import com.example.healt4u.screen.componentUI.button
-import com.example.healt4u.screen.componentUI.slider
-
-fun fetchCategories(categories : List<Pair<Char, String>>,id : Char) : String{
-    return (categories.find{it.first== id})?.second ?: ""
-
-}
-
-
-
+import com.example.healt4u.screen.componentUI.*
+import com.example.healt4u.screen.componentUI.Theme.colorTheme
+import kotlinx.coroutines.delay
 
 @Composable
-fun AddMedicineScreen(vm :ViewModelMedicine = viewModel(),onAddClick:()-> Unit){
+fun AddMedicineScreen(
+    vm: ViewModelMedicine = viewModel(),
+    onAddClick: () -> Unit,
+    onBack: () -> Unit  // ← ADDED onBack parameter
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val error by vm.error.collectAsStateWithLifecycle()
+    val success by vm.success.collectAsStateWithLifecycle()
+    val isLoading by vm.isLoading.collectAsStateWithLifecycle()
+    val validationErrors by vm.validationErrors.collectAsStateWithLifecycle()
 
-    val med_name by vm.input_med_name.collectAsStateWithLifecycle()
-    val med_category by vm.input_category.collectAsStateWithLifecycle()
-    val med_dosage by vm.input_dosage.collectAsStateWithLifecycle()
-    val med_quantity by vm.input_quantity.collectAsStateWithLifecycle()
-    val med_expiredDate by vm.input_ExpiredDate.collectAsStateWithLifecycle()
-    val med_isBeforeEating by vm.input_afterEat.collectAsStateWithLifecycle()
-    val med_priority by vm.input_priority.collectAsStateWithLifecycle()
-    val med_remark by vm.input_remark.collectAsStateWithLifecycle()
+    // ========== FORM FIELDS ==========
+    val medName by vm.input_med_name.collectAsStateWithLifecycle()
+    val medCategory by vm.input_category.collectAsStateWithLifecycle()
+    val medDosage by vm.input_dosage.collectAsStateWithLifecycle()
+    val medQuantity by vm.input_quantity.collectAsStateWithLifecycle()
+    val medExpiredDate by vm.input_ExpiredDate.collectAsStateWithLifecycle()
+    val medIsBeforeEating by vm.input_afterEat.collectAsStateWithLifecycle()
+    val medPriority by vm.input_priority.collectAsStateWithLifecycle()
+    val medRemark by vm.input_remark.collectAsStateWithLifecycle()
 
 
-    colorTheme(
-        {
-            Column(Modifier.fillMaxSize()) {
+    LaunchedEffect(error) {
+        if (error != null) {
+            delay(3000)
+            vm.clearError()
+        }
+    }
 
 
-                Column(
+    colorTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 50.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Add Medicine",
+                style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(Modifier.height(25.dp))
+
+            Column {
+                TextFieldInput(
+                    medName,
+                    vm::on_Med_Name_Change,
+                    "Medicine Name *",
+                    Modifier.fillMaxWidth(),
+                    false,
+                    singleLine = true
+                )
+                validationErrors["name"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+            ) {
+                dropDownMenu(
+                    Modifier.fillMaxSize(),
+                    medCategory,
+                    MedicineData.categories.map { it.second },
+                    "Category *",
+                    vm::on_Category_Change
+                )
+                validationErrors["category"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            }
+
+
+            Column {
+                NumericStepper(
+                    1,
+                    10000,
+                    medDosage,
+                    50,
+                    vm::on_Dos_Change
+                )
+                validationErrors["dosage"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            }
+
+            Column {
+                NumericStepper(
+                    0,
+                    1000,
+                    medQuantity,
+                    1,
+                    vm::on_Quantity_Change
+                )
+                validationErrors["quantity"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            }
+
+            Column {
+                DatePickerPopupOnClick(
+                    modifier = Modifier.fillMaxWidth(),
+                    "Expired Date *",
+                    value = medExpiredDate,
+                    vm::on_ExpiredDate_Change
+                )
+                validationErrors["expiredDate"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TimingButton(
+                    text = "Before Eating",
+                    isSelected = medIsBeforeEating,
+                    id = R.drawable.eatbefore,
+                    onClick = { vm.on_AfterEat_Change(true) }
+                )
+
+                Spacer(Modifier.width(16.dp))
+
+                TimingButton(
+                    text = "After Eating",
+                    isSelected = !medIsBeforeEating,
+                    id = R.drawable.eatafter,
+                    onClick = { vm.on_AfterEat_Change(false) }
+                )
+            }
+
+            slider(
+                medPriority,
+                vm::on_Priority_Change
+            )
+
+            TextFieldInput(
+                medRemark,
+                vm::on_Remark_Change,
+                "Remark",
+                Modifier
+                    .fillMaxWidth()
+                    .padding(15.dp),
+                false,
+                singleLine = false
+            )
+
+            button(
+                modifier = Modifier.fillMaxWidth(),
+                text = if (isLoading) "Adding..." else "Submit",
+                onClick = {
+                    vm.addMedicineWithValidation(context)
+                },
+                enabled = !isLoading
+            )
+
+            button(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Cancel",
+                onClick = onBack,
+                enabled = !isLoading
+            )
+
+            error?.let {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 50.dp),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Text(
-                        text = "Add Medicine",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-
-                    Spacer(Modifier.height(25.dp))
-
-                    TextFieldInput(
-                        med_name,
-                        vm::on_Med_Name_Change,
-                        "Medicine Name",
-                        Modifier.fillMaxWidth(),
-                        false,
-                        singleLine = true
-                    )
-
-                    Spacer(Modifier.height(10.dp))
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(70.dp)
-                    ) {
-                        dropDownMenu(
-                            Modifier.fillMaxSize(),
-                            med_category,
-                            MedicineData.categories.map { it.second },
-                            "Category",
-                            { category-> vm.on_Category_Change(category) }
-                        )
-
-                    }
-
-
-                    NumericStepper(0, 10000, med_dosage, 50, { dos-> vm.on_Dos_Change(dos) })
-
-                    NumericStepper(0, 100, med_quantity, 1, {quantity-> vm.on_Quantity_Change(quantity) })
-
-                    DatePickerPopupOnClick(
-                        modifier = Modifier.fillMaxWidth(), "Expired Date",
-                        value = med_expiredDate,vm::on_ExpiredDate_Change)
-
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.Center,
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // BUTTON 1: Before Eating
-                        TimingButton(
-                            text = "Before Eating",
-                            isSelected = med_isBeforeEating,
-                            id = R.drawable.eatbefore,
-                            onClick = { var afterEat = true
-                                vm.on_AfterEat_Change(afterEat) },
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
                         )
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        TimingButton(
-                            text = "After Eating",
-                            isSelected = !med_isBeforeEating,
-                            id = R.drawable.eatafter,
-                            onClick = { var beforeEat = false
-                            vm.on_AfterEat_Change(beforeEat)}
-
-                        )
-
-
+                        IconButton(
+                            onClick = { vm.clearError() },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Dismiss",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
-                    slider(med_priority,vm::on_Priority_Change)
-                    TextFieldInput(
-                        med_remark,
-                        vm::on_Remark_Change,
-                        "Remark",
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(15.dp),
-                        false,
-                        singleLine = false
-                    )
-                    button(
-                        modifier = Modifier.fillMaxWidth(),
-                        text = "Submit",
-                        onClick = { onAddClick() }
-                    )
-
                 }
             }
-        }
 
-    )
 
+            if (isLoading) {
+                AlertDialog(
+                    onDismissRequest = { },
+                    confirmButton = {},
+                    dismissButton = {},
+                    title = {
+                        Text(
+                            text = "Add...",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    },
+                    text = {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(72.dp),
+                                color = MaterialTheme.colorScheme.secondary,
+                                strokeWidth = 6.dp
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Please wait...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            // Animated dots
+                            var dotCount by remember { mutableStateOf(0) }
+
+                            LaunchedEffect(Unit) {
+                                while (true) {
+                                    delay(500)
+                                    dotCount = (dotCount + 1) % 4
+                                }
+                            }
+
+                            Text(
+                                text = ".".repeat(dotCount),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                )
             }
-
-
-
-
-@Preview (showBackground = true)
-@Composable
-fun add(){
-    AddMedicineScreen(onAddClick = {})
-
+        }
+    }
 }

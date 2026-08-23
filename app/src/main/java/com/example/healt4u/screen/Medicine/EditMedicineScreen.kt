@@ -1,394 +1,378 @@
 package com.example.healt4u.screen.Medicine
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.R
+import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.data.MedicineData
 import com.example.healt4u.model.Medicine
-import com.example.healt4u.screen.componentUI.DatePickerPopupOnClick
-import com.example.healt4u.screen.componentUI.NumericStepper
-import com.example.healt4u.screen.componentUI.TextFieldInput
+import com.example.healt4u.screen.componentUI.*
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
-import com.example.healt4u.screen.componentUI.TimingButton
-import com.example.healt4u.screen.componentUI.button
-import com.example.healt4u.screen.componentUI.dropDownMenu
-import com.example.healt4u.screen.componentUI.slider
+import kotlinx.coroutines.delay
 
 @Composable
 fun EditMedicineScreen(
     medicine: Medicine,
     onEdit: (Medicine) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    vm: ViewModelMedicine = viewModel()
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val error by vm.error.collectAsStateWithLifecycle()
+    val success by vm.success.collectAsStateWithLifecycle()
+    val isLoading by vm.isLoading.collectAsStateWithLifecycle()
+    val validationErrors by vm.validationErrors.collectAsStateWithLifecycle()
 
-    var medName by remember {
-        mutableStateOf(
-            medicine.name_medicine
-        )
-    }
+    // ========== STATE VARIABLES ==========
+    var medName by remember { mutableStateOf(medicine.name_medicine) }
+    var medCategory by remember { mutableStateOf(medicine.category) }
+    var medDosage by remember { mutableStateOf(medicine.dosage) }
+    var medQuantity by remember { mutableStateOf(medicine.quantity) }
+    var medExpiredDate by remember { mutableStateOf(medicine.expiredDate) }
+    var medIsBeforeEating by remember { mutableStateOf(medicine.afterEat ?: true) }
+    var medPriority by remember { mutableStateOf(medicine.priority ?: 1f) }
+    var medRemark by remember { mutableStateOf(medicine.remark ?: "") }
 
-    var medCategory by remember {
-        mutableStateOf(
-            medicine.category
-        )
-    }
-
-    var medDosage by remember {
-        mutableStateOf(
-            medicine.dosage
-        )
-    }
-
-    var medQuantity by remember {
-        mutableStateOf(
-            medicine.quantity
-        )
-    }
-
-    var medExpiredDate by remember {
-        mutableStateOf(
-            medicine.expiredDate
-        )
-    }
-
-    var medIsBeforeEating by remember {
-        mutableStateOf(
-            medicine.afterEat ?: true
-        )
-    }
-
-    var medPriority by remember {
-        mutableStateOf(
-            medicine.priority ?: 1f
-        )
-    }
-
-    var medRemark by remember {
-        mutableStateOf(
-            medicine.remark ?: ""
-        )
+    LaunchedEffect(error) {
+        if (error != null) {
+            delay(3000)
+            vm.clearError()
+        }
     }
 
 
     colorTheme {
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(
-                    rememberScrollState()
-                )
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 50.dp),
-
-            horizontalAlignment =
-                Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
             Text(
                 text = "Edit Medicine",
-                style =
-                    MaterialTheme.typography.titleLarge
+                style = MaterialTheme.typography.titleLarge
             )
 
-            Spacer(
-                Modifier.height(25.dp)
-            )
+            Spacer(Modifier.height(25.dp))
 
+            // ========== MEDICINE NAME ==========
+            Column {
+                TextFieldInput(
+                    medName,
+                    { value ->
+                        medName = value
+                        vm.clearFieldError("name")
+                    },
+                    "Medicine Name *",
+                    Modifier.fillMaxWidth(),
+                    false,
+                    singleLine = true
+                )
+                validationErrors["name"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
+            }
 
-            TextFieldInput(
-                medName,
+            Spacer(Modifier.height(10.dp))
 
-                { value ->
-                    medName = value
-                },
-
-                "Medicine Name",
-
-                Modifier.fillMaxWidth(),
-
-                false,
-
-                singleLine = true
-            )
-
-
-            Spacer(
-                Modifier.height(10.dp)
-            )
-
-
+            // ========== CATEGORY ==========
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(70.dp)
+                    .height(90.dp)
             ) {
-
                 dropDownMenu(
-
                     Modifier.fillMaxSize(),
-
                     medCategory,
-
-                    MedicineData.categories.map {
-                        it.second
-                    },
-
-                    "Category",
-
+                    MedicineData.categories.map { it.second },
+                    "Category *",
                     { value ->
                         medCategory = value
+                        vm.clearFieldError("category")
                     }
                 )
+                validationErrors["category"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
+                }
             }
 
-
-            NumericStepper(
-
-                1,
-                10000,
-                medDosage,
-                50,
-
-                { value ->
-                    medDosage = value
+            // ========== DOSAGE ==========
+            Column {
+                NumericStepper(
+                    1,
+                    10000,
+                    medDosage,
+                    50,
+                    { value ->
+                        medDosage = value
+                        vm.clearFieldError("dosage")
+                    }
+                )
+                validationErrors["dosage"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
                 }
-            )
+            }
 
-
-            NumericStepper(
-
-                0,
-                100,
-                medQuantity,
-                1,
-
-                { value ->
-                    medQuantity = value
+            // ========== QUANTITY ==========
+            Column {
+                NumericStepper(
+                    0,
+                    1000,
+                    medQuantity,
+                    1,
+                    { value ->
+                        medQuantity = value
+                        vm.clearFieldError("quantity")
+                    }
+                )
+                validationErrors["quantity"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
                 }
-            )
+            }
 
-
-            DatePickerPopupOnClick(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                "Expired Date",
-
-                value =
-                    medExpiredDate,
-
-                { value ->
-                    medExpiredDate = value
+            // ========== EXPIRED DATE ==========
+            Column {
+                DatePickerPopupOnClick(
+                    modifier = Modifier.fillMaxWidth(),
+                    "Expired Date *",
+                    value = medExpiredDate,
+                    { value ->
+                        medExpiredDate = value
+                        vm.clearFieldError("expiredDate")
+                    }
+                )
+                validationErrors["expiredDate"]?.let {
+                    Text(
+                        text = it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                    )
                 }
-            )
+            }
 
-
+            // ========== BEFORE/AFTER EATING ==========
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-
-                horizontalArrangement =
-                    Arrangement.Center,
-
-                verticalAlignment =
-                    Alignment.CenterVertically
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-
                 TimingButton(
-
                     text = "Before Eating",
-
-                    isSelected =
-                        medIsBeforeEating,
-
-                    id =
-                        R.drawable.eatbefore,
-
-                    onClick = {
-                        medIsBeforeEating = true
-                    }
+                    isSelected = medIsBeforeEating,
+                    id = R.drawable.eatbefore,
+                    onClick = { medIsBeforeEating = true }
                 )
 
-
-                Spacer(
-                    Modifier.width(16.dp)
-                )
-
+                Spacer(Modifier.width(16.dp))
 
                 TimingButton(
-
                     text = "After Eating",
-
-                    isSelected =
-                        !medIsBeforeEating,
-
-                    id =
-                        R.drawable.eatafter,
-
-                    onClick = {
-                        medIsBeforeEating = false
-                    }
+                    isSelected = !medIsBeforeEating,
+                    id = R.drawable.eatafter,
+                    onClick = { medIsBeforeEating = false }
                 )
             }
 
-
+            // ========== PRIORITY ==========
             slider(
-
                 medPriority,
-
                 { value ->
                     medPriority = value
                 }
             )
 
-
+            // ========== REMARK ==========
             TextFieldInput(
-
                 medRemark,
-
                 { value ->
                     medRemark = value
                 },
-
                 "Remark",
-
                 Modifier
                     .fillMaxWidth()
                     .padding(15.dp),
-
                 false,
-
                 singleLine = false
             )
 
-
             button(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
-                text = "Submit",
-
+                modifier = Modifier.fillMaxWidth(),
+                text = if (isLoading) "Updating..." else "Submit",
                 onClick = {
-
-                    val updatedMedicine =
-                        Medicine(
-
-                            id =
-                                medicine.id,
-
-                            name_medicine =
-                                medName,
-
-                            category =
-                                medCategory,
-
-                            dosage =
-                                medDosage,
-
-                            quantity =
-                                medQuantity,
-
-                            quantityLeft =
-                                medicine.quantityLeft,
-
-                            remark =
-                                medRemark,
-
-                            expiredDate =
-                                medExpiredDate,
-
-                            afterEat =
-                                medIsBeforeEating,
-
-                            createDate =
-                                medicine.createDate,
-
-                            priority =
-                                medPriority,
-
-                            ic =
-                                medicine.ic
-                        )
-
-
-                    onEdit(
-                        updatedMedicine
+                    val updatedMedicine = Medicine(
+                        id = medicine.id,
+                        name_medicine = medName,
+                        category = medCategory,
+                        dosage = medDosage,
+                        quantity = medQuantity,
+                        quantityLeft = medicine.quantityLeft,
+                        remark = medRemark,
+                        expiredDate = medExpiredDate,
+                        afterEat = medIsBeforeEating,
+                        createDate = medicine.createDate,
+                        priority = medPriority,
+                        ic = medicine.ic
                     )
-                }
+                    onEdit(updatedMedicine)
+                },
+                enabled = !isLoading
             )
 
-
-
             button(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
+                modifier = Modifier.fillMaxWidth(),
                 text = "Reset Changes",
-
                 onClick = {
-
-                    medName =
-                        medicine.name_medicine
-
-                    medCategory =
-                        medicine.category
-
-                    medDosage =
-                        medicine.dosage
-
-                    medQuantity =
-                        medicine.quantity
-
-                    medExpiredDate =
-                        medicine.expiredDate
-
-                    medIsBeforeEating =
-                        medicine.afterEat ?: true
-
-                    medPriority =
-                        medicine.priority ?: 1f
-
-                    medRemark =
-                        medicine.remark ?: ""
+                    medName = medicine.name_medicine
+                    medCategory = medicine.category
+                    medDosage = medicine.dosage
+                    medQuantity = medicine.quantity
+                    medExpiredDate = medicine.expiredDate
+                    medIsBeforeEating = medicine.afterEat ?: true
+                    medPriority = medicine.priority ?: 1f
+                    medRemark = medicine.remark ?: ""
+                    vm.clearValidationErrors()
                 }
             )
 
-
-
+            // ========== CANCEL BUTTON ==========
             button(
-
-                modifier =
-                    Modifier.fillMaxWidth(),
-
+                modifier = Modifier.fillMaxWidth(),
                 text = "Cancel",
-
                 onClick = onBack
             )
+
+            error?.let {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(
+                            onClick = { vm.clearError() },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Dismiss",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (isLoading) {
+                AlertDialog(
+                    onDismissRequest = { },
+                    confirmButton = {},
+                    dismissButton = {},
+                    title = {
+                        Text(
+                            text = "Update...",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    },
+                    text = {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(72.dp),
+                                color = MaterialTheme.colorScheme.secondary,
+                                strokeWidth = 6.dp
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Text(
+                                text = "Please wait...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            // Animated dots
+                            var dotCount by remember { mutableStateOf(0) }
+
+                            LaunchedEffect(Unit) {
+                                while (true) {
+                                    delay(500)
+                                    dotCount = (dotCount + 1) % 4
+                                }
+                            }
+
+                            Text(
+                                text = ".".repeat(dotCount),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    },
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier
+                )
+            }
         }
     }
 }

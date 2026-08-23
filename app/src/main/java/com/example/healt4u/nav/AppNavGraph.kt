@@ -14,7 +14,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.healt4u.ViewModel.ViewModelMedicine
-import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineDetailScreen
@@ -26,29 +25,33 @@ fun AppNavGraph(
     vm_med: ViewModelMedicine = viewModel()
 ) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) {
-        vm_med.loadMedicines(context)
 
+    LaunchedEffect(Unit) {
+        vm_med.loadFromLocal(context)
     }
 
     val medicines by vm_med.medicines.collectAsStateWithLifecycle()
+    val success by vm_med.success.collectAsStateWithLifecycle()
 
+
+    //reset
+    vm_med.clearSuccessState()
+    vm_med.clearError()
+    vm_med.clearValidationErrors()
+    vm_med.clearSuccess()
     NavHost(
         navController = navController,
         startDestination = "list"
     ) {
-
         composable("list") {
             MedicineListScreen(
                 vm = vm_med,
                 onAddClick = { navController.navigate("add") },
                 onDel = { medicine ->
-                    vm_med.deleteMedicineBoth(medicine,context)  // Local only
-
+                    vm_med.deleteMedicineBoth(medicine, context)
                 },
                 onEdit = { medicine ->
                     navController.navigate("edit/${medicine?.id ?: -1}")
-
                 },
                 onClickRow = { medicine ->
                     navController.navigate("viewMedicine/${medicine?.id ?: -1}")
@@ -62,14 +65,21 @@ fun AppNavGraph(
             )
         }
 
-
         composable("add") {
+            // Handle navigation on success
+            LaunchedEffect(success) {
+                if (success == true) {
+                    navController.popBackStack()
+                    vm_med.clearSuccessState()
+                }
+            }
+
             AddMedicineScreen(
                 vm = vm_med,
                 onAddClick = {
-                    vm_med.addMedicineForm(context)  // Local only
-                    navController.popBackStack()
-                }
+                    vm_med.addMedicineWithValidation(context)
+                },
+                onBack= { navController.popBackStack()}
             )
         }
 
@@ -84,17 +94,25 @@ fun AppNavGraph(
             val medicineId = backStackEntry.arguments?.getInt("medicineId") ?: -1
             val medicine = medicines.find { it.id == medicineId }
 
+            // Handle navigation on success
+            LaunchedEffect(success) {
+                if (success == true) {
+                    navController.popBackStack()
+                    vm_med.clearSuccessState()
+                }
+            }
+
             if (medicine != null) {
                 EditMedicineScreen(
                     medicine = medicine,
                     onEdit = { updatedMedicine ->
-                        vm_med.updateMedicineBoth(updatedMedicine,context)
-
-                        navController.popBackStack()
+                        vm_med.updateMedicineWithValidation(updatedMedicine, context)
+                        // Navigation handled by LaunchedEffect above
                     },
                     onBack = {
                         navController.popBackStack()
-                    }
+                    },
+                    vm = vm_med
                 )
             } else {
                 navController.popBackStack()
@@ -125,5 +143,4 @@ fun AppNavGraph(
             }
         }
     }
-
 }

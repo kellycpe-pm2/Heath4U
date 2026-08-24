@@ -31,5 +31,14 @@ data class Medicine(
 
     val priority: Float? = 0f,
 
-    val ic: String? = "1"
+    val ic: String? = "1",
+
+    // First dose time of the day, e.g. "08:00". Later doses are spaced evenly
+    // across the day based on timesPerDay. Used by the Smart Reminder / Schedule module.
+    @SerialName("reminder_time")
+    val reminderTime: String? = "08:00",
+
+    // How many times a day this medicine should be taken (e.g. 3 = 08:00, 13:00, 18:00)
+    @SerialName("times_per_day")
+    val timesPerDay: Int? = 1
 )

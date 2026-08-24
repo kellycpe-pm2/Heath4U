@@ -7,6 +7,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudUpload
@@ -36,7 +38,8 @@ fun MedicineListScreen(
     onEdit: (Medicine) -> Unit,
     onClickRow: (Medicine) -> Unit,
     onCloudSync : () -> Unit,
-    onUploadToCloud : () -> Unit
+    onUploadToCloud : () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     val medicines by vm.medicines.collectAsStateWithLifecycle()
     val isPendingDel = remember { mutableStateListOf<Medicine>() }
@@ -88,12 +91,23 @@ fun MedicineListScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "All Medicines",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1A1A2E)
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        onBack?.let {
+                            IconButton(onClick = it) {
+                                Icon(
+                                    androidx.compose.material.icons.Icons.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MaterialTheme.colorScheme.secondary
+                                )
+                            }
+                        }
+                        Text(
+                            text = "All Medicines",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A1A2E)
+                        )
+                    }
 
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),

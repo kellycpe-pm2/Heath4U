@@ -66,6 +66,12 @@ class ViewModelMedicine(
     private val _input_priority = MutableStateFlow(0f)
     val input_priority: StateFlow<Float> = _input_priority
 
+    private val _input_reminderTime = MutableStateFlow("08:00")
+    val input_reminderTime: StateFlow<String> = _input_reminderTime
+
+    private val _input_timesPerDay = MutableStateFlow(1)
+    val input_timesPerDay: StateFlow<Int> = _input_timesPerDay
+
     // ========== LOAD FUNCTIONS ==========
     fun loadMedicines(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -503,7 +509,9 @@ class ViewModelMedicine(
                     afterEat = afterEat,
                     createDate = System.currentTimeMillis(),
                     priority = priority,
-                    ic = "1"
+                    ic = "1",
+                    reminderTime = _input_reminderTime.value,
+                    timesPerDay = _input_timesPerDay.value
                 )
 
                 val success = insertMedicine(context, medicine)
@@ -556,7 +564,9 @@ class ViewModelMedicine(
                 afterEat = _input_afterEat.value,
                 createDate = System.currentTimeMillis(),
                 priority = priority,
-                ic = "1"
+                ic = "1",
+                reminderTime = _input_reminderTime.value,
+                timesPerDay = _input_timesPerDay.value
             )
 
             addMedicineBoth(medicine, context)
@@ -573,6 +583,8 @@ class ViewModelMedicine(
         _input_ExpiredDate.value = System.currentTimeMillis()
         _input_afterEat.value = true
         _input_priority.value = 0f
+        _input_reminderTime.value = "08:00"
+        _input_timesPerDay.value = 1
         _validationErrors.value = emptyMap()
     }
 
@@ -585,6 +597,8 @@ class ViewModelMedicine(
     fun on_ExpiredDate_Change(value: Long) { _input_ExpiredDate.value = value }
     fun on_AfterEat_Change(value: Boolean) { _input_afterEat.value = value }
     fun on_Priority_Change(value: Float) { _input_priority.value = value }
+    fun on_ReminderTime_Change(value: String) { _input_reminderTime.value = value }
+    fun on_TimesPerDay_Change(value: Int) { _input_timesPerDay.value = value }
 
     // ========== SYNC FUNCTIONS ==========
     fun syncWithServer(context: Context) {

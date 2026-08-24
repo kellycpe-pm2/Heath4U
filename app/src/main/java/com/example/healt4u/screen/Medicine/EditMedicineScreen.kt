@@ -46,6 +46,8 @@ fun EditMedicineScreen(
     var medIsBeforeEating by remember { mutableStateOf(medicine.afterEat ?: true) }
     var medPriority by remember { mutableStateOf(medicine.priority ?: 1f) }
     var medRemark by remember { mutableStateOf(medicine.remark ?: "") }
+    var medReminderTime by remember { mutableStateOf(medicine.reminderTime ?: "08:00") }
+    var medTimesPerDay by remember { mutableStateOf(medicine.timesPerDay ?: 1) }
 
     LaunchedEffect(error) {
         if (error != null) {
@@ -211,6 +213,37 @@ fun EditMedicineScreen(
                 )
             }
 
+            // ========== REMINDER TIME (first dose of the day) ==========
+            Text(
+                text = "First reminder time",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 4.dp)
+            )
+            TimePickerPopupOnClick(
+                modifier = Modifier.fillMaxWidth(),
+                label = "Reminder Time *",
+                value = medReminderTime,
+                onTimeChange = { value -> medReminderTime = value }
+            )
+
+            // ========== TIMES PER DAY ==========
+            Text(
+                text = "Times per day: $medTimesPerDay",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 4.dp)
+            )
+            NumericStepper(
+                1,
+                6,
+                medTimesPerDay,
+                1,
+                { value -> medTimesPerDay = value }
+            )
+
             // ========== PRIORITY ==========
             slider(
                 medPriority,
@@ -249,7 +282,9 @@ fun EditMedicineScreen(
                         afterEat = medIsBeforeEating,
                         createDate = medicine.createDate,
                         priority = medPriority,
-                        ic = medicine.ic
+                        ic = medicine.ic,
+                        reminderTime = medReminderTime,
+                        timesPerDay = medTimesPerDay
                     )
                     onEdit(updatedMedicine)
                 },
@@ -268,6 +303,8 @@ fun EditMedicineScreen(
                     medIsBeforeEating = medicine.afterEat ?: true
                     medPriority = medicine.priority ?: 1f
                     medRemark = medicine.remark ?: ""
+                    medReminderTime = medicine.reminderTime ?: "08:00"
+                    medTimesPerDay = medicine.timesPerDay ?: 1
                     vm.clearValidationErrors()
                 }
             )

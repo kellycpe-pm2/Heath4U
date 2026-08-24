@@ -13,7 +13,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
+import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
+import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineDetailScreen
@@ -22,7 +25,8 @@ import com.example.healt4u.screen.Medicine.MedicineListScreen
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
-    vm_med: ViewModelMedicine = viewModel()
+    vm_med: ViewModelMedicine = viewModel(),
+    vm_reminder: ReminderViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
@@ -41,8 +45,23 @@ fun AppNavGraph(
     vm_med.clearSuccess()
     NavHost(
         navController = navController,
-        startDestination = "list"
+        startDestination = "dashboard"
     ) {
+        composable("dashboard") {
+            HomeDashboardScreen(
+                vm = vm_reminder,
+                onMedicineClick = { navController.navigate("list") },
+                onScheduleClick = { navController.navigate("schedule") }
+            )
+        }
+
+        composable("schedule") {
+            ScheduleListScreen(
+                vm = vm_reminder,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable("list") {
             MedicineListScreen(
                 vm = vm_med,
@@ -61,7 +80,8 @@ fun AppNavGraph(
                 },
                 onUploadToCloud = {
                     vm_med.uploadToServer(context)
-                }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 

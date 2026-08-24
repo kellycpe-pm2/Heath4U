@@ -44,6 +44,8 @@ fun AddMedicineScreen(
     val medIsBeforeEating by vm.input_afterEat.collectAsStateWithLifecycle()
     val medPriority by vm.input_priority.collectAsStateWithLifecycle()
     val medRemark by vm.input_remark.collectAsStateWithLifecycle()
+    val medReminderTime by vm.input_reminderTime.collectAsStateWithLifecycle()
+    val medTimesPerDay by vm.input_timesPerDay.collectAsStateWithLifecycle()
 
 
     LaunchedEffect(error) {
@@ -189,6 +191,37 @@ fun AddMedicineScreen(
                     onClick = { vm.on_AfterEat_Change(false) }
                 )
             }
+
+            // ========== REMINDER TIME (first dose of the day) ==========
+            Text(
+                text = "First reminder time",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 4.dp)
+            )
+            TimePickerPopupOnClick(
+                modifier = Modifier.fillMaxWidth(),
+                label = "Reminder Time *",
+                value = medReminderTime,
+                onTimeChange = vm::on_ReminderTime_Change
+            )
+
+            // ========== TIMES PER DAY ==========
+            Text(
+                text = "Times per day: $medTimesPerDay",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 4.dp)
+            )
+            NumericStepper(
+                1,
+                6,
+                medTimesPerDay,
+                1,
+                vm::on_TimesPerDay_Change
+            )
 
             slider(
                 medPriority,

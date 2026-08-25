@@ -13,8 +13,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
+import com.example.healt4u.screen.Admin.AdminDashboardScreen
+import com.example.healt4u.screen.Admin.AdminDoctorScreen
+import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
@@ -26,7 +30,9 @@ import com.example.healt4u.screen.Medicine.MedicineListScreen
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
     vm_med: ViewModelMedicine = viewModel(),
-    vm_reminder: ReminderViewModel = viewModel()
+    vm_reminder: ReminderViewModel = viewModel(),
+     vm_admin: AdminManagementViewModel = viewModel()
+
 ) {
     val context = LocalContext.current
 
@@ -99,7 +105,7 @@ fun AppNavGraph(
                 onAddClick = {
                     vm_med.addMedicineWithValidation(context)
                 },
-                onBack= { navController.popBackStack()}
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -162,5 +168,13 @@ fun AppNavGraph(
                 navController.popBackStack()
             }
         }
+
+        composable("admin_hospitals") {
+            AdminHospitalScreen(vm = vm_admin, onBack = { navController.popBackStack() })
+        }
+        composable("admin_doctors") {
+            AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
+        }
+
     }
 }

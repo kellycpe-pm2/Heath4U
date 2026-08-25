@@ -13,9 +13,12 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
+import com.example.healt4u.screen.Admin.AdminDoctorScreen
+import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
@@ -27,7 +30,9 @@ import com.example.healt4u.screen.Medicine.MedicineListScreen
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
     vm_med: ViewModelMedicine = viewModel(),
-    vm_reminder: ReminderViewModel = viewModel()
+    vm_reminder: ReminderViewModel = viewModel(),
+     vm_admin: AdminManagementViewModel = viewModel()
+
 ) {
     val context = LocalContext.current
 
@@ -163,17 +168,12 @@ fun AppNavGraph(
                 navController.popBackStack()
             }
         }
-        // Admin Dashboard
-        composable("admin_dashboard") {
-            AdminDashboardScreen(
-                medicineCount = medicines.size,
-                onViewMedicines = { navController.navigate("admin_medicines") },
-                onViewUsers = { navController.navigate("admin_users") },
-                onViewStatistics = { navController.navigate("admin_statistics") },
-                onViewNPRA = { navController.navigate("admin_npra_search") },
-                onSettings = { navController.navigate("admin_settings") },
-                onBack = { navController.popBackStack() }
-            )
+
+        composable("admin_hospitals") {
+            AdminHospitalScreen(vm = vm_admin, onBack = { navController.popBackStack() })
+        }
+        composable("admin_doctors") {
+            AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
         }
 
     }

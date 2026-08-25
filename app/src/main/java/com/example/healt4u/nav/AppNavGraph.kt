@@ -183,6 +183,7 @@ fun AppNavGraph(
         composable("admin_settings") {
             AdminSettingsScreen(onBack = { navController.popBackStack() })
         }
+
         composable("admin_hospitals") {
             AdminHospitalScreen(vm = vm_admin, onBack = { navController.popBackStack() })
         }

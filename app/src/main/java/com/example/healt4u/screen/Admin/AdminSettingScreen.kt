@@ -114,4 +114,5 @@ private fun SettingToggle(title: String, subtitle: String, checked: Boolean, onC
             colors = SwitchDefaults.colors(checkedTrackColor = SettingsBlue)
         )
     }
+
 }

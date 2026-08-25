@@ -50,7 +50,7 @@ fun AddMedicineScreen(
 
     LaunchedEffect(error) {
         if (error != null) {
-            delay(3200)
+            delay(3000)
             vm.clearError()
         }
     }

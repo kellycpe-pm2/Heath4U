@@ -17,18 +17,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,14 +52,15 @@ private val ScreenBlue = Color(0xFFE6F8FC)
 private val SoftBlue = Color(0xFFDCEBFF)
 private val AlertOrange = Color(0xFFFFA33A)
 
-
 @Composable
 fun AdminDashboardScreen(
     vm: ViewModelMedicine,
     onInventoryClick: () -> Unit = {},
-    onUsersClick: () -> Unit = {},
-    onReportsClick: () -> Unit = {},
-    onSettingsClick: () -> Unit = {}
+    onHospitalsClick: () -> Unit = {},
+    onDoctorsClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+    onNpraClick: () -> Unit = {},
+    onBack: (() -> Unit)? = null
 ) {
     val medicines by vm.medicines.collectAsStateWithLifecycle()
     val lowStock = medicines.filter { (it.quantityLeft ?: it.quantity) <= 5 }
@@ -65,7 +69,7 @@ fun AdminDashboardScreen(
     Column(
         modifier = Modifier.fillMaxSize().background(ScreenBlue)
     ) {
-        AdminHeader()
+        AdminHeader(onBack = onBack)
 
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -92,9 +96,9 @@ fun AdminDashboardScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    StatisticCard("Medicine", medicines.size.toString(), Icons.Default.Inventory2, SoftBlue, Modifier.weight(1f))
-                    StatisticCard("Low stock", lowStock.size.toString(), Icons.Default.Warning, Color(0xFFFFE7C7), Modifier.weight(1f))
-                    StatisticCard("Expired", expired.toString(), Icons.Default.CalendarMonth, Color(0xFFFFDEE0), Modifier.weight(1f))
+                    StatisticCard("Medicine", medicines.size.toString(), Icons.Default.Inventory2, SoftBlue, AppBlue, Modifier.weight(1f))
+                    StatisticCard("Low stock", lowStock.size.toString(), Icons.Default.Warning, Color(0xFFFFE7C7), AlertOrange, Modifier.weight(1f))
+                    StatisticCard("Expired", expired.toString(), Icons.Default.CalendarMonth, Color(0xFFFFDEE0), Color(0xFFD32F2F), Modifier.weight(1f))
                 }
             }
 
@@ -114,9 +118,18 @@ fun AdminDashboardScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     QuickAction("Inventory", Icons.Default.Inventory2, onInventoryClick, Modifier.weight(1f))
-                    QuickAction("Users", Icons.Default.PersonAdd, onUsersClick, Modifier.weight(1f))
-                    QuickAction("Reports", Icons.Default.Assessment, onReportsClick, Modifier.weight(1f))
+                    QuickAction("Hospitals", Icons.Default.Business, onHospitalsClick, Modifier.weight(1f))
+                    QuickAction("Doctors", Icons.Default.PersonAdd, onDoctorsClick, Modifier.weight(1f))
                     QuickAction("Settings", Icons.Default.Settings, onSettingsClick, Modifier.weight(1f))
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    QuickAction("NPRA search", Icons.Default.Search, onNpraClick, Modifier.weight(1f))
                 }
             }
 
@@ -132,9 +145,7 @@ fun AdminDashboardScreen(
             }
 
             if (lowStock.isEmpty()) {
-                item {
-                    EmptyAlertCard()
-                }
+                item { EmptyAlertCard() }
             } else {
                 items(lowStock.take(4), key = { it.id }) { medicine ->
                     StockAlertCard(medicine)
@@ -142,16 +153,26 @@ fun AdminDashboardScreen(
             }
         }
 
-        AdminBottomNavigation()
+        AdminBottomNavigation(
+            onHomeClick = { },
+            onInventoryClick = onInventoryClick,
+            onDoctorsClick = onDoctorsClick,
+            onProfileClick = onSettingsClick
+        )
     }
 }
 
 @Composable
-private fun AdminHeader() {
+private fun AdminHeader(onBack: (() -> Unit)?) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        onBack?.let {
+            IconButton(onClick = it) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF101820))
+            }
+        }
         Box(
             modifier = Modifier.size(38.dp).background(AppBlue, RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
@@ -174,11 +195,18 @@ private fun AdminHeader() {
 }
 
 @Composable
-private fun StatisticCard(label: String, value: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, modifier: Modifier) {
+private fun StatisticCard(
+    label: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    bgColor: Color,
+    iconTint: Color,
+    modifier: Modifier
+) {
     Card(modifier = modifier, shape = RoundedCornerShape(17.dp), colors = CardDefaults.cardColors(containerColor = Color.White), elevation = CardDefaults.cardElevation(2.dp)) {
         Column(Modifier.padding(11.dp)) {
-            Box(Modifier.size(30.dp).background(color, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = AppBlue, modifier = Modifier.size(18.dp))
+            Box(Modifier.size(30.dp).background(bgColor, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = iconTint, modifier = Modifier.size(18.dp))
             }
             Spacer(Modifier.height(8.dp))
             Text(value, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, color = Color(0xFF101820))
@@ -219,7 +247,7 @@ private fun StockAlertCard(medicine: Medicine) {
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
                 Text(medicine.name_medicine, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${remaining} of ${medicine.quantity} left • Expires ${formatDate(medicine.expiredDate)}", fontSize = 10.sp, color = Color(0xFF61717D), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${remaining} of ${medicine.quantity} left, expires ${formatDate(medicine.expiredDate)}", fontSize = 10.sp, color = Color(0xFF61717D), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text("RESTOCK", fontSize = 9.sp, color = AppBlue, fontWeight = FontWeight.ExtraBold)
         }
@@ -238,21 +266,29 @@ private fun EmptyAlertCard() {
 }
 
 @Composable
-private fun AdminBottomNavigation() {
+private fun AdminBottomNavigation(
+    onHomeClick: () -> Unit,
+    onInventoryClick: () -> Unit,
+    onDoctorsClick: () -> Unit,
+    onProfileClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().background(AppBlue).padding(vertical = 10.dp, horizontal = 28.dp),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        BottomItem("Home", Icons.Default.Home, true)
-        BottomItem("Inventory", Icons.Default.Inventory2, false)
-        BottomItem("Reports", Icons.Default.Assessment, false)
-        BottomItem("Profile", Icons.Default.Person, false)
+        BottomItem("Home", Icons.Default.Home, true, onHomeClick)
+        BottomItem("Inventory", Icons.Default.Inventory2, false, onInventoryClick)
+        BottomItem("Doctors", Icons.Default.Assessment, false, onDoctorsClick)
+        BottomItem("Profile", Icons.Default.Person, false, onProfileClick)
     }
 }
 
 @Composable
-private fun BottomItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, selected: Boolean) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+private fun BottomItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, selected: Boolean, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
         Icon(icon, label, tint = if (selected) Color.White else Color(0xFFCFE0FF), modifier = Modifier.size(23.dp))
         Text(label.uppercase(), color = if (selected) Color.White else Color(0xFFCFE0FF), fontSize = 7.sp, fontWeight = FontWeight.Bold)
     }

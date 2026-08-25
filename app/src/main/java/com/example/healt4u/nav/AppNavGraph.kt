@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.healt4u.ViewModel.AdminManagementViewModel
+import com.example.healt4u.screen.Admin.AdminSettingsScreen
 import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
@@ -168,7 +169,20 @@ fun AppNavGraph(
                 navController.popBackStack()
             }
         }
-
+        composable("admin") {
+            AdminDashboardScreen(
+                vm = vm_med,
+                onBack = { navController.popBackStack() },
+                onInventoryClick = { navController.navigate("list") },
+                onHospitalsClick = { navController.navigate("admin_hospitals") },
+                onDoctorsClick = { navController.navigate("admin_doctors") },
+                onSettingsClick = { navController.navigate("admin_settings") },
+                onNpraClick = { navController.navigate("admin_npra") }
+            )
+        }
+        composable("admin_settings") {
+            AdminSettingsScreen(onBack = { navController.popBackStack() })
+        }
         composable("admin_hospitals") {
             AdminHospitalScreen(vm = vm_admin, onBack = { navController.popBackStack() })
         }

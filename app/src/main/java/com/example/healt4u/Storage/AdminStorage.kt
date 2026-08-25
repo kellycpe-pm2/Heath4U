@@ -70,14 +70,3 @@ suspend fun deleteDoctor(id: Int): Boolean {
     } catch (e: Exception) { false }
 }
 
-// ===== KPI =====
-
-suspend fun getDoctorRatings(doctorId: Int): List<DoctorRating> {
-    return try {
-        withContext(Dispatchers.IO) {
-            supabase.from("doctor_ratings")
-                .select { filter { eq("doctor_id", doctorId) } }
-                .decodeList<DoctorRating>()
-        }
-    } catch (e: Exception) { emptyList() }
-}

@@ -26,11 +26,3 @@ data class Doctor(
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
 )
 
-@Serializable
-data class DoctorRating(
-    val id: Int = 0,
-    @SerialName("doctor_id") val doctorId: Int,
-    @SerialName("patient_ic") val patientIc: String,
-    val rating: Int,
-    @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
-)

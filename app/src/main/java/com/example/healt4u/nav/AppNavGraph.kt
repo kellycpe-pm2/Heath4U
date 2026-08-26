@@ -16,6 +16,7 @@ import androidx.navigation.navArgument
 import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
 import com.example.healt4u.screen.Admin.AdminSettingsScreen
+import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
@@ -34,6 +35,10 @@ import com.example.healt4u.model.Hospital
 import com.example.healt4u.model.Doctor
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
+import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
+import com.example.healt4u.screen.FamilyMode.CaregiverAlertScreen
+import com.example.healt4u.screen.FamilyMode.FamilyModeScreen
+import com.example.healt4u.screen.FamilyMode.SetPatientPhoneScreen
 
 @Composable
 fun AppNavGraph(
@@ -41,8 +46,8 @@ fun AppNavGraph(
     vm_med: ViewModelMedicine = viewModel(),
     vm_reminder: ReminderViewModel = viewModel(),
     vm_admin: AdminManagementViewModel = viewModel(),
-    vm_hospital: HospitalViewModel = viewModel()
-
+    vm_hospital: HospitalViewModel = viewModel(),
+    vm_family: FamilyModeViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
@@ -274,6 +279,38 @@ fun AppNavGraph(
         }
         composable("admin_doctors") {
             AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
+        }
+
+        composable("family_mode") {
+            FamilyModeScreen(
+                vm = vm_family,
+                onBack = { navController.popBackStack() },
+                onAddCaregiverClick = { navController.navigate("add_caregiver") },
+                onSetPhoneClick = { navController.navigate("set_patient_phone") }
+            )
+        }
+
+        composable("add_caregiver") {
+            AddCaregiverScreen(
+                vm = vm_family,
+                onBack = { navController.popBackStack() },
+                onAdded = { navController.popBackStack() }
+            )
+        }
+
+        composable("set_patient_phone") {
+            SetPatientPhoneScreen(
+                vm = vm_family,
+                onBack = { navController.popBackStack() },
+                onSaved = { navController.popBackStack() }
+            )
+        }
+
+        composable("caregiver_alerts") {
+            CaregiverAlertScreen(
+                vm = vm_family,
+                onBack = { navController.popBackStack() }
+            )
         }
 
     }

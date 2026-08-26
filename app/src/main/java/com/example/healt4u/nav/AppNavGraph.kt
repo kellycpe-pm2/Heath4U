@@ -33,6 +33,7 @@ import com.example.healt4u.screen.Medicine.MedicineListScreen
 import com.example.healt4u.model.Hospital
 import com.example.healt4u.model.Doctor
 import com.example.healt4u.Storage.getMessagesByConversation
+import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
 
 @Composable
 fun AppNavGraph(
@@ -67,7 +68,7 @@ fun AppNavGraph(
                 vm = vm_reminder,
                 onMedicineClick = { navController.navigate("list") },
                 onScheduleClick = { navController.navigate("schedule") },
-                onChatClick = { navController.navigate("hospital_list")}
+                onChatClick = { navController.navigate("chat_list")}
             )
         }
 
@@ -177,6 +178,19 @@ fun AppNavGraph(
             } else {
                 navController.popBackStack()
             }
+        }
+
+        composable("chat_list") {
+            ChatListScreen(
+                patientId = "p001",
+                onConversationClick = { conversation ->
+                    navController.navigate("chat/${conversation.id}")
+                },
+                onNewChatClick = {
+                    navController.navigate("hospital_list")
+                },
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable("hospital_list") {

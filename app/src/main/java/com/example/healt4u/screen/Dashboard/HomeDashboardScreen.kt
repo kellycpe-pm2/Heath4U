@@ -40,7 +40,8 @@ fun HomeDashboardScreen(
     vm: ReminderViewModel = viewModel(),
     onMedicineClick: () -> Unit,
     onScheduleClick: () -> Unit,
-    onUnbuiltModuleClick: (String) -> Unit = {}
+    onUnbuiltModuleClick: (String) -> Unit = {},
+    onChatClick:()-> Unit
 ) {
     val context = LocalContext.current
     val schedule by vm.todaySchedule.collectAsStateWithLifecycle()
@@ -223,10 +224,10 @@ fun HomeDashboardScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             DashboardTile(
-                                label = "Doctor",
+                                label = "Doctor-Patient Chat",
                                 icon = Icons.Filled.Groups,
                                 modifier = Modifier.weight(1f),
-                                onClick = { notImplemented("Doctor") }
+                                onClick = { onChatClick() }
                             )
                             DashboardTile(
                                 label = "Appointment",

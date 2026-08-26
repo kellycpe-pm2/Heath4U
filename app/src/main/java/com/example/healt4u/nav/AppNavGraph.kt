@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.healt4u.ViewModel.AdminManagementViewModel
+import com.example.healt4u.ViewModel.HospitalViewModel
 import com.example.healt4u.screen.Admin.AdminSettingsScreen
 import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
@@ -22,17 +23,24 @@ import com.example.healt4u.screen.Admin.AdminDoctorScreen
 import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
+import com.example.healt4u.screen.DoctorPatientChat.ChatScreen
+import com.example.healt4u.screen.DoctorPatientChat.DoctorListScreen
+import com.example.healt4u.screen.DoctorPatientChat.HospitalListScreen
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineDetailScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
+import com.example.healt4u.model.Hospital
+import com.example.healt4u.model.Doctor
+import com.example.healt4u.Storage.getMessagesByConversation
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
     vm_med: ViewModelMedicine = viewModel(),
     vm_reminder: ReminderViewModel = viewModel(),
-     vm_admin: AdminManagementViewModel = viewModel()
+    vm_admin: AdminManagementViewModel = viewModel(),
+    vm_hospital: HospitalViewModel = viewModel()
 
 ) {
     val context = LocalContext.current
@@ -58,7 +66,8 @@ fun AppNavGraph(
             HomeDashboardScreen(
                 vm = vm_reminder,
                 onMedicineClick = { navController.navigate("list") },
-                onScheduleClick = { navController.navigate("schedule") }
+                onScheduleClick = { navController.navigate("schedule") },
+                onChatClick = { navController.navigate("hospital_list")}
             )
         }
 
@@ -169,6 +178,68 @@ fun AppNavGraph(
                 navController.popBackStack()
             }
         }
+
+        composable("hospital_list") {
+            HospitalListScreen(
+                onHospitalSelected = { hospital ->
+                    navController.navigate("doctor_list/${hospital.id}")
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = "doctor_list/{hospitalId}",
+            arguments = listOf(
+                navArgument("hospitalId") {
+                    type = NavType.IntType
+                }
+            )
+        ) { backStackEntry ->
+            val hospitalId = backStackEntry.arguments?.getInt("hospitalId") ?: 0
+
+            val hospital = com.example.healt4u.data.HospitalData.getHospitalById(hospitalId)
+
+            if (hospital != null) {
+                DoctorListScreen(
+                    hospital = hospital,
+                    onDoctorSelected = { doctor ->
+                        val conversationId = "${doctor.id}_p001"
+                        navController.navigate("chat/$conversationId")
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            } else {
+                navController.popBackStack()
+            }
+        }
+
+        composable(
+            route = "chat/{conversationId}",
+            arguments = listOf(
+                navArgument("conversationId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
+
+            val doctorId = conversationId.split("_").firstOrNull()?.toIntOrNull() ?: 0
+            val doctor = com.example.healt4u.data.HospitalData.getDoctorById(doctorId)
+
+            val initialMessages = getMessagesByConversation(context, conversationId)
+
+            ChatScreen(
+                chatName = doctor?.name ?: "Doctor",
+                userId = "p001",
+                initialMessages = initialMessages,
+                onBack = { navController.popBackStack() },
+                onSendMessage = { message ->
+                    com.example.healt4u.Storage.sendMessage(context, message)
+                }
+            )
+        }
+
         composable("admin") {
             AdminDashboardScreen(
                 vm = vm_med,

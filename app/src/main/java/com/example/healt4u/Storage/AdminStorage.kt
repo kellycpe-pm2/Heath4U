@@ -1,7 +1,6 @@
 package com.example.healt4u.Storage
 
 import com.example.healt4u.model.Doctor
-import com.example.healt4u.model.DoctorRating
 import com.example.healt4u.model.Hospital
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.Dispatchers
@@ -69,4 +68,3 @@ suspend fun deleteDoctor(id: Int): Boolean {
         true
     } catch (e: Exception) { false }
 }
-

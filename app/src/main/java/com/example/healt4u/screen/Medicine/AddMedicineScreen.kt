@@ -200,12 +200,7 @@ fun AddMedicineScreen(
                     .fillMaxWidth()
                     .padding(top = 8.dp, bottom = 4.dp)
             )
-            TimePickerPopupOnClick(
-                modifier = Modifier.fillMaxWidth(),
-                label = "Reminder Time *",
-                value = medReminderTime,
-                onTimeChange = vm::on_ReminderTime_Change
-            )
+
 
             // ========== TIMES PER DAY ==========
             Text(

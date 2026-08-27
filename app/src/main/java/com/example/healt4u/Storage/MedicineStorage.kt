@@ -222,30 +222,33 @@ suspend fun delete_Medicine(
 suspend fun adminSignIn(username: String, password: String): Result<String> {
     return try {
         withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Signing in with username: $username")
             val users = supabase
                 .from("admin_users")
-                .select {
-                    filter {
-                        eq("username", username)
-                        eq("password", password)
-                    }
-                }
+                .select()
                 .decodeList<AdminUser>()
 
-            if (users.isNotEmpty()) {
+            android.util.Log.d("AdminAuth", "Total users in table: ${users.size}")
+
+            val matched = users.find { it.username == username && it.password == password }
+            if (matched != null) {
+                android.util.Log.d("AdminAuth", "Login successful for: $username")
                 Result.success("Login successful")
             } else {
+                android.util.Log.d("AdminAuth", "No match found for: $username")
                 Result.failure(Exception("Invalid username or password"))
             }
         }
     } catch (e: Exception) {
-        Result.failure(e)
+        android.util.Log.e("AdminAuth", "adminSignIn failed", e)
+        Result.failure(Exception("Login failed: ${e.message}"))
     }
 }
 
 suspend fun adminSignUp(username: String, password: String): Result<String> {
     return try {
         withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Signing up with username: $username")
             val existing = supabase
                 .from("admin_users")
                 .select {
@@ -263,9 +266,11 @@ suspend fun adminSignUp(username: String, password: String): Result<String> {
                 .from("admin_users")
                 .insert(AdminUser(username = username, password = password))
 
+            android.util.Log.d("AdminAuth", "Account created successfully")
             Result.success("Account created successfully")
         }
     } catch (e: Exception) {
-        Result.failure(e)
+        android.util.Log.e("AdminAuth", "adminSignUp failed", e)
+        Result.failure(Exception("Registration failed: ${e.message}"))
     }
 }

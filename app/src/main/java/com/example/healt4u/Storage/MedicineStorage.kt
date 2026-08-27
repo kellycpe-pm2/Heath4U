@@ -1,8 +1,8 @@
 package com.example.healt4u.Storage
 
 import androidx.lifecycle.viewModelScope
+import com.example.healt4u.model.AdminUser
 import com.example.healt4u.model.Medicine
-import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.from
@@ -25,7 +25,6 @@ val supabase = createSupabaseClient(
     supabaseKey = SUPABASE_KEY
 ) {
     install(Postgrest)
-    install(Auth)
 
     httpEngine = Android.create()
 }
@@ -217,5 +216,56 @@ suspend fun delete_Medicine(
     } catch (e: Exception) {
 
         false
+    }
+}
+
+suspend fun adminSignIn(username: String, password: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            val users = supabase
+                .from("admin_users")
+                .select {
+                    filter {
+                        eq("username", username)
+                        eq("password", password)
+                    }
+                }
+                .decodeList<AdminUser>()
+
+            if (users.isNotEmpty()) {
+                Result.success("Login successful")
+            } else {
+                Result.failure(Exception("Invalid username or password"))
+            }
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+}
+
+suspend fun adminSignUp(username: String, password: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            val existing = supabase
+                .from("admin_users")
+                .select {
+                    filter {
+                        eq("username", username)
+                    }
+                }
+                .decodeList<AdminUser>()
+
+            if (existing.isNotEmpty()) {
+                return@withContext Result.failure(Exception("Username already taken"))
+            }
+
+            supabase
+                .from("admin_users")
+                .insert(AdminUser(username = username, password = password))
+
+            Result.success("Account created successfully")
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 }

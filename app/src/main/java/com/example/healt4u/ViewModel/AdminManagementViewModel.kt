@@ -39,9 +39,17 @@ class AdminManagementViewModel : ViewModel() {
         }
         viewModelScope.launch {
             _isLoading.value = true
-            val ok = addHospital(Hospital(name = name, address = address, phone = phone))
-            if (ok) loadAll() else _error.value = "Failed to add hospital"
-            _isLoading.value = false
+            _error.value = null
+            val result = addHospital(Hospital(name = name, address = address, phone = phone))
+            result.fold(
+                onSuccess = {
+                    loadAll()
+                },
+                onFailure = { e ->
+                    _error.value = "Failed to add hospital: ${e.message}"
+                    _isLoading.value = false
+                }
+            )
         }
     }
 
@@ -53,17 +61,29 @@ class AdminManagementViewModel : ViewModel() {
             _error.value = "Required doctor fields are missing"
             return
         }
+        if (specialization.isBlank()) {
+            _error.value = "Please select a specialization"
+            return
+        }
         viewModelScope.launch {
             _isLoading.value = true
-            val ok = addDoctor(
+            _error.value = null
+            val result = addDoctor(
                 Doctor(
                     name = name, ic = ic, phone = phone, email = email,
                     specialization = specialization, hospitalId = hospitalId,
                     verificationStatus = "pending"
                 )
             )
-            if (ok) loadAll() else _error.value = "Failed to add doctor"
-            _isLoading.value = false
+            result.fold(
+                onSuccess = {
+                    loadAll()
+                },
+                onFailure = { e ->
+                    _error.value = "Failed to add doctor: ${e.message}"
+                    _isLoading.value = false
+                }
+            )
         }
     }
 
@@ -85,6 +105,22 @@ class AdminManagementViewModel : ViewModel() {
         viewModelScope.launch {
             deleteDoctor(doctorId)
             loadAll()
+        }
+    }
+
+    fun removeHospital(hospitalId: Int) {
+        viewModelScope.launch {
+            deleteHospital(hospitalId)
+            loadAll()
+        }
+    }
+
+    fun linkDoctorToHospital(doctorId: Int, hospitalId: Int) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            linkDoctorToHospital(doctorId, hospitalId)
+            loadAll()
+            _isLoading.value = false
         }
     }
 

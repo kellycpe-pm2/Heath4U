@@ -22,6 +22,8 @@ import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
 import com.example.healt4u.screen.Admin.AdminDoctorScreen
 import com.example.healt4u.screen.Admin.AdminHospitalScreen
+import com.example.healt4u.screen.Admin.AdminLoginScreen
+import com.example.healt4u.screen.Admin.AdminSubscriptionScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatScreen
@@ -66,14 +68,30 @@ fun AppNavGraph(
     vm_med.clearSuccess()
     NavHost(
         navController = navController,
-        startDestination = "dashboard"
+        startDestination = "login"
     ) {
+        composable("login") {
+            AdminLoginScreen(
+                onAdminLoginSuccess = {
+                    navController.navigate("admin") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onPatientLoginSuccess = {
+                    navController.navigate("dashboard") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                }
+            )
+        }
+
         composable("dashboard") {
             HomeDashboardScreen(
                 vm = vm_reminder,
                 onMedicineClick = { navController.navigate("list") },
                 onScheduleClick = { navController.navigate("schedule") },
-                onChatClick = { navController.navigate("chat_list")}
+                onChatClick = { navController.navigate("chat_list") },
+                onFamilyModeClick = { navController.navigate("family_mode") }
             )
         }
 
@@ -261,13 +279,15 @@ fun AppNavGraph(
 
         composable("admin") {
             AdminDashboardScreen(
-                vm = vm_med,
-                onBack = { navController.popBackStack() },
-                onInventoryClick = { navController.navigate("list") },
+                onBack = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onHospitalsClick = { navController.navigate("admin_hospitals") },
                 onDoctorsClick = { navController.navigate("admin_doctors") },
-                onSettingsClick = { navController.navigate("admin_settings") },
-                onNpraClick = { navController.navigate("admin_npra") }
+                onSubscriptionClick = { navController.navigate("admin_subscription") },
+                onSettingsClick = { navController.navigate("admin_settings") }
             )
         }
         composable("admin_settings") {
@@ -279,6 +299,9 @@ fun AppNavGraph(
         }
         composable("admin_doctors") {
             AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
+        }
+        composable("admin_subscription") {
+            AdminSubscriptionScreen(onBack = { navController.popBackStack() })
         }
 
         composable("family_mode") {

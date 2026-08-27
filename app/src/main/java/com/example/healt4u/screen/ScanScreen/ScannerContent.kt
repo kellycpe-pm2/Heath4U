@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.scan
+package com.example.healt4u.screen.ScanScreen
 
 import android.content.Context
 import android.net.Uri

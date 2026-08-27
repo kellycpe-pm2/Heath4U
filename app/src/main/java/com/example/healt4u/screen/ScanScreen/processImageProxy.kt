@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.scan
+package com.example.healt4u.screen.ScanScreen
 
 import android.util.Log
 import androidx.camera.core.ExperimentalGetImage

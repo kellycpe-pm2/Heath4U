@@ -43,9 +43,9 @@ import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineDetailScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
-import com.example.healt4u.screen.scan.ManualInputDialog
+import com.example.healt4u.screen.ScanScreen.ManualInputDialog
+import com.example.healt4u.screen.ScanScreen.ScannerScreen
 
-import com.example.healt4u.screen.scan.ScannerScreen
 
 @androidx.camera.core.ExperimentalGetImage
 @OptIn(ExperimentalGetImage::class)
@@ -76,7 +76,7 @@ fun AppNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = "scan"
     ) {
         composable("login") {
             AdminLoginScreen(
@@ -220,7 +220,7 @@ fun AppNavGraph(
                 },
                 onFlashToggle = { isOn: Boolean -> },
                 onGalleryPick = {},
-                onBackClick = { navController.popBackStack() },
+                onBackClick = {  },
                 context = context
             )
 

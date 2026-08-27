@@ -291,7 +291,14 @@ fun AppNavGraph(
             )
         }
         composable("admin_settings") {
-            AdminSettingsScreen(onBack = { navController.popBackStack() })
+            AdminSettingsScreen(
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable("admin_hospitals") {

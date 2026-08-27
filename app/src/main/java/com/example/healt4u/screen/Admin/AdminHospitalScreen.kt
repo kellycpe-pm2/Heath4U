@@ -3,6 +3,9 @@ package com.example.healt4u.screen.Admin
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -156,10 +159,18 @@ private fun LinkDoctorDialog(
             if (doctors.isEmpty()) {
                 Text("No available doctors to link.")
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(doctors) { doctor ->
-                        Card(
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 300.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    doctors.forEach { doctor ->
+                        Surface(
                             modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color(0xFFF5F5F5),
                             onClick = { onLink(doctor) }
                         ) {
                             Row(
@@ -169,7 +180,7 @@ private fun LinkDoctorDialog(
                                 Icon(Icons.Default.Link, null, tint = AppBlue, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(8.dp))
                                 Column {
-                                    Text(doctor.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text(doctor.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
                                     Text(doctor.specialization, fontSize = 12.sp, color = Color(0xFF61717D))
                                 }
                             }
@@ -178,8 +189,11 @@ private fun LinkDoctorDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = Color(0xFF61717D))
+            }
         }
     )
 }

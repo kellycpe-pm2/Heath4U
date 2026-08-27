@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.sp
 private val AppBlue = Color(0xFF3779EE)
 
 @Composable
-fun AdminSettingsScreen(onBack: () -> Unit) {
+fun AdminSettingsScreen(onBack: () -> Unit, onLogout: () -> Unit = onBack) {
     var showChangePasswordDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -113,7 +113,7 @@ fun AdminSettingsScreen(onBack: () -> Unit) {
         Spacer(Modifier.height(24.dp))
 
         Button(
-            onClick = onBack,
+            onClick = onLogout,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),

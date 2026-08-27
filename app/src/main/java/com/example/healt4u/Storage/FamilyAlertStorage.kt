@@ -91,22 +91,4 @@ suspend fun deleteFamilyAlert(alertId: String): Boolean {
     }
 }
 
-/*
-Run once in the Supabase SQL editor before using Family Mode:
 
-create table if not exists family_alerts (
-    id text primary key,
-    medicine_name text not null,
-    scheduled_time text not null,
-    date text not null,
-    patient_phone text not null,
-    status text not null default 'PENDING',
-    caregiver_name text not null,
-    caregiver_phone text default '',
-    created_at bigint not null,
-    resolved_at bigint
-);
-
--- Link family_alerts to patient_id for caregiver-side queries
-alter table family_alerts add column if not exists patient_id text default 'p001';
-*/

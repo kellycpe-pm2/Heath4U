@@ -40,6 +40,7 @@ fun HomeDashboardScreen(
     vm: ReminderViewModel = viewModel(),
     onMedicineClick: () -> Unit,
     onScheduleClick: () -> Unit,
+    onFamilyModeClick: () -> Unit = {},
     onUnbuiltModuleClick: (String) -> Unit = {},
     onChatClick:()-> Unit
 ) {
@@ -269,7 +270,7 @@ fun HomeDashboardScreen(
                     label = "Community",
                     icon = Icons.Filled.Groups,
                     selected = false,
-                    onClick = { notImplemented("Community") }
+                    onClick = onFamilyModeClick
                 )
                 BottomNavItem(
                     label = "Statistic",

@@ -76,7 +76,7 @@ fun AppNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = "scan"
+        startDestination = "login"
     ) {
         composable("login") {
             AdminLoginScreen(

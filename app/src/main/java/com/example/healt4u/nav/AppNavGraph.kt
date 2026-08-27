@@ -1,9 +1,13 @@
-// com/example/healt4u/nav/AppNavGraph.kt
 package com.example.healt4u.nav
 
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,15 +37,18 @@ import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineDetailScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
-import com.example.healt4u.model.Hospital
-import com.example.healt4u.model.Doctor
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
 import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
 import com.example.healt4u.screen.FamilyMode.CaregiverAlertScreen
 import com.example.healt4u.screen.FamilyMode.FamilyModeScreen
 import com.example.healt4u.screen.FamilyMode.SetPatientPhoneScreen
+import com.example.healt4u.screen.Scan.ManualInputDialog
+import com.example.healt4u.screen.scan.ScannerScreen
 
+
+@androidx.camera.core.ExperimentalGetImage
+@OptIn(ExperimentalGetImage::class)
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
@@ -59,6 +66,7 @@ fun AppNavGraph(
 
     val medicines by vm_med.medicines.collectAsStateWithLifecycle()
     val success by vm_med.success.collectAsStateWithLifecycle()
+    var showManualDialog by remember { mutableStateOf(false) }
 
 
     //reset
@@ -200,6 +208,30 @@ fun AppNavGraph(
                 )
             } else {
                 navController.popBackStack()
+            }
+        }
+
+        composable("scan") {
+            ScannerScreen(
+                onBarcodeScanned = { barcode ->
+                    navController.navigate("detail/$barcode")
+                },
+                onManualInput = {
+                    showManualDialog = true
+                },
+                onFlashToggle = { isOn -> },
+                onBackClick={navController.popBackStack()},
+                context = context
+            )
+
+            if (showManualDialog) {
+                ManualInputDialog(
+                    onDismiss = { showManualDialog = false },
+                    onSearch = { malNumber ->
+                        showManualDialog = false
+                        navController.navigate("detail/$malNumber")
+                    }
+                )
             }
         }
 

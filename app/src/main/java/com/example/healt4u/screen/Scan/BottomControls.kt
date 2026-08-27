@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.Scan
+package com.example.healt4u.screen.scan
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

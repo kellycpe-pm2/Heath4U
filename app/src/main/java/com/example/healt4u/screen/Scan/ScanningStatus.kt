@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.Scan
+package com.example.healt4u.screen.scan
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn

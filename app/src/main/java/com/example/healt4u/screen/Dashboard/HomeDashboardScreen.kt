@@ -14,9 +14,10 @@ import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MedicalServices
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.QueryStats
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -45,6 +47,8 @@ fun HomeDashboardScreen(
     onChatClick:()-> Unit
 ) {
     val context = LocalContext.current
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp
+    val scheduleCardMinHeight = (screenHeightDp * 0.45f).dp
     val schedule by vm.todaySchedule.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -56,7 +60,7 @@ fun HomeDashboardScreen(
 
     val (taken, total) = vm.adherenceCount()
     val missed = schedule.filter { it.status == "MISSED" }
-    val previewItems = schedule.sortedBy { it.time }.take(3)
+    val previewItems = schedule.sortedBy { it.time }
 
     fun notImplemented(name: String) {
         onUnbuiltModuleClick(name)
@@ -134,6 +138,7 @@ fun HomeDashboardScreen(
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .heightIn(min = scheduleCardMinHeight)
                                 .clickable { onScheduleClick() },
                             shape = RoundedCornerShape(16.dp),
                             colors = CardDefaults.cardColors(
@@ -249,7 +254,7 @@ fun HomeDashboardScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.onPrimary)
-                    .padding(vertical = 10.dp),
+                    .padding(top = 10.dp, bottom = 22.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -260,23 +265,23 @@ fun HomeDashboardScreen(
                     onClick = {}
                 )
                 BottomNavItem(
-                    label = "Reminder",
-                    icon = Icons.Filled.Notifications,
-                    selected = false,
-                    onClick = onScheduleClick
-                )
-                Spacer(modifier = Modifier.width(56.dp))
-                BottomNavItem(
                     label = "Community",
                     icon = Icons.Filled.Groups,
                     selected = false,
                     onClick = onFamilyModeClick
                 )
+                Spacer(modifier = Modifier.width(56.dp))
                 BottomNavItem(
                     label = "Statistic",
                     icon = Icons.Filled.QueryStats,
                     selected = false,
                     onClick = { notImplemented("Statistic") }
+                )
+                BottomNavItem(
+                    label = "Settings",
+                    icon = Icons.Filled.Settings,
+                    selected = false,
+                    onClick = { notImplemented("Settings") }
                 )
             }
 
@@ -285,18 +290,23 @@ fun HomeDashboardScreen(
                 color = MaterialTheme.colorScheme.secondary,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 26.dp)
+                    .padding(bottom = 38.dp)
                     .size(56.dp)
-                    .clickable { onScheduleClick() }
+                    .clickable { notImplemented("Scan") }
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text("+", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        Icons.Filled.QrCodeScanner,
+                        contentDescription = "Scan",
+                        tint = Color.White,
+                        modifier = Modifier.size(26.dp)
+                    )
                 }
             }
 
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp)
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp)
             )
         }
     }

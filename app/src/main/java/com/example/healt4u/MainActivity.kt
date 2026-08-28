@@ -1,9 +1,13 @@
 package com.example.healt4u
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.OptIn
+import androidx.annotation.RequiresApi
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
@@ -17,6 +21,8 @@ import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.ui.theme.Healt4UTheme
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
+    @OptIn(ExperimentalGetImage::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -27,7 +33,6 @@ class MainActivity : ComponentActivity() {
                         Surface(
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface).fillMaxSize()
                         ) {
-
                             AppNavGraph()
                         }
                     })
@@ -35,6 +40,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalGetImage::class)
 @Preview(showBackground = true, name = "Medicine List Preview")
 @Composable
 fun PreviewMedicineListScreen() {

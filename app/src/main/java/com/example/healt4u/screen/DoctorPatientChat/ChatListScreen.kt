@@ -1,5 +1,8 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,31 +20,52 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.healt4u.Storage.getConversationsByDoctor
+import com.example.healt4u.Storage.getConversationsByPatient
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
-import com.example.healt4u.Storage.getConversationsByPatient
-import com.example.healt4u.Storage.loadConversations
-import java.text.SimpleDateFormat
 import java.util.*
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatListScreen(
-    patientId: String = "p001",
+    userId: Int,
+    userRole: String,
     onConversationClick: (Conversation) -> Unit,
     onNewChatClick: () -> Unit,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
+    var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val conversations = remember {
-        getConversationsByPatient(context, patientId)
+    val coroutineScope = rememberCoroutineScope()
+    var reloadKey by remember { mutableStateOf(0) }
+
+    LaunchedEffect(userId, userRole,reloadKey) {
+        Log.d("ChatDebug", "📦 userId: $userId, userRole: $userRole")
+        try {
+            isLoading = true
+            errorMessage = null
+
+            val result = if (userRole == "doctor") {
+                getConversationsByDoctor(userId.toString())
+            } else {
+                getConversationsByPatient(userId.toString())
+            }
+
+            conversations = result
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Failed to load conversations"
+        } finally {
+            isLoading = false
+        }
     }
 
     Scaffold(
@@ -74,7 +98,10 @@ fun ChatListScreen(
                 onClick = onNewChatClick,
                 containerColor = MaterialTheme.colorScheme.secondary
             ) {
-                Icon(Icons.Filled.Chat, contentDescription = "New Chat")
+                Icon(
+                    Icons.Filled.Chat,
+                    contentDescription = "New Chat"
+                )
             }
         }
     ) { innerPadding ->
@@ -84,48 +111,88 @@ fun ChatListScreen(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (conversations.isEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "No chats yet",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "Tap the + button to start a new chat",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = conversations,
-                        key = { it.id }
-                    ) { conversation ->
-                        ConversationItem(
-                            conversation = conversation,
-                            onClick = { onConversationClick(conversation) }
+            when {
+                isLoading -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Loading chats...",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+                errorMessage != null -> {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = errorMessage ?: "Something went wrong",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                reloadKey++
+                            }
+                        ) {
+                            Text("Retry")
+                        }
+                    }
+                }
+                conversations.isEmpty() -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "No chats yet",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Tap the + button to start a new chat",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            items = conversations,
+                            key = { it.id }
+                        ) { conversation ->
+                            ConversationItem(
+                                userRole = userRole,
+                                conversation = conversation,
+                                onClick = { onConversationClick(conversation) }
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ConversationItem(
+    userRole: String,
     conversation: Conversation,
     onClick: () -> Unit
 ) {
@@ -153,10 +220,8 @@ fun ConversationItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = conversation.doctorName.take(2).uppercase(),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
+                    text = if (userRole == "doctor") conversation.patientName else conversation.doctorName,
+                    fontSize = 10.sp
                 )
             }
 
@@ -218,21 +283,15 @@ fun ConversationItem(
         }
     }
 }
-
-private fun formatTime(timestamp: Long): String {
-    val now = Calendar.getInstance()
-    val date = Calendar.getInstance().apply { time = Date(timestamp) }
-
-    return when {
-        isSameDay(date, now) -> {
-            val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-            format.format(Date(timestamp))
-        }
-        isYesterday(date, now) -> "Yesterday"
-        else -> {
-            val format = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-            format.format(Date(timestamp))
-        }
+@RequiresApi(Build.VERSION_CODES.O)
+private fun formatTime(timestamp: String): String {
+    return try {
+        val instant = java.time.Instant.parse(timestamp)
+        val date = Date.from(instant)
+        val format = android.icu.text.SimpleDateFormat("HH:mm", Locale.getDefault())
+        format.format(date)
+    } catch (e: Exception) {
+        "??:??"
     }
 }
 
@@ -246,12 +305,14 @@ private fun isYesterday(cal1: Calendar, cal2: Calendar): Boolean {
     return isSameDay(cal1, yesterday)
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun PreviewChatListScreen() {
     colorTheme {
         ChatListScreen(
-            patientId = "p001",
+            userId = 1,
+            userRole = "patient",
             onConversationClick = {},
             onNewChatClick = {},
             onBack = {}

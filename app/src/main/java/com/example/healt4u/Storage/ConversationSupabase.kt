@@ -409,3 +409,33 @@ suspend fun deleteMessage(messageId: String): Boolean {
         false
     }
 }
+
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun clearMessagesByConversation(conversationId: String): Boolean {
+    return try {
+        // Delete ALL messages in this conversation
+        SupabaseClient.supabase
+            .from("messages")
+            .delete {
+                filter { eq("conversation_id", conversationId) }
+            }
+
+        SupabaseClient.supabase
+            .from("conversations")
+            .update(
+                mapOf(
+                    "last_message" to "No messages yet",
+                    "last_message_time" to java.time.Instant.now().toString(),
+                    "unread_count" to 0
+                )
+            ) {
+                filter { eq("id", conversationId) }
+            }
+
+        Log.d(TAG, "Cleared ALL messages for: $conversationId")
+        true
+    } catch (e: Exception) {
+        Log.e(TAG, "Error clearing messages: ${e.message}", e)
+        false
+    }
+}

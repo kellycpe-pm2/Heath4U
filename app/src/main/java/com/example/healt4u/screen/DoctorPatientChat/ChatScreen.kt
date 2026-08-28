@@ -20,7 +20,14 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -31,6 +38,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -61,11 +69,21 @@ fun ChatScreen(
     conversationId: String,
     initialMessages: List<Message>,
     onBack: () -> Unit,
-    onSendMessage: (Message) -> Unit
+    onSendMessage: (Message) -> Unit,
+    onDeleteMessage: (Message) -> Unit,
+    onAvatarClick:(Int)-> Unit,
+    onClearAllMessages: () -> Unit,
+    isMuted: Boolean = false,
+    onMuteChanged: (Boolean) -> Unit = {}
 ){
     var messages by remember { mutableStateOf(initialMessages) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+
+    var showMenu by remember { mutableStateOf(false) }
+    var showClearAllDialog by remember { mutableStateOf(false) }
+    var messageToDelete by remember { mutableStateOf<Message?>(null) }
+    var mutedState by remember { mutableStateOf(isMuted) }
 
     val userDisplayName = when (userRole) {
         "doctor" -> "Dr. ${chatName.split(" ").lastOrNull() ?: "Doctor"}"
@@ -82,6 +100,55 @@ fun ChatScreen(
         if (messages.isNotEmpty()){
             listState.animateScrollToItem(messages.size - 1)
         }
+    }
+
+    LaunchedEffect(isMuted) {
+        mutedState = isMuted
+    }
+
+
+    if (messageToDelete != null) {
+        AlertDialog(
+            title = { Text("Delete Message") },
+            text = { Text("Are you sure you want to delete this message?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteMessage(messageToDelete!!)
+                    messages = messages.filter { it.id != messageToDelete!!.id }
+                    messageToDelete = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { messageToDelete = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.secondary)
+                }
+            },
+            onDismissRequest = { messageToDelete = null }
+        )
+    }
+
+    if (showClearAllDialog) {
+        AlertDialog(
+            title = { Text("Clear All Messages") },
+            text = { Text("Are you sure you want to clear ALL messages? This cannot be undone!") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onClearAllMessages()
+                    messages = emptyList()
+                    showClearAllDialog = false
+                }) {
+                    Text("Clear All", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearAllDialog = false }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.secondary)
+                }
+            },
+            onDismissRequest = { showClearAllDialog = false }
+        )
     }
 
     Scaffold(
@@ -121,6 +188,43 @@ fun ChatScreen(
                             contentDescription = "Back",
                             tint = MaterialTheme.colorScheme.onSecondary,
                             modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                    }
+
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false }
+                    ) {
+                        // Mute / Unmute Notifications
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (mutedState) "Unmute Notifications" else "Mute Notifications", color = MaterialTheme.colorScheme.secondary) },
+                            onClick = {
+                                mutedState= !mutedState
+                                onMuteChanged(mutedState)
+                                showMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    if (mutedState) {
+                                        Icons.Default.NotificationsActive
+                                    } else Icons.Default.NotificationsOff,
+                                    contentDescription = null
+                                )
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Clear All Messages", color = MaterialTheme.colorScheme.secondary) },
+                            onClick = {
+                                showMenu = false
+                                showClearAllDialog = true // Show confirmation dialog
+                            },
+                            leadingIcon = { Icon(Icons.Default.Delete, null) }
                         )
                     }
                 },
@@ -235,7 +339,10 @@ fun ChatScreen(
 
                             MessageBubble(
                                 message = message,
-                                isFromCurrentUser = isFromCurrentUser
+                                isFromCurrentUser = isFromCurrentUser,
+                                userRole = userRole,
+                                onAvatarClick = onAvatarClick,
+                                onDeleteClick = { messageToDelete = message }
                             )
                         }
                     }

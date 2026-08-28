@@ -6,6 +6,8 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,16 +40,23 @@ import java.util.Locale
 @Composable
 fun MessageBubble(
     message: Message,
-    isFromCurrentUser: Boolean
+    isFromCurrentUser: Boolean,
+    userRole: String,
+    onAvatarClick:(Int)-> Unit,
+    onDeleteClick:()-> Unit
 ){
     Row(
         modifier = Modifier.fillMaxWidth().background(color = MaterialTheme.colorScheme.primary).padding(horizontal = 0.dp, vertical = 8.dp),
         horizontalArrangement = if (isFromCurrentUser) {
             Arrangement.End } else { Arrangement.Start }
     ) {
-        if (!isFromCurrentUser){
+        val canClickAvatar = (userRole == "doctor") && !isFromCurrentUser
+
+        if (!isFromCurrentUser) {
             UserAvatar(
                 name = message.senderName,
+                canClick = canClickAvatar,
+                onClick = {if (canClickAvatar) onAvatarClick(message.senderId) else null},
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -61,6 +71,12 @@ fun MessageBubble(
                 }else{
                     MaterialTheme.colorScheme.onSecondary
                 })
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onLongPress = { onDeleteClick() },
+                        onDoubleTap = { onDeleteClick() }
+                    )
+                }
                 .padding(12.dp)
         ) {
             Text(
@@ -98,7 +114,9 @@ fun MessageBubble(
 fun UserAvatar(
     name: String,
     modifier: Modifier = Modifier,
-    size: Int = 36
+    size: Int = 36,
+    canClick: Boolean = false,
+    onClick: (() -> Unit)? = null,
 ) {
     val initials = name
         .split(" ")
@@ -108,8 +126,13 @@ fun UserAvatar(
         .uppercase()
         .ifEmpty { "?" }
 
+    val clickModifier = if (canClick && onClick != null) {
+        Modifier.clickable { onClick() }
+    } else Modifier
+
     Box(
         modifier = modifier
+            .then(clickModifier)
             .size(size.dp)
             .clip(CircleShape)
             .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),

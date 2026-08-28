@@ -60,7 +60,7 @@ import com.example.healt4u.model.Message
 import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.sendMessage
-import com.example.healt4u.screen.appointment.AppointmentScreen
+import com.example.healt4u.screen.AppointmentScreen
 
 
 @RequiresApi(Build.VERSION_CODES.O)

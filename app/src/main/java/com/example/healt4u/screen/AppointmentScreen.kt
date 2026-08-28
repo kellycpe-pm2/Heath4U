@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.appointment
+package com.example.healt4u.screen
 
 import android.os.Build
 import androidx.annotation.RequiresApi

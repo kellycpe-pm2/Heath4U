@@ -45,7 +45,8 @@ fun HomeDashboardScreen(
     onFamilyModeClick: () -> Unit = {},
     onUnbuiltModuleClick: (String) -> Unit = {},
     onChatClick:()-> Unit,
-    onAppointmentClick:()-> Unit
+    onAppointmentClick:()-> Unit,
+    onAdherenceClick:()-> Unit
 ) {
     val context = LocalContext.current
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -276,7 +277,7 @@ fun HomeDashboardScreen(
                     label = "Statistic",
                     icon = Icons.Filled.QueryStats,
                     selected = false,
-                    onClick = { notImplemented("Statistic") }
+                    onClick = { onAdherenceClick() }
                 )
                 BottomNavItem(
                     label = "Settings",

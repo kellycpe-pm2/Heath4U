@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
@@ -99,7 +100,7 @@ fun ChatListScreen(
                 containerColor = MaterialTheme.colorScheme.secondary
             ) {
                 Icon(
-                    Icons.Filled.Chat,
+                    Icons.Filled.Add,
                     contentDescription = "New Chat"
                 )
             }
@@ -220,8 +221,23 @@ fun ConversationItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (userRole == "doctor") conversation.patientName else conversation.doctorName,
-                    fontSize = 10.sp
+                    text = if (userRole == "doctor") {
+                        conversation.patientName
+                            .split(" ")
+                            .mapNotNull { it.firstOrNull()?.toString() }
+                            .take(2)
+                            .joinToString("")
+                            .uppercase()
+                    } else {
+                        conversation.doctorName
+                            .split(" ")
+                            .mapNotNull { it.firstOrNull()?.toString() }
+                            .take(2)
+                            .joinToString("")
+                            .uppercase()
+                    },
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 

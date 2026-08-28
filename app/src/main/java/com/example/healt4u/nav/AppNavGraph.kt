@@ -61,6 +61,7 @@ import com.example.healt4u.model.Message
 import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
 
 
@@ -164,7 +165,8 @@ fun AppNavGraph(
                 onScheduleClick = { navController.navigate("schedule") },
                 onChatClick = { navController.navigate("chat_list") },
                 onFamilyModeClick = { navController.navigate("family_mode") },
-                onAppointmentClick ={navController.navigate("appointment")}
+                onAppointmentClick ={navController.navigate("appointment")},
+                onAdherenceClick = {navController.navigate("adherence_statistics")}
             )
         }
 
@@ -309,6 +311,13 @@ fun AppNavGraph(
             )
         }
 
+        composable("adherence_statistics") {
+            AdherenceStatisticScreen(
+                patientId = currentUserId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
         composable("chat_list") {
             ChatListScreen(
                 userId = currentUserId,
@@ -354,13 +363,13 @@ fun AppNavGraph(
                                 doctorId = doctor.id,
                                 patientId = currentUserId,
                                 doctorName = doctor.name,
-                                patientName = "Patient",  // or use actual patient name
+                                patientName = "Patient",
                                 hospitalId = hospital.id,
                                 hospitalName = hospital.name
                             )
-                        }
 
-                        navController.navigate("chat/$conversationId")
+                            navController.navigate("chat/$conversationId")
+                        }
                     },
                     onBack = { navController.popBackStack() }
                 )
@@ -463,8 +472,7 @@ fun AppNavGraph(
         composable("admin_doctors") {
             AdminDoctorScreen(
                 vm = vm_admin,
-                onBack = { navController.popBackStack() },
-                onAddDoctor = { navController.navigate("admin_add_doctor") }
+                onBack = { navController.popBackStack() }
             )
         }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,10 +20,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.R
@@ -42,8 +45,8 @@ fun MessageBubble(
             Arrangement.End } else { Arrangement.Start }
     ) {
         if (!isFromCurrentUser){
-            SenderAvatar(
-                senderName = message.senderName,
+            UserAvatar(
+                name = message.senderName,
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -90,26 +93,35 @@ fun MessageBubble(
     }
 }
 
-@Composable
-fun SenderAvatar(
-    senderName: String,
-    modifier: Modifier = Modifier
-){
-    val avatarResource = R.drawable.person
 
-    Image(
-        painter = painterResource(avatarResource),
-        contentDescription = senderName,
+@Composable
+fun UserAvatar(
+    name: String,
+    modifier: Modifier = Modifier,
+    size: Int = 36
+) {
+    val initials = name
+        .split(" ")
+        .mapNotNull { it.firstOrNull()?.toString() }
+        .take(2)
+        .joinToString("")
+        .uppercase()
+        .ifEmpty { "?" }
+
+    Box(
         modifier = modifier
-            .size(40.dp)
+            .size(size.dp)
             .clip(CircleShape)
-            .background(color = Color.White)
-            .border(
-                width = 1.dp,
-                color = Color.Black,
-                shape = CircleShape
-            )
-    )
+            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = initials,
+            fontSize = (size * 0.45).sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.secondary
+        )
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)

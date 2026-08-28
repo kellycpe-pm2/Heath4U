@@ -1,5 +1,7 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,7 +43,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.model.Message
@@ -51,11 +51,14 @@ import java.lang.System.currentTimeMillis
 import java.util.Calendar
 import java.util.Date
 
+@RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
     chatName: String,
-    userId: String,
+    userId: Int,
+    userRole: String,
+    conversationId: String,
     initialMessages: List<Message>,
     onBack: () -> Unit,
     onSendMessage: (Message) -> Unit
@@ -63,6 +66,12 @@ fun ChatScreen(
     var messages by remember { mutableStateOf(initialMessages) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+
+    val userDisplayName = when (userRole) {
+        "doctor" -> "Dr. ${chatName.split(" ").lastOrNull() ?: "Doctor"}"
+        "patient" -> chatName
+        else -> "User"
+    }
 
     val groupedMessages = remember(messages){
         groupMessagesByDate(messages)
@@ -148,12 +157,16 @@ fun ChatScreen(
                     FloatingActionButton(
                         onClick = {
                             if (textInput.isNotBlank()){
+                                val now = currentTimeMillis()
+                                val nowIso = java.time.Instant.ofEpochMilli(now).toString()
+
                                 val newMessage = Message(
-                                    id = currentTimeMillis().toString(),
+                                    id = now,
+                                    conversationId = conversationId,
                                     content = textInput,
                                     senderId = userId,
-                                    senderName = if (userId.contains("doctor")) "Doctor" else "Patient",
-                                    timestamp = currentTimeMillis(),
+                                    senderName = userDisplayName,
+                                    timestamp = nowIso,
                                     type = "text"
                                 )
                                 messages = messages + newMessage
@@ -232,17 +245,20 @@ fun ChatScreen(
     }
 }
 
+
 private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
     val groups = mutableListOf<MessageGroup>()
-
     if (messages.isEmpty()) return groups
 
-    val sorted = messages.sortedBy { it.timestamp }
-    var currentDate = getDateKey(sorted.first().timestamp)
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun tsToLong(ts: String): Long = java.time.Instant.parse(ts).toEpochMilli()
+
+    val sorted = messages.sortedBy { tsToLong(it.timestamp) }
+    var currentDate = getDateKey(tsToLong(sorted.first().timestamp))
     var currentMessages = mutableListOf<Message>()
 
     for (message in sorted) {
-        val messageDate = getDateKey(message.timestamp)
+        val messageDate = getDateKey(tsToLong(message.timestamp))
         if (messageDate != currentDate) {
             groups.add(MessageGroup(date = currentDate, messages = currentMessages))
             currentDate = messageDate
@@ -254,7 +270,6 @@ private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
     if (currentMessages.isNotEmpty()) {
         groups.add(MessageGroup(date = currentDate, messages = currentMessages))
     }
-
     return groups
 }
 
@@ -271,52 +286,3 @@ private data class MessageGroup(
     val date: Long,
     val messages: List<Message>
 )
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewChatScreen() {
-    com.example.healt4u.screen.componentUI.Theme.colorTheme {
-        ChatScreen(
-            chatName = "Dr. Smith",
-            userId = "patient_001",
-            initialMessages = listOf(
-                Message(
-                    id = "1",
-                    content = "Hello! How are you?",
-                    senderId = "patient_001",
-                    senderName = "Patient",
-                    timestamp = currentTimeMillis() - 120000,
-                    type = "text"
-                ),
-                Message(
-                    id = "2",
-                    content = "I'm fine, thank you! How can I help?",
-                    senderId = "doctor_001",
-                    senderName = "Dr. Smith",
-                    timestamp = currentTimeMillis() - 60000,
-                    type = "text"
-                ),
-                Message(
-                    id = "3",
-                    content = "I've been having some headaches lately.",
-                    senderId = "patient_001",
-                    senderName = "Patient",
-                    timestamp = currentTimeMillis() - 30000,
-                    type = "text"
-                ),
-                Message(
-                    id = "4",
-                    content = "I see. Where exactly is the pain located?",
-                    senderId = "doctor_001",
-                    senderName = "Dr. Smith",
-                    timestamp = currentTimeMillis() - 10000,
-                    type = "text"
-                )
-            ),
-            onBack = { /* Handle back navigation */ },
-            onSendMessage = { message ->
-                println("Sending: $message")
-            }
-        )
-    }
-}

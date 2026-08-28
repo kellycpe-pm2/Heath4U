@@ -1,13 +1,21 @@
 package com.example.healt4u.nav
 
+import android.os.Build
 import androidx.annotation.OptIn
+import androidx.annotation.RequiresApi
 import androidx.camera.core.ExperimentalGetImage
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -17,7 +25,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.healt4u.Storage.getMessagesByConversation
+import com.example.healt4u.Storage.createConversation
 import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
@@ -45,8 +53,14 @@ import com.example.healt4u.screen.Medicine.MedicineDetailScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
 import com.example.healt4u.screen.ScanScreen.ManualInputDialog
 import com.example.healt4u.screen.ScanScreen.ScannerScreen
+import com.example.healt4u.data.HospitalData.getDoctorById
+import com.example.healt4u.model.Message
+import kotlinx.coroutines.launch
+import com.example.healt4u.Storage.getMessagesByConversation
+import com.example.healt4u.Storage.sendMessage
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @androidx.camera.core.ExperimentalGetImage
 @OptIn(ExperimentalGetImage::class)
 @Composable
@@ -59,6 +73,11 @@ fun AppNavGraph(
     vm_family: FamilyModeViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var currentUserId by remember { mutableStateOf(2) }
+    var currentUserRole by remember { mutableStateOf("patient") }
+
 
     LaunchedEffect(Unit) {
         vm_med.loadFromLocal(context)
@@ -236,7 +255,8 @@ fun AppNavGraph(
 
         composable("chat_list") {
             ChatListScreen(
-                patientId = "p001",
+                userId = currentUserId,
+                userRole = currentUserRole,
                 onConversationClick = { conversation ->
                     navController.navigate("chat/${conversation.id}")
                 },
@@ -271,7 +291,19 @@ fun AppNavGraph(
                 DoctorListScreen(
                     hospital = hospital,
                     onDoctorSelected = { doctor ->
-                        val conversationId = "${doctor.id}_p001"
+                        val conversationId = "${doctor.id}_$currentUserId"
+
+                        coroutineScope.launch {
+                            createConversation(
+                                doctorId = doctor.id,
+                                patientId = currentUserId,
+                                doctorName = doctor.name,
+                                patientName = "Patient",  // or use actual patient name
+                                hospitalId = hospital.id,
+                                hospitalName = hospital.name
+                            )
+                        }
+
                         navController.navigate("chat/$conversationId")
                     },
                     onBack = { navController.popBackStack() }
@@ -290,20 +322,55 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
-            val doctorId = conversationId.split("_").firstOrNull()?.toIntOrNull() ?: 0
-            val doctor = com.example.healt4u.data.HospitalData.getDoctorById(doctorId)
+            val ids = conversationId.split("_")
+            val doctorId = ids.getOrNull(0)?.toIntOrNull() ?: 0
+            val patientId = ids.getOrNull(1)?.toIntOrNull() ?: 0
 
-            val initialMessages = getMessagesByConversation(context, conversationId)
+            val doctor = getDoctorById(doctorId)
+            //val patient = getUserById(patientId)
 
-            ChatScreen(
-                chatName = doctor?.name ?: "Doctor",
-                userId = "p001",
-                initialMessages = initialMessages,
-                onBack = { navController.popBackStack() },
-                onSendMessage = { message ->
-                    com.example.healt4u.Storage.sendMessage(context, message)
+            val chatName = if (currentUserRole == "doctor") {
+                //patient?.name ?:
+                "Patient"
+            } else {
+                doctor?.name ?: "Doctor"
+            }
+
+            var initialMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
+            var isLoading by remember { mutableStateOf(true) }
+
+            LaunchedEffect(conversationId) {
+                try {
+                    initialMessages = getMessagesByConversation(conversationId)
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                } finally {
+                    isLoading = false
                 }
-            )
+            }
+
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                ChatScreen(
+                    chatName = chatName,
+                    userId = currentUserId,
+                    userRole = currentUserRole,
+                    conversationId = conversationId,
+                    initialMessages = initialMessages,
+                    onBack = { navController.popBackStack() },
+                    onSendMessage = { message ->
+                        coroutineScope.launch {
+                            sendMessage(message)
+                        }
+                    }
+                )
+            }
         }
 
         composable("admin") {

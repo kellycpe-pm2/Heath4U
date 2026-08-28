@@ -1,6 +1,8 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
 import android.icu.text.SimpleDateFormat
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,20 +19,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.R
 import com.example.healt4u.model.Message
-import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import java.util.Date
 import java.util.Locale
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MessageBubble(
     message: Message,
@@ -112,23 +112,14 @@ fun SenderAvatar(
     )
 }
 
-private fun formatTimestamp(timestamp: Long): String {
-    val date = Date(timestamp)
-    val format = SimpleDateFormat("HH:mm", Locale.getDefault())
-    return format.format(date)
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewMessageBubble(){
-    colorTheme {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            MessageBubble(
-                message = Message("1","Hi.", "patient1","Lili", timestamp = System.currentTimeMillis(), type = "text"),
-                isFromCurrentUser = false
-            )
-        }
+@RequiresApi(Build.VERSION_CODES.O)
+private fun formatTimestamp(timestamp: String): String {
+    return try {
+        val instant = java.time.Instant.parse(timestamp)
+        val date = Date(instant.toEpochMilli())
+        val format = SimpleDateFormat("HH:mm", Locale.getDefault())
+        format.format(date)
+    } catch (e: Exception) {
+        "??:??"  // Fallback if parsing fails
     }
 }

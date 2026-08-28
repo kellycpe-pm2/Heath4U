@@ -1,9 +1,13 @@
-// com/example/healt4u/nav/AppNavGraph.kt
 package com.example.healt4u.nav
 
+import androidx.annotation.OptIn
+import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -13,35 +17,38 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.ViewModel.AdminManagementViewModel
-import com.example.healt4u.ViewModel.HospitalViewModel
-import com.example.healt4u.screen.Admin.AdminSettingsScreen
 import com.example.healt4u.ViewModel.FamilyModeViewModel
+import com.example.healt4u.ViewModel.HospitalViewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
 import com.example.healt4u.screen.Admin.AdminDoctorScreen
 import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Admin.AdminLoginScreen
+import com.example.healt4u.screen.Admin.AdminSettingsScreen
 import com.example.healt4u.screen.Admin.AdminSubscriptionScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
+import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatScreen
 import com.example.healt4u.screen.DoctorPatientChat.DoctorListScreen
 import com.example.healt4u.screen.DoctorPatientChat.HospitalListScreen
-import com.example.healt4u.screen.Medicine.AddMedicineScreen
-import com.example.healt4u.screen.Medicine.EditMedicineScreen
-import com.example.healt4u.screen.Medicine.MedicineDetailScreen
-import com.example.healt4u.screen.Medicine.MedicineListScreen
-import com.example.healt4u.model.Hospital
-import com.example.healt4u.model.Doctor
-import com.example.healt4u.Storage.getMessagesByConversation
-import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
 import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
 import com.example.healt4u.screen.FamilyMode.CaregiverAlertScreen
 import com.example.healt4u.screen.FamilyMode.FamilyModeScreen
 import com.example.healt4u.screen.FamilyMode.SetPatientPhoneScreen
+import com.example.healt4u.screen.Medicine.AddMedicineScreen
+import com.example.healt4u.screen.Medicine.EditMedicineScreen
+import com.example.healt4u.screen.Medicine.MedicineDetailScreen
+import com.example.healt4u.screen.Medicine.MedicineListScreen
+import com.example.healt4u.screen.ScanScreen.ManualInputDialog
+import com.example.healt4u.screen.ScanScreen.ScannerScreen
 
+
+@androidx.camera.core.ExperimentalGetImage
+@OptIn(ExperimentalGetImage::class)
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
@@ -59,13 +66,14 @@ fun AppNavGraph(
 
     val medicines by vm_med.medicines.collectAsStateWithLifecycle()
     val success by vm_med.success.collectAsStateWithLifecycle()
+    var showManualDialog by remember { mutableStateOf(false) }
 
-
-    //reset
+    // reset
     vm_med.clearSuccessState()
     vm_med.clearError()
     vm_med.clearValidationErrors()
     vm_med.clearSuccess()
+
     NavHost(
         navController = navController,
         startDestination = "login"
@@ -203,6 +211,29 @@ fun AppNavGraph(
             }
         }
 
+        composable("scan") {
+            ScannerScreen(
+                onBarcodeScanned = { barcode: String ->
+                },
+                onManualInput = {
+                    showManualDialog = true
+                },
+                onFlashToggle = { isOn: Boolean -> },
+                onGalleryPick = {},
+                onBackClick = {  },
+                context = context
+            )
+
+            if (showManualDialog) {
+                ManualInputDialog(
+                    onDismiss = { showManualDialog = false },
+                    onSearch = { malNumber: String ->
+                        showManualDialog = false
+                    }
+                )
+            }
+        }
+
         composable("chat_list") {
             ChatListScreen(
                 patientId = "p001",
@@ -234,7 +265,6 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val hospitalId = backStackEntry.arguments?.getInt("hospitalId") ?: 0
-
             val hospital = com.example.healt4u.data.HospitalData.getHospitalById(hospitalId)
 
             if (hospital != null) {
@@ -260,7 +290,6 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
-
             val doctorId = conversationId.split("_").firstOrNull()?.toIntOrNull() ?: 0
             val doctor = com.example.healt4u.data.HospitalData.getDoctorById(doctorId)
 
@@ -290,16 +319,26 @@ fun AppNavGraph(
                 onSettingsClick = { navController.navigate("admin_settings") }
             )
         }
+
         composable("admin_settings") {
-            AdminSettingsScreen(onBack = { navController.popBackStack() })
+            AdminSettingsScreen(
+                onBack = { navController.popBackStack() },
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable("admin_hospitals") {
             AdminHospitalScreen(vm = vm_admin, onBack = { navController.popBackStack() })
         }
+
         composable("admin_doctors") {
             AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
         }
+
         composable("admin_subscription") {
             AdminSubscriptionScreen(onBack = { navController.popBackStack() })
         }
@@ -335,6 +374,5 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() }
             )
         }
-
     }
 }

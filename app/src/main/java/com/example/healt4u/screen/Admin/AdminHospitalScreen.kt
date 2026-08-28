@@ -3,12 +3,15 @@ package com.example.healt4u.screen.Admin
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.material3.*import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -149,37 +152,65 @@ private fun LinkDoctorDialog(
     onDismiss: () -> Unit,
     onLink: (Doctor) -> Unit
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Link Doctor to ${hospital.name}") },
-        text = {
-            if (doctors.isEmpty()) {
-                Text("No available doctors to link.")
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(doctors) { doctor ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { onLink(doctor) }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text("Link Doctor to ${hospital.name}", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(Modifier.height(12.dp))
+
+                if (doctors.isEmpty()) {
+                    Text("No available doctors to link.", color = Color(0xFF61717D))
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 300.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        doctors.forEach { doctor ->
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFFF0F4FF),
+                                onClick = {
+                                    onLink(doctor)
+                                    onDismiss()
+                                }
                             ) {
-                                Icon(Icons.Default.Link, null, tint = AppBlue, modifier = Modifier.size(20.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Column {
-                                    Text(doctor.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text(doctor.specialization, fontSize = 12.sp, color = Color(0xFF61717D))
+                                Row(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Link, null, tint = AppBlue, modifier = Modifier.size(22.dp))
+                                    Spacer(Modifier.width(12.dp))
+                                    Column {
+                                        Text(doctor.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.Black)
+                                        Text(doctor.specialization, fontSize = 12.sp, color = Color(0xFF61717D))
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE0E0E0))
+                ) {
+                    Text("Cancel", color = Color(0xFF333333), fontWeight = FontWeight.Bold)
+                }
             }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
         }
-    )
+    }
 }

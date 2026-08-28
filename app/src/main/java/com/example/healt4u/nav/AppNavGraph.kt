@@ -63,6 +63,7 @@ import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.sendMessage
 import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
+import java.util.Locale
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -171,6 +172,12 @@ fun AppNavGraph(
         }
 
         composable("schedule") {
+            val context = LocalContext.current
+
+            LaunchedEffect(Unit) {
+                vm_reminder.loadTodaySchedule(context)
+            }
+
             ScheduleListScreen(
                 vm = vm_reminder,
                 onBack = { navController.popBackStack() }
@@ -304,8 +311,20 @@ fun AppNavGraph(
         composable("appointment") {
             AppointmentScreen(
                 onBack = { navController.popBackStack() },
-                onConfirm = { hospital, doctor, date, time ->
-                    //
+                onConfirm = { hospitalName, doctorName, date, time ->
+                    coroutineScope.launch {
+                        val inputFormat = java.text.SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+                        val outputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        val parsedDate = inputFormat.parse(date)
+                        val standardDate = outputFormat.format(parsedDate!!)
+
+                        vm_reminder.addAppointmentReminder(
+                            hospitalName = hospitalName,
+                            doctorName = doctorName,
+                            date = standardDate,
+                            time = time
+                        )
+                    }
                     navController.popBackStack()
                 }
             )

@@ -50,6 +50,12 @@ class ReminderViewModel(
                 var merged = mergeGeneratedWithSaved(generated, savedLocal)
                 _todaySchedule.value = flagOverdueAsMissed(merged)
 
+                // Keep appointment reminders
+                val appointmentsLocal = savedLocal.filter { it.medicineId == -1 }
+                var allItems = (merged + appointmentsLocal).distinctBy { it.id }
+                allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
+                _todaySchedule.value = allItems
+
                 val savedCloud = getReminderLogsForDate(date)
                 if (savedCloud.isNotEmpty()) {
                     merged = mergeGeneratedWithSaved(generated, savedCloud)
@@ -147,5 +153,30 @@ class ReminderViewModel(
         val h = (totalMinutes / 60) % 24
         val m = totalMinutes % 60
         return "%02d:%02d".format(h, m)
+    }
+
+    //appointment reminder
+    fun addAppointmentReminder(
+        hospitalName: String,
+        doctorName: String,
+        date: String,
+        time: String,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val reminderLog = ReminderLog(
+                id = "app_${date}_${time}_${doctorName.hashCode()}",
+                medicineId = -1, // Special ID = not a medicine
+                medicineName = "Appointment: Dr. $doctorName",
+                date = date,
+                time = time,
+                status = "PENDING"
+            )
+
+            upsertReminderLogLocal(getApplication(), reminderLog)
+            upsertReminderLog(reminderLog)
+
+            onComplete()
+        }
     }
 }

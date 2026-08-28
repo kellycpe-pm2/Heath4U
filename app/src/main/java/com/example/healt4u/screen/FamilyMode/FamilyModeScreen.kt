@@ -119,9 +119,6 @@ fun FamilyModeScreen(
                             fontSize = 13.sp,
                             color = if (patientPhone.isEmpty()) AlertOrange else Color(0xFF101820)
                         )
-                        if (patientPhone.isNotEmpty()) {
-                            Text(patientPhone, fontSize = 12.sp, color = Color(0xFF61717D), modifier = Modifier.padding(top = 2.dp))
-                        }
                     }
                 }
             }

@@ -44,7 +44,8 @@ fun HomeDashboardScreen(
     onScheduleClick: () -> Unit,
     onFamilyModeClick: () -> Unit = {},
     onUnbuiltModuleClick: (String) -> Unit = {},
-    onChatClick:()-> Unit
+    onChatClick:()-> Unit,
+    onAppointmentClick:()-> Unit
 ) {
     val context = LocalContext.current
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -239,7 +240,7 @@ fun HomeDashboardScreen(
                                 label = "Appointment",
                                 icon = Icons.Filled.Event,
                                 modifier = Modifier.weight(1f),
-                                onClick = { notImplemented("Appointment") }
+                                onClick = { onAppointmentClick() }
                             )
                         }
                     }

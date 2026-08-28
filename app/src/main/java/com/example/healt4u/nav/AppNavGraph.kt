@@ -61,6 +61,7 @@ import com.example.healt4u.model.Message
 import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.screen.AppointmentScreen
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -162,7 +163,8 @@ fun AppNavGraph(
                 onMedicineClick = { navController.navigate("list") },
                 onScheduleClick = { navController.navigate("schedule") },
                 onChatClick = { navController.navigate("chat_list") },
-                onFamilyModeClick = { navController.navigate("family_mode") }
+                onFamilyModeClick = { navController.navigate("family_mode") },
+                onAppointmentClick ={navController.navigate("appointment")}
             )
         }
 
@@ -295,6 +297,16 @@ fun AppNavGraph(
                     }
                 )
             }
+        }
+
+        composable("appointment") {
+            AppointmentScreen(
+                onBack = { navController.popBackStack() },
+                onConfirm = { hospital, doctor, date, time ->
+                    //
+                    navController.popBackStack()
+                }
+            )
         }
 
         composable("chat_list") {

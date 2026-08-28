@@ -3,12 +3,16 @@ package com.example.healt4u.screen.Admin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -29,23 +33,47 @@ import kotlinx.coroutines.launch
 private val AppBlue = Color(0xFF3779EE)
 private val ScreenBlue = Color(0xFFE6F8FC)
 
+private fun isValidEmail(email: String): Boolean {
+    return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+}
+
+private fun isValidPhone(phone: String): Boolean {
+    val digitsOnly = phone.filter { it.isDigit() }
+    return digitsOnly.length in 10..15
+}
+
+private fun isValidPassword(password: String): Boolean {
+    return password.length >= 6
+}
+
 @Composable
 fun AdminLoginScreen(
     onAdminLoginSuccess: () -> Unit,
-    onPatientLoginSuccess: () -> Unit
+    onPatientLoginSuccess: () -> Unit,
+    onForgotPassword: () -> Unit = {}
 ) {
     var selectedRole by remember { mutableStateOf<String?>(null) }
+    var isSignUp by remember { mutableStateOf(false) }
+    var loginMethod by remember { mutableStateOf("email") }
+    var isLoading by remember { mutableStateOf(false) }
+
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var isSignUp by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxSize().background(ScreenBlue),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(ScreenBlue)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(60.dp))
@@ -79,60 +107,73 @@ fun AdminLoginScreen(
             } else {
                 AdminAuthContent(
                     isSignUp = isSignUp,
+                    loginMethod = loginMethod,
+                    email = email,
+                    phone = phone,
                     username = username,
                     password = password,
+                    confirmPassword = confirmPassword,
                     passwordVisible = passwordVisible,
+                    confirmPasswordVisible = confirmPasswordVisible,
                     isLoading = isLoading,
+                    onEmailChange = { email = it },
+                    onPhoneChange = { phone = it },
                     onUsernameChange = { username = it },
                     onPasswordChange = { password = it },
+                    onConfirmPasswordChange = { confirmPassword = it },
                     onTogglePassword = { passwordVisible = !passwordVisible },
+                    onToggleConfirmPassword = { confirmPasswordVisible = !confirmPasswordVisible },
+                    onLoginMethodChange = { loginMethod = it },
                     onToggleMode = {
                         isSignUp = !isSignUp
+                        email = ""
+                        phone = ""
                         username = ""
                         password = ""
+                        confirmPassword = ""
                     },
                     onBack = {
                         selectedRole = null
+                        isSignUp = false
+                        email = ""
+                        phone = ""
                         username = ""
                         password = ""
-                        isSignUp = false
+                        confirmPassword = ""
                     },
+                    onForgotPassword = onForgotPassword,
                     onSubmit = {
-                        if (username.isBlank() || password.isBlank()) {
-                            scope.launch { snackbarHostState.showSnackbar("Please fill in all fields") }
-                            return@AdminAuthContent
-                        }
-                        isLoading = true
                         scope.launch {
                             if (isSignUp) {
-                                val signUpResult = adminSignUp(username, password)
-                                isLoading = false
-                                signUpResult.fold(
+                                handleSignUp(
+                                    loginMethod = loginMethod,
+                                    email = email,
+                                    phone = phone,
+                                    username = username,
+                                    password = password,
+                                    confirmPassword = confirmPassword,
+                                    snackbarHostState = snackbarHostState,
+                                    scope = scope,
+                                    isLoading = { isLoading = it },
                                     onSuccess = {
                                         isSignUp = false
-                                        scope.launch { snackbarHostState.showSnackbar("Account created! Logging in...") }
-                                        isLoading = true
-                                        val signInResult = adminSignIn(username, password)
-                                        isLoading = false
-                                        signInResult.fold(
-                                            onSuccess = { onAdminLoginSuccess() },
-                                            onFailure = { e ->
-                                                scope.launch { snackbarHostState.showSnackbar(e.message ?: "Login failed. Try logging in manually.") }
-                                            }
-                                        )
-                                    },
-                                    onFailure = { e ->
-                                        scope.launch { snackbarHostState.showSnackbar(e.message ?: "Registration failed") }
+                                        email = ""
+                                        phone = ""
+                                        username = ""
+                                        password = ""
+                                        confirmPassword = ""
                                     }
                                 )
                             } else {
-                                val result = adminSignIn(username, password)
-                                isLoading = false
-                                result.fold(
-                                    onSuccess = { onAdminLoginSuccess() },
-                                    onFailure = { e ->
-                                        scope.launch { snackbarHostState.showSnackbar(e.message ?: "Login failed") }
-                                    }
+                                handleSignIn(
+                                    loginMethod = loginMethod,
+                                    email = email,
+                                    phone = phone,
+                                    password = password,
+                                    snackbarHostState = snackbarHostState,
+                                    scope = scope,
+                                    isLoading = { isLoading = it },
+                                    onSuccess = onAdminLoginSuccess
                                 )
                             }
                         }
@@ -146,6 +187,120 @@ fun AdminLoginScreen(
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
         )
     }
+}
+
+private suspend fun handleSignUp(
+    loginMethod: String,
+    email: String,
+    phone: String,
+    username: String,
+    password: String,
+    confirmPassword: String,
+    snackbarHostState: SnackbarHostState,
+    scope: kotlinx.coroutines.CoroutineScope,
+    isLoading: (Boolean) -> Unit,
+    onSuccess: () -> Unit
+) {
+    if (username.isBlank()) {
+        scope.launch { snackbarHostState.showSnackbar("Please enter a username") }
+        return
+    }
+    if (username.length < 3) {
+        scope.launch { snackbarHostState.showSnackbar("Username must be at least 3 characters") }
+        return
+    }
+    if (loginMethod == "email") {
+        if (email.isBlank()) {
+            scope.launch { snackbarHostState.showSnackbar("Please enter your email address") }
+            return
+        }
+        if (!isValidEmail(email)) {
+            scope.launch { snackbarHostState.showSnackbar("Please enter a valid email address") }
+            return
+        }
+    } else {
+        if (phone.isBlank()) {
+            scope.launch { snackbarHostState.showSnackbar("Please enter your phone number") }
+            return
+        }
+        if (!isValidPhone(phone)) {
+            scope.launch { snackbarHostState.showSnackbar("Please enter a valid phone number (10-15 digits)") }
+            return
+        }
+    }
+    if (password.isBlank()) {
+        scope.launch { snackbarHostState.showSnackbar("Please enter a password") }
+        return
+    }
+    if (!isValidPassword(password)) {
+        scope.launch { snackbarHostState.showSnackbar("Password must be at least 6 characters") }
+        return
+    }
+    if (password != confirmPassword) {
+        scope.launch { snackbarHostState.showSnackbar("Passwords do not match") }
+        return
+    }
+
+    isLoading(true)
+    val signUpResult = adminSignUp(
+        username = username,
+        password = password,
+        email = if (loginMethod == "email") email else null,
+        phone = if (loginMethod == "phone") phone else null
+    )
+    isLoading(false)
+    signUpResult.fold(
+        onSuccess = {
+            scope.launch { snackbarHostState.showSnackbar("Account created! You can now log in.") }
+            onSuccess()
+        },
+        onFailure = { e ->
+            scope.launch { snackbarHostState.showSnackbar(e.message ?: "Registration failed") }
+        }
+    )
+}
+
+private suspend fun handleSignIn(
+    loginMethod: String,
+    email: String,
+    phone: String,
+    password: String,
+    snackbarHostState: SnackbarHostState,
+    scope: kotlinx.coroutines.CoroutineScope,
+    isLoading: (Boolean) -> Unit,
+    onSuccess: () -> Unit
+) {
+    val credential = if (loginMethod == "email") email else phone
+    if (credential.isBlank()) {
+        scope.launch {
+            snackbarHostState.showSnackbar(
+                if (loginMethod == "email") "Please enter your email address" else "Please enter your phone number"
+            )
+        }
+        return
+    }
+    if (loginMethod == "email" && !isValidEmail(email)) {
+        scope.launch { snackbarHostState.showSnackbar("Please enter a valid email address") }
+        return
+    }
+    if (loginMethod == "phone" && !isValidPhone(phone)) {
+        scope.launch { snackbarHostState.showSnackbar("Please enter a valid phone number") }
+        return
+    }
+    if (password.isBlank()) {
+        scope.launch { snackbarHostState.showSnackbar("Please enter your password") }
+        return
+    }
+
+    isLoading(true)
+    val result = adminSignIn(credential, password, loginMethod)
+    isLoading(false)
+    result.fold(
+        onSuccess = { onSuccess() },
+        onFailure = { e ->
+            scope.launch { snackbarHostState.showSnackbar(e.message ?: "Login failed") }
+        }
+    )
 }
 
 @Composable
@@ -248,15 +403,26 @@ private fun RoleSelectionContent(
 @Composable
 private fun AdminAuthContent(
     isSignUp: Boolean,
+    loginMethod: String,
+    email: String,
+    phone: String,
     username: String,
     password: String,
+    confirmPassword: String,
     passwordVisible: Boolean,
+    confirmPasswordVisible: Boolean,
     isLoading: Boolean,
+    onEmailChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
     onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
     onTogglePassword: () -> Unit,
+    onToggleConfirmPassword: () -> Unit,
+    onLoginMethodChange: (String) -> Unit,
     onToggleMode: () -> Unit,
     onBack: () -> Unit,
+    onForgotPassword: () -> Unit,
     onSubmit: () -> Unit
 ) {
     Column(
@@ -280,26 +446,89 @@ private fun AdminAuthContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
-        OutlinedTextField(
-            value = username,
-            onValueChange = onUsernameChange,
-            placeholder = { Text("Username", color = Color(0xFF9E9E9E)) },
-            leadingIcon = {
-                Icon(Icons.Default.Person, contentDescription = null, tint = AppBlue)
-            },
-            singleLine = true,
-            shape = RoundedCornerShape(50.dp),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                focusedIndicatorColor = AppBlue,
-                unfocusedIndicatorColor = Color(0xFFBDBDBD),
-                cursorColor = AppBlue
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            MethodChip(
+                label = "Email",
+                selected = loginMethod == "email",
+                onClick = { onLoginMethodChange("email") }
+            )
+            Spacer(Modifier.width(12.dp))
+            MethodChip(
+                label = "Phone",
+                selected = loginMethod == "phone",
+                onClick = { onLoginMethodChange("phone") }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (loginMethod == "email") {
+            OutlinedTextField(
+                value = email,
+                onValueChange = onEmailChange,
+                placeholder = { Text("Email Address", color = Color(0xFF9E9E9E)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Email, contentDescription = null, tint = AppBlue)
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = AppBlue,
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
+                    cursorColor = AppBlue
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        } else {
+            OutlinedTextField(
+                value = phone,
+                onValueChange = onPhoneChange,
+                placeholder = { Text("Phone Number", color = Color(0xFF9E9E9E)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Phone, contentDescription = null, tint = AppBlue)
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = AppBlue,
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
+                    cursorColor = AppBlue
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        if (isSignUp) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = username,
+                onValueChange = onUsernameChange,
+                placeholder = { Text("Username", color = Color(0xFF9E9E9E)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = AppBlue)
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = AppBlue,
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
+                    cursorColor = AppBlue
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -332,6 +561,39 @@ private fun AdminAuthContent(
             modifier = Modifier.fillMaxWidth()
         )
 
+        if (isSignUp) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = onConfirmPasswordChange,
+                placeholder = { Text("Confirm Password", color = Color(0xFF9E9E9E)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Lock, contentDescription = null, tint = AppBlue)
+                },
+                trailingIcon = {
+                    IconButton(onClick = onToggleConfirmPassword) {
+                        Icon(
+                            if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                            contentDescription = "Toggle confirm password",
+                            tint = AppBlue
+                        )
+                    }
+                },
+                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = AppBlue,
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
+                    cursorColor = AppBlue
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         Spacer(modifier = Modifier.height(20.dp))
 
         Button(
@@ -357,6 +619,18 @@ private fun AdminAuthContent(
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+
+        if (!isSignUp) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Forgot Password?",
+                color = AppBlue,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable { onForgotPassword() }
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -388,6 +662,32 @@ private fun AdminAuthContent(
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             modifier = Modifier.clickable { onBack() }
+        )
+    }
+}
+
+@Composable
+private fun MethodChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor = if (selected) AppBlue else Color.White
+    val textColor = if (selected) Color.White else AppBlue
+    val borderColor = if (selected) AppBlue else Color(0xFFBDBDBD)
+
+    Surface(
+        modifier = Modifier.clickable { onClick() },
+        shape = RoundedCornerShape(50.dp),
+        color = bgColor,
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+    ) {
+        Text(
+            text = label,
+            color = textColor,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
         )
     }
 }

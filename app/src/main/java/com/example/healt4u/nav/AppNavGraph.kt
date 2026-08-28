@@ -33,8 +33,10 @@ import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
 import com.example.healt4u.screen.Admin.AdminDoctorScreen
+import com.example.healt4u.screen.Admin.AdminForgotPasswordScreen
 import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Admin.AdminLoginScreen
+import com.example.healt4u.screen.Admin.AdminResetPasswordScreen
 import com.example.healt4u.screen.Admin.AdminSettingsScreen
 import com.example.healt4u.screen.Admin.AdminSubscriptionScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
@@ -107,6 +109,45 @@ fun AppNavGraph(
                 onPatientLoginSuccess = {
                     navController.navigate("dashboard") {
                         popUpTo("login") { inclusive = true }
+                    }
+                },
+                onForgotPassword = {
+                    navController.navigate("forgot_password")
+                }
+            )
+        }
+
+        composable("forgot_password") {
+            AdminForgotPasswordScreen(
+                onBack = { navController.popBackStack() },
+                onAccountFound = { emailOrPhone, method ->
+                    navController.navigate("reset_password/${method}/${java.net.URLEncoder.encode(emailOrPhone, "UTF-8")}") {
+                        popUpTo("forgot_password") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = "reset_password/{method}/{emailOrPhone}",
+            arguments = listOf(
+                navArgument("method") { type = NavType.StringType },
+                navArgument("emailOrPhone") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val method = backStackEntry.arguments?.getString("method") ?: "email"
+            val emailOrPhone = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("emailOrPhone") ?: "",
+                "UTF-8"
+            )
+
+            AdminResetPasswordScreen(
+                emailOrPhone = emailOrPhone,
+                method = method,
+                onBack = { navController.popBackStack() },
+                onPasswordReset = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
                     }
                 }
             )
@@ -394,7 +435,8 @@ fun AppNavGraph(
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                adminUsername = ""
             )
         }
 

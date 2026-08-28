@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
@@ -19,13 +21,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.healt4u.Storage.adminChangePassword
+import kotlinx.coroutines.launch
 
 private val AppBlue = Color(0xFF3779EE)
 
 @Composable
-fun AdminSettingsScreen(onBack: () -> Unit, onLogout: () -> Unit = onBack) {
+fun AdminSettingsScreen(
+    onBack: () -> Unit,
+    onLogout: () -> Unit = onBack,
+    adminUsername: String = ""
+) {
     var showChangePasswordDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -127,7 +137,10 @@ fun AdminSettingsScreen(onBack: () -> Unit, onLogout: () -> Unit = onBack) {
     }
 
     if (showChangePasswordDialog) {
-        ChangePasswordDialog(onDismiss = { showChangePasswordDialog = false })
+        ChangePasswordDialog(
+            adminUsername = adminUsername,
+            onDismiss = { showChangePasswordDialog = false }
+        )
     }
 }
 
@@ -162,13 +175,22 @@ private fun SettingsItem(
 }
 
 @Composable
-private fun ChangePasswordDialog(onDismiss: () -> Unit) {
+private fun ChangePasswordDialog(
+    adminUsername: String,
+    onDismiss: () -> Unit
+) {
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
+    var currentPasswordVisible by remember { mutableStateOf(false) }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text("Change Password", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -177,6 +199,16 @@ private fun ChangePasswordDialog(onDismiss: () -> Unit) {
                     onValueChange = { currentPassword = it },
                     label = { Text("Current Password") },
                     singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { currentPasswordVisible = !currentPasswordVisible }) {
+                            Icon(
+                                if (currentPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle password",
+                                tint = AppBlue
+                            )
+                        }
+                    },
+                    visualTransformation = if (currentPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -184,6 +216,16 @@ private fun ChangePasswordDialog(onDismiss: () -> Unit) {
                     onValueChange = { newPassword = it },
                     label = { Text("New Password") },
                     singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                            Icon(
+                                if (newPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle password",
+                                tint = AppBlue
+                            )
+                        }
+                    },
+                    visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -191,6 +233,16 @@ private fun ChangePasswordDialog(onDismiss: () -> Unit) {
                     onValueChange = { confirmPassword = it },
                     label = { Text("Confirm New Password") },
                     singleLine = true,
+                    trailingIcon = {
+                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            Icon(
+                                if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle password",
+                                tint = AppBlue
+                            )
+                        }
+                    },
+                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -198,15 +250,57 @@ private fun ChangePasswordDialog(onDismiss: () -> Unit) {
         confirmButton = {
             TextButton(
                 onClick = {
-                    // TODO: Implement password change via Supabase
-                    onDismiss()
-                }
+                    scope.launch {
+                        if (currentPassword.isBlank()) {
+                            snackbarHostState.showSnackbar("Please enter your current password")
+                            return@launch
+                        }
+                        if (newPassword.isBlank()) {
+                            snackbarHostState.showSnackbar("Please enter a new password")
+                            return@launch
+                        }
+                        if (newPassword.length < 6) {
+                            snackbarHostState.showSnackbar("New password must be at least 6 characters")
+                            return@launch
+                        }
+                        if (newPassword != confirmPassword) {
+                            snackbarHostState.showSnackbar("New passwords do not match")
+                            return@launch
+                        }
+                        if (newPassword == currentPassword) {
+                            snackbarHostState.showSnackbar("New password must be different from current")
+                            return@launch
+                        }
+
+                        isLoading = true
+                        val result = adminChangePassword(adminUsername, currentPassword, newPassword)
+                        isLoading = false
+                        result.fold(
+                            onSuccess = {
+                                snackbarHostState.showSnackbar("Password changed successfully")
+                                onDismiss()
+                            },
+                            onFailure = { e ->
+                                snackbarHostState.showSnackbar(e.message ?: "Password change failed")
+                            }
+                        )
+                    }
+                },
+                enabled = !isLoading
             ) {
-                Text("Save", color = AppBlue)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = AppBlue
+                    )
+                } else {
+                    Text("Save", color = AppBlue)
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !isLoading) {
                 Text("Cancel")
             }
         }

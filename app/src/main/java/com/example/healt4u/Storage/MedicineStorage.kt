@@ -219,10 +219,10 @@ suspend fun delete_Medicine(
     }
 }
 
-suspend fun adminSignIn(username: String, password: String): Result<String> {
+suspend fun adminSignIn(emailOrPhone: String, password: String, loginMethod: String): Result<String> {
     return try {
         withContext(Dispatchers.IO) {
-            android.util.Log.d("AdminAuth", "Signing in with username: $username")
+            android.util.Log.d("AdminAuth", "Signing in with $loginMethod: $emailOrPhone")
             val users = supabase
                 .from("admin_users")
                 .select()
@@ -230,13 +230,20 @@ suspend fun adminSignIn(username: String, password: String): Result<String> {
 
             android.util.Log.d("AdminAuth", "Total users in table: ${users.size}")
 
-            val matched = users.find { it.username == username && it.password == password }
+            val matched = users.find { user ->
+                val credentialMatch = when (loginMethod) {
+                    "email" -> user.email == emailOrPhone
+                    "phone" -> user.phone == emailOrPhone
+                    else -> false
+                }
+                credentialMatch && user.password == password
+            }
             if (matched != null) {
-                android.util.Log.d("AdminAuth", "Login successful for: $username")
+                android.util.Log.d("AdminAuth", "Login successful for: $emailOrPhone")
                 Result.success("Login successful")
             } else {
-                android.util.Log.d("AdminAuth", "No match found for: $username")
-                Result.failure(Exception("Invalid username or password"))
+                android.util.Log.d("AdminAuth", "No match found for: $emailOrPhone")
+                Result.failure(Exception("Invalid credentials or password"))
             }
         }
     } catch (e: Exception) {
@@ -245,26 +252,63 @@ suspend fun adminSignIn(username: String, password: String): Result<String> {
     }
 }
 
-suspend fun adminSignUp(username: String, password: String): Result<String> {
+suspend fun adminSignUp(
+    username: String,
+    password: String,
+    email: String?,
+    phone: String?
+): Result<String> {
     return try {
         withContext(Dispatchers.IO) {
             android.util.Log.d("AdminAuth", "Signing up with username: $username")
-            val existing = supabase
+
+            val existingUsername = supabase
                 .from("admin_users")
                 .select {
-                    filter {
-                        eq("username", username)
-                    }
+                    filter { eq("username", username) }
                 }
                 .decodeList<AdminUser>()
 
-            if (existing.isNotEmpty()) {
+            if (existingUsername.isNotEmpty()) {
                 return@withContext Result.failure(Exception("Username already taken"))
+            }
+
+            if (!email.isNullOrBlank()) {
+                val existingEmail = supabase
+                    .from("admin_users")
+                    .select {
+                        filter { eq("email", email) }
+                    }
+                    .decodeList<AdminUser>()
+
+                if (existingEmail.isNotEmpty()) {
+                    return@withContext Result.failure(Exception("Email already registered"))
+                }
+            }
+
+            if (!phone.isNullOrBlank()) {
+                val existingPhone = supabase
+                    .from("admin_users")
+                    .select {
+                        filter { eq("phone", phone) }
+                    }
+                    .decodeList<AdminUser>()
+
+                if (existingPhone.isNotEmpty()) {
+                    return@withContext Result.failure(Exception("Phone number already registered"))
+                }
             }
 
             supabase
                 .from("admin_users")
-                .insert(AdminUser(username = username, password = password))
+                .insert(
+                    AdminUser(
+                        username = username,
+                        password = password,
+                        email = email,
+                        phone = phone
+                    )
+                )
 
             android.util.Log.d("AdminAuth", "Account created successfully")
             Result.success("Account created successfully")
@@ -272,5 +316,112 @@ suspend fun adminSignUp(username: String, password: String): Result<String> {
     } catch (e: Exception) {
         android.util.Log.e("AdminAuth", "adminSignUp failed", e)
         Result.failure(Exception("Registration failed: ${e.message}"))
+    }
+}
+
+suspend fun adminFindAccount(emailOrPhone: String, method: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Finding account with $method: $emailOrPhone")
+            val users = supabase
+                .from("admin_users")
+                .select()
+                .decodeList<AdminUser>()
+
+            val matched = users.find { user ->
+                when (method) {
+                    "email" -> user.email == emailOrPhone
+                    "phone" -> user.phone == emailOrPhone
+                    else -> false
+                }
+            }
+
+            if (matched != null) {
+                android.util.Log.d("AdminAuth", "Account found for: $emailOrPhone")
+                Result.success(matched.username)
+            } else {
+                android.util.Log.d("AdminAuth", "No account found for: $emailOrPhone")
+                Result.failure(Exception("No account found with this $method"))
+            }
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("AdminAuth", "adminFindAccount failed", e)
+        Result.failure(Exception("Account lookup failed: ${e.message}"))
+    }
+}
+
+suspend fun adminResetPassword(emailOrPhone: String, method: String, newPassword: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Resetting password for $method: $emailOrPhone")
+            val users = supabase
+                .from("admin_users")
+                .select()
+                .decodeList<AdminUser>()
+
+            val matched = users.find { user ->
+                when (method) {
+                    "email" -> user.email == emailOrPhone
+                    "phone" -> user.phone == emailOrPhone
+                    else -> false
+                }
+            }
+
+            if (matched == null) {
+                return@withContext Result.failure(Exception("No account found with this $method"))
+            }
+
+            supabase
+                .from("admin_users")
+                .update(
+                    mapOf("password" to newPassword)
+                ) {
+                    filter { eq("id", matched.id) }
+                }
+
+            android.util.Log.d("AdminAuth", "Password reset successful for: $emailOrPhone")
+            Result.success("Password reset successful")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("AdminAuth", "adminResetPassword failed", e)
+        Result.failure(Exception("Password reset failed: ${e.message}"))
+    }
+}
+
+suspend fun adminChangePassword(
+    username: String,
+    currentPassword: String,
+    newPassword: String
+): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Changing password for: $username")
+            val users = supabase
+                .from("admin_users")
+                .select()
+                .decodeList<AdminUser>()
+
+            val matched = users.find {
+                it.username == username && it.password == currentPassword
+            }
+
+            if (matched == null) {
+                return@withContext Result.failure(Exception("Current password is incorrect"))
+            }
+
+            supabase
+                .from("admin_users")
+                .update(
+                    mapOf("password" to newPassword)
+                ) {
+                    filter { eq("id", matched.id) }
+                }
+
+            android.util.Log.d("AdminAuth", "Password changed successfully for: $username")
+            Result.success("Password changed successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("AdminAuth", "adminChangePassword failed", e)
+        Result.failure(Exception("Password change failed: ${e.message}"))
     }
 }

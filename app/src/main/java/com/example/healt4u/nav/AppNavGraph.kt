@@ -311,12 +311,14 @@ fun AppNavGraph(
         composable("appointment") {
             AppointmentScreen(
                 onBack = { navController.popBackStack() },
-                onConfirm = { hospitalName, doctorName, date, time ->
+                onConfirm = { hospitalName, doctorName, displayDate, time ->
                     coroutineScope.launch {
-                        val inputFormat = java.text.SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                        val outputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                        val parsedDate = inputFormat.parse(date)
+                        val inputFormat = java.text.SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
+                        val outputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
+                        val parsedDate = inputFormat.parse(displayDate)
                         val standardDate = outputFormat.format(parsedDate!!)
+
+                        android.util.Log.d("APPT_DEBUG", "Saving appointment: $standardDate at $time, Dr.$doctorName, Hospital: $hospitalName")
 
                         vm_reminder.addAppointmentReminder(
                             hospitalName = hospitalName,

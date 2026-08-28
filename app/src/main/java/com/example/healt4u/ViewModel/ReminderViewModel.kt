@@ -42,27 +42,32 @@ class ReminderViewModel(
             _isLoading.value = true
             try {
                 val date = todayDate()
+
                 val medicines = load_Medicines(context)
                 val generated = generateSlotsFor(medicines, date)
 
-                // Local cache first (instant), then reconcile with cloud if reachable
                 val savedLocal = loadReminderLogsForDate(context, date)
-                var merged = mergeGeneratedWithSaved(generated, savedLocal)
-                _todaySchedule.value = flagOverdueAsMissed(merged)
 
-                // Keep appointment reminders
-                val appointmentsLocal = savedLocal.filter { it.medicineId == -1 }
-                var allItems = (merged + appointmentsLocal).distinctBy { it.id }
+                // Merge medicine reminders + appointments
+                val appointments = savedLocal.filter { it.medicineId == -1 }
+                var merged = mergeGeneratedWithSaved(generated, savedLocal)
+                var allItems = (merged + appointments).distinctBy { it.id }
+
                 allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
                 _todaySchedule.value = allItems
 
+                // Cloud sync
                 val savedCloud = getReminderLogsForDate(date)
                 if (savedCloud.isNotEmpty()) {
                     merged = mergeGeneratedWithSaved(generated, savedCloud)
-                    _todaySchedule.value = flagOverdueAsMissed(merged)
-                    upsertReminderLogsLocal(context, merged)
+                    val cloudAppointments = savedCloud.filter { it.medicineId == -1 }
+                    allItems = (merged + cloudAppointments).distinctBy { it.id }
+                    allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
+                    _todaySchedule.value = allItems
+                    upsertReminderLogsLocal(context, allItems)
                 }
             } catch (e: Exception) {
+                android.util.Log.e("APPT_DEBUG", "Error loading schedule", e)
                 e.printStackTrace()
             } finally {
                 _isLoading.value = false
@@ -135,9 +140,9 @@ class ReminderViewModel(
     fun markMissed(context: Context, log: ReminderLog) = markStatus(context, log, "MISSED")
 
     fun adherenceCount(): Pair<Int, Int> {
-        val logs = _todaySchedule.value
-        val taken = logs.count { it.status == "TAKEN" }
-        return taken to logs.size
+        val medicineLogs = _todaySchedule.value.filter { it.medicineId != -1 }
+        val taken = medicineLogs.count { it.status == "TAKEN" }
+        return taken to medicineLogs.size
     }
 
     fun missedLogs(): List<ReminderLog> = _todaySchedule.value.filter { it.status == "MISSED" }
@@ -160,14 +165,13 @@ class ReminderViewModel(
         hospitalName: String,
         doctorName: String,
         date: String,
-        time: String,
-        onComplete: () -> Unit = {}
+        time: String
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             val reminderLog = ReminderLog(
-                id = "app_${date}_${time}_${doctorName.hashCode()}",
-                medicineId = -1, // Special ID = not a medicine
-                medicineName = "Appointment: Dr. $doctorName",
+                id = "appt_${date}_${time}_${doctorName.hashCode()}",
+                medicineId = -1,
+                medicineName = "Appointment: $doctorName",
                 date = date,
                 time = time,
                 status = "PENDING"
@@ -175,8 +179,6 @@ class ReminderViewModel(
 
             upsertReminderLogLocal(getApplication(), reminderLog)
             upsertReminderLog(reminderLog)
-
-            onComplete()
         }
     }
 }

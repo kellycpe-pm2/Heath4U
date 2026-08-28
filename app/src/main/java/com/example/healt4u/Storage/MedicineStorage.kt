@@ -239,8 +239,8 @@ suspend fun adminSignIn(emailOrPhone: String, password: String, loginMethod: Str
                 credentialMatch && user.password == password
             }
             if (matched != null) {
-                android.util.Log.d("AdminAuth", "Login successful for: $emailOrPhone")
-                Result.success("Login successful")
+                android.util.Log.d("AdminAuth", "Login successful for: ${matched.username}")
+                Result.success(matched.username)
             } else {
                 android.util.Log.d("AdminAuth", "No match found for: $emailOrPhone")
                 Result.failure(Exception("Invalid credentials or password"))
@@ -423,5 +423,156 @@ suspend fun adminChangePassword(
     } catch (e: Exception) {
         android.util.Log.e("AdminAuth", "adminChangePassword failed", e)
         Result.failure(Exception("Password change failed: ${e.message}"))
+    }
+}
+
+suspend fun adminGetProfile(username: String): Result<AdminUser> {
+    return try {
+        withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Fetching profile for: $username")
+            val users = supabase
+                .from("admin_users")
+                .select {
+                    filter { eq("username", username) }
+                }
+                .decodeList<AdminUser>()
+
+            val user = users.firstOrNull()
+            if (user != null) {
+                android.util.Log.d("AdminAuth", "Profile found: ${user.username}, email=${user.email}, phone=${user.phone}")
+                Result.success(user)
+            } else {
+                Result.failure(Exception("Profile not found"))
+            }
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("AdminAuth", "adminGetProfile failed", e)
+        Result.failure(Exception("Failed to load profile: ${e.message}"))
+    }
+}
+
+suspend fun adminUpdateUsername(currentUsername: String, newUsername: String, password: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Updating username from $currentUsername to $newUsername")
+
+            if (currentUsername == newUsername) {
+                return@withContext Result.success("Username unchanged")
+            }
+
+            val existing = supabase
+                .from("admin_users")
+                .select {
+                    filter { eq("username", newUsername) }
+                }
+                .decodeList<AdminUser>()
+
+            if (existing.isNotEmpty()) {
+                return@withContext Result.failure(Exception("Username already taken"))
+            }
+
+            val users = supabase
+                .from("admin_users")
+                .select()
+                .decodeList<AdminUser>()
+
+            val matched = users.find {
+                it.username == currentUsername && it.password == password
+            }
+
+            if (matched == null) {
+                return@withContext Result.failure(Exception("Current password is incorrect"))
+            }
+
+            supabase
+                .from("admin_users")
+                .update(mapOf("username" to newUsername)) {
+                    filter { eq("id", matched.id) }
+                }
+
+            android.util.Log.d("AdminAuth", "Username updated successfully")
+            Result.success("Username updated successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("AdminAuth", "adminUpdateUsername failed", e)
+        Result.failure(Exception("Username update failed: ${e.message}"))
+    }
+}
+
+suspend fun adminUpdateEmail(username: String, newEmail: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Updating email for: $username to $newEmail")
+
+            val users = supabase
+                .from("admin_users")
+                .select()
+                .decodeList<AdminUser>()
+
+            val matched = users.find { it.username == username }
+            if (matched == null) {
+                return@withContext Result.failure(Exception("User not found"))
+            }
+
+            if (!newEmail.isNullOrBlank()) {
+                val existingEmail = users.find {
+                    it.email == newEmail && it.username != username
+                }
+                if (existingEmail != null) {
+                    return@withContext Result.failure(Exception("Email already registered to another account"))
+                }
+            }
+
+            supabase
+                .from("admin_users")
+                .update(mapOf("email" to newEmail.ifBlank { null })) {
+                    filter { eq("id", matched.id) }
+                }
+
+            android.util.Log.d("AdminAuth", "Email updated successfully")
+            Result.success("Email updated successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("AdminAuth", "adminUpdateEmail failed", e)
+        Result.failure(Exception("Email update failed: ${e.message}"))
+    }
+}
+
+suspend fun adminUpdatePhone(username: String, newPhone: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            android.util.Log.d("AdminAuth", "Updating phone for: $username to $newPhone")
+
+            val users = supabase
+                .from("admin_users")
+                .select()
+                .decodeList<AdminUser>()
+
+            val matched = users.find { it.username == username }
+            if (matched == null) {
+                return@withContext Result.failure(Exception("User not found"))
+            }
+
+            if (!newPhone.isNullOrBlank()) {
+                val existingPhone = users.find {
+                    it.phone == newPhone && it.username != username
+                }
+                if (existingPhone != null) {
+                    return@withContext Result.failure(Exception("Phone number already registered to another account"))
+                }
+            }
+
+            supabase
+                .from("admin_users")
+                .update(mapOf("phone" to newPhone.ifBlank { null })) {
+                    filter { eq("id", matched.id) }
+                }
+
+            android.util.Log.d("AdminAuth", "Phone updated successfully")
+            Result.success("Phone updated successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("AdminAuth", "adminUpdatePhone failed", e)
+        Result.failure(Exception("Phone update failed: ${e.message}"))
     }
 }

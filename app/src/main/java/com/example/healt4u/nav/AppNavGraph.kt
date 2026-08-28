@@ -33,6 +33,7 @@ import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
 import com.example.healt4u.screen.Admin.AdminDoctorScreen
+import com.example.healt4u.screen.Admin.AdminAddDoctorScreen
 import com.example.healt4u.screen.Admin.AdminForgotPasswordScreen
 import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Admin.AdminLoginScreen
@@ -79,6 +80,7 @@ fun AppNavGraph(
 
     var currentUserId by remember { mutableStateOf(2) }
     var currentUserRole by remember { mutableStateOf("patient") }
+    var loggedInAdminUsername by remember { mutableStateOf("") }
 
 
     LaunchedEffect(Unit) {
@@ -101,7 +103,8 @@ fun AppNavGraph(
     ) {
         composable("login") {
             AdminLoginScreen(
-                onAdminLoginSuccess = {
+                onAdminLoginSuccess = { username ->
+                    loggedInAdminUsername = username
                     navController.navigate("admin") {
                         popUpTo("login") { inclusive = true }
                     }
@@ -432,11 +435,12 @@ fun AppNavGraph(
             AdminSettingsScreen(
                 onBack = { navController.popBackStack() },
                 onLogout = {
+                    loggedInAdminUsername = ""
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                adminUsername = ""
+                adminUsername = loggedInAdminUsername
             )
         }
 
@@ -445,7 +449,19 @@ fun AppNavGraph(
         }
 
         composable("admin_doctors") {
-            AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
+            AdminDoctorScreen(
+                vm = vm_admin,
+                onBack = { navController.popBackStack() },
+                onAddDoctor = { navController.navigate("admin_add_doctor") }
+            )
+        }
+
+        composable("admin_add_doctor") {
+            AdminAddDoctorScreen(
+                vm = vm_admin,
+                onBack = { navController.popBackStack() },
+                onDoctorAdded = { navController.popBackStack() }
+            )
         }
 
         composable("admin_subscription") {

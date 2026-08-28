@@ -48,7 +48,7 @@ private fun isValidPassword(password: String): Boolean {
 
 @Composable
 fun AdminLoginScreen(
-    onAdminLoginSuccess: () -> Unit,
+    onAdminLoginSuccess: (String) -> Unit,
     onPatientLoginSuccess: () -> Unit,
     onForgotPassword: () -> Unit = {}
 ) {
@@ -268,7 +268,7 @@ private suspend fun handleSignIn(
     snackbarHostState: SnackbarHostState,
     scope: kotlinx.coroutines.CoroutineScope,
     isLoading: (Boolean) -> Unit,
-    onSuccess: () -> Unit
+    onSuccess: (String) -> Unit
 ) {
     val credential = if (loginMethod == "email") email else phone
     if (credential.isBlank()) {
@@ -296,7 +296,7 @@ private suspend fun handleSignIn(
     val result = adminSignIn(credential, password, loginMethod)
     isLoading(false)
     result.fold(
-        onSuccess = { onSuccess() },
+        onSuccess = { username -> onSuccess(username) },
         onFailure = { e ->
             scope.launch { snackbarHostState.showSnackbar(e.message ?: "Login failed") }
         }

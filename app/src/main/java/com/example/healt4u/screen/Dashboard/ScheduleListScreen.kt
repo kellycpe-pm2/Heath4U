@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
+import com.example.healt4u.model.MedicineAlert
 import com.example.healt4u.model.ReminderLog
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
@@ -31,6 +33,7 @@ fun ScheduleListScreen(
 ) {
     val context = LocalContext.current
     val schedule by vm.todaySchedule.collectAsStateWithLifecycle()
+    val medicineAlerts by vm.medicineAlerts.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
@@ -113,6 +116,47 @@ fun ScheduleListScreen(
 
             Spacer(Modifier.height(8.dp))
 
+            // ===== Stock / expiry alert banner =====
+            if (medicineAlerts.isNotEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                Icons.Filled.Inventory2,
+                                contentDescription = "Stock alert",
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = "${medicineAlerts.size} medicine alert${if (medicineAlerts.size > 1) "s" else ""}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        medicineAlerts.forEach { alert ->
+                            Text(
+                                text = "• ${alert.message}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
             if (isLoading && schedule.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
@@ -161,6 +205,10 @@ private fun ScheduleRow(
         "MISSED" -> Color.Red
         else -> MaterialTheme.colorScheme.secondary
     }
+    val typeLabel = when (log.type) {
+        "APPOINTMENT" -> "Appointment"
+        else -> "Medicine"
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -175,15 +223,15 @@ private fun ScheduleRow(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = log.time,
+                    text = "$typeLabel · ${log.time}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = statusColor
                 )
-                Spacer(Modifier.height(2.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     text = log.medicineName,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.titleMedium
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(

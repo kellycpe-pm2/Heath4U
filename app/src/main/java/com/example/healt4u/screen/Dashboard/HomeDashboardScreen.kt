@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
+import com.example.healt4u.model.MedicineAlert
 import com.example.healt4u.model.ReminderLog
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import kotlinx.coroutines.launch
@@ -52,6 +54,7 @@ fun HomeDashboardScreen(
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val scheduleCardMinHeight = (screenHeightDp * 0.45f).dp
     val schedule by vm.todaySchedule.collectAsStateWithLifecycle()
+    val medicineAlerts by vm.medicineAlerts.collectAsStateWithLifecycle()
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -61,7 +64,8 @@ fun HomeDashboardScreen(
     }
 
     val (taken, total) = vm.adherenceCount()
-    val missed = schedule.filter { it.status == "MISSED" }
+    // Appointments (medicineId == -1) aren't "missed doses" — exclude them here
+    val missed = schedule.filter { it.status == "MISSED" && it.medicineId != -1 }
     val previewItems = schedule.sortedBy { it.time }
 
     fun notImplemented(name: String) {
@@ -135,6 +139,46 @@ fun HomeDashboardScreen(
                         }
                     }
 
+                    // ===== Stock / expiry alert banner =====
+                    if (medicineAlerts.isNotEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Inventory2,
+                                            contentDescription = "Stock alert",
+                                            tint = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                        Text(
+                                            text = "${medicineAlerts.size} medicine alert${if (medicineAlerts.size > 1) "s" else ""}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                    medicineAlerts.take(3).forEach { alert ->
+                                        Text(
+                                            text = "• ${alert.message}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.padding(top = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // ===== Today, Schedule card =====
                     item {
                         Card(
@@ -191,15 +235,20 @@ fun HomeDashboardScreen(
                                         color = MaterialTheme.colorScheme.secondary
                                     )
                                 } else {
-                                    previewItems.forEach { log ->
+                                    previewItems.forEachIndexed { index, log ->
                                         ScheduleRowCompact(log)
-                                        Spacer(Modifier.height(6.dp))
+                                        if (index != previewItems.lastIndex) {
+                                            HorizontalDivider(
+                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)
+                                            )
+                                        }
                                     }
                                     Text(
                                         text = "View full schedule →",
                                         style = MaterialTheme.typography.labelMedium,
                                         color = MaterialTheme.colorScheme.secondary,
-                                        modifier = Modifier.padding(top = 4.dp)
+                                        modifier = Modifier.padding(top = 10.dp)
                                     )
                                 }
                             }
@@ -321,17 +370,29 @@ private fun ScheduleRowCompact(log: ReminderLog) {
         "MISSED" -> Icons.Filled.Warning to Color.Red
         else -> Icons.Filled.Circle to MaterialTheme.colorScheme.secondary
     }
+    val typeLabel = when (log.type) {
+        "APPOINTMENT" -> "Appointment"
+        else -> "Medicine"
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(icon, contentDescription = log.status, tint = tint, modifier = Modifier.size(18.dp))
-        Text(
-            text = "${log.time} - ${log.medicineName}",
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.weight(1f)
-        )
+        Icon(icon, contentDescription = log.status, tint = tint, modifier = Modifier.size(20.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "$typeLabel · ${log.time}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Text(
+                text = log.medicineName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 

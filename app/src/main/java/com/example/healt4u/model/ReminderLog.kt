@@ -22,5 +22,10 @@ data class ReminderLog(
     val time: String,
 
     // "PENDING" | "TAKEN" | "MISSED"
-    val status: String = "PENDING"
+    val status: String = "PENDING",
+
+    // "MEDICINE" | "APPOINTMENT" — lets the schedule list show a proper label/icon
+    // per row, and lets a future Appointment module plug entries into the same
+    // Today's Schedule list without changing this model again.
+    val type: String = "MEDICINE"
 )

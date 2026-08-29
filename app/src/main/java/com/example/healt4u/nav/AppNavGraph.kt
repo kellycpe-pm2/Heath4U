@@ -137,9 +137,7 @@ fun AppNavGraph(
                 }
                 ,
                 onDoctorSuccessClick = {
-                    navController.navigate("doctor") {
-                        popUpTo("login") { inclusive = true }
-                    }
+                    navController.navigate("doctor")
 
         }
             )
@@ -541,7 +539,7 @@ fun AppNavGraph(
         }
 
         //doctor part
-        composable("dcotor"){
+        composable("doctor"){
             DoctorDashboardScreen(
 
             )

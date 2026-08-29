@@ -1,5 +1,7 @@
 package com.example.healt4u.screen.Admin
 
+import android.util.Patterns
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Emergency
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -28,13 +31,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.adminSignIn
 import com.example.healt4u.Storage.adminSignUp
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 private val AppBlue = Color(0xFF3779EE)
 private val ScreenBlue = Color(0xFFE6F8FC)
 
 private fun isValidEmail(email: String): Boolean {
-    return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    return Patterns.EMAIL_ADDRESS.matcher(email).matches()
 }
 
 private fun isValidPhone(phone: String): Boolean {
@@ -50,7 +54,8 @@ private fun isValidPassword(password: String): Boolean {
 fun AdminLoginScreen(
     onAdminLoginSuccess: (String) -> Unit,
     onPatientLoginSuccess: () -> Unit,
-    onForgotPassword: () -> Unit = {}
+    onForgotPassword: () -> Unit = {},
+    onDoctorSuccessClick : ()->Unit  ={}
 ) {
     var selectedRole by remember { mutableStateOf<String?>(null) }
     var isSignUp by remember { mutableStateOf(false) }
@@ -102,7 +107,8 @@ fun AdminLoginScreen(
             if (selectedRole == null) {
                 RoleSelectionContent(
                     onAdminClick = { selectedRole = "admin" },
-                    onPatientClick = { onPatientLoginSuccess() }
+                    onPatientClick = { onPatientLoginSuccess() },
+                    onDoctorClick = {onDoctorSuccessClick()  }
                 )
             } else {
                 AdminAuthContent(
@@ -184,7 +190,9 @@ fun AdminLoginScreen(
 
         SnackbarHost(
             hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp)
         )
     }
 }
@@ -197,7 +205,7 @@ private suspend fun handleSignUp(
     password: String,
     confirmPassword: String,
     snackbarHostState: SnackbarHostState,
-    scope: kotlinx.coroutines.CoroutineScope,
+    scope: CoroutineScope,
     isLoading: (Boolean) -> Unit,
     onSuccess: () -> Unit
 ) {
@@ -266,7 +274,7 @@ private suspend fun handleSignIn(
     phone: String,
     password: String,
     snackbarHostState: SnackbarHostState,
-    scope: kotlinx.coroutines.CoroutineScope,
+    scope: CoroutineScope,
     isLoading: (Boolean) -> Unit,
     onSuccess: (String) -> Unit
 ) {
@@ -306,10 +314,14 @@ private suspend fun handleSignIn(
 @Composable
 private fun RoleSelectionContent(
     onAdminClick: () -> Unit,
-    onPatientClick: () -> Unit
+    onPatientClick: () -> Unit,
+    onDoctorClick : ()->Unit
+
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -397,6 +409,34 @@ private fun RoleSelectionContent(
                 }
             }
         }
+
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onDoctorClick() },
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .background(Color(0xFF4CAF50), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Emergency, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                }
+                Spacer(Modifier.width(16.dp))
+                Column {
+                    Text("Doctor", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
+                }
+            }
+        }
     }
 }
 
@@ -426,7 +466,9 @@ private fun AdminAuthContent(
     onSubmit: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
@@ -680,7 +722,7 @@ private fun MethodChip(
         modifier = Modifier.clickable { onClick() },
         shape = RoundedCornerShape(50.dp),
         color = bgColor,
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
+        border = BorderStroke(1.dp, borderColor)
     ) {
         Text(
             text = label,

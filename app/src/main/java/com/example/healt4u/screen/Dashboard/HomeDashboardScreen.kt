@@ -48,7 +48,8 @@ fun HomeDashboardScreen(
     onUnbuiltModuleClick: (String) -> Unit = {},
     onChatClick:()-> Unit,
     onAppointmentClick:()-> Unit,
-    onAdherenceClick:()-> Unit
+    onAdherenceClick:()-> Unit,
+    onScanClick :()-> Unit
 ) {
     val context = LocalContext.current
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -343,7 +344,7 @@ fun HomeDashboardScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 38.dp)
                     .size(56.dp)
-                    .clickable { notImplemented("Scan") }
+                    .clickable { onScanClick() }
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(

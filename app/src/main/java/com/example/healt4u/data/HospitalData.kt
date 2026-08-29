@@ -4,6 +4,7 @@ import com.example.healt4u.model.Doctor
 import com.example.healt4u.model.Hospital
 
 object HospitalData {
+
     val hospitals = listOf(
         Hospital(
             id = 1,

@@ -1,16 +1,17 @@
 package com.example.healt4u.nav
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,7 +27,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.healt4u.Storage.clearMessagesByConversation
 import com.example.healt4u.Storage.createConversation
+import com.example.healt4u.Storage.deleteMessage
 import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
@@ -64,44 +67,16 @@ import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.sendMessage
 import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
+import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
+import com.example.healt4u.screen.DoctorPatientChat.Notification
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import java.util.Locale
 
 
-// The barcode scanner (ScannerScreen, built by another team member) uses a
-// CameraX API that requires Android 8.0 (API 26) and is marked experimental.
-// Scoping the opt-in to just this wrapper — instead of the whole AppNavGraph
-// function — means every OTHER screen still works down to minSdk 24; only
-// this route needs the API 26 guard below.
 @RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalGetImage::class)
-@Composable
-private fun ScanRouteContent(
-    showManualDialog: Boolean,
-    onShowManualDialogChange: (Boolean) -> Unit,
-    context: android.content.Context
-) {
-    ScannerScreen(
-        onBarcodeScanned = { barcode: String ->
-        },
-        onManualInput = {
-            onShowManualDialogChange(true)
-        },
-        onFlashToggle = { isOn: Boolean -> },
-        onGalleryPick = {},
-        onBackClick = { },
-        context = context
-    )
-
-    if (showManualDialog) {
-        ManualInputDialog(
-            onDismiss = { onShowManualDialogChange(false) },
-            onSearch = { malNumber: String ->
-                onShowManualDialogChange(false)
-            }
-        )
-    }
-}
-
+@androidx.camera.core.ExperimentalGetImage
+@OptIn(ExperimentalGetImage::class, DelicateCoroutinesApi::class)
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
@@ -123,9 +98,14 @@ fun AppNavGraph(
         vm_med.loadFromLocal(context)
     }
 
+    LaunchedEffect(Unit) {
+        Notification.createChannel(context)
+    }
+
     val medicines by vm_med.medicines.collectAsStateWithLifecycle()
     val success by vm_med.success.collectAsStateWithLifecycle()
     var showManualDialog by remember { mutableStateOf(false) }
+    val mutedConversations = remember { mutableStateListOf<String>() }
 
     // reset
     vm_med.clearSuccessState()
@@ -149,10 +129,19 @@ fun AppNavGraph(
                     navController.navigate("dashboard") {
                         popUpTo("login") { inclusive = true }
                     }
+
+
                 },
                 onForgotPassword = {
                     navController.navigate("forgot_password")
                 }
+                ,
+                onDoctorSuccessClick = {
+                    navController.navigate("doctor") {
+                        popUpTo("login") { inclusive = true }
+                    }
+
+        }
             )
         }
 
@@ -200,7 +189,9 @@ fun AppNavGraph(
                 onChatClick = { navController.navigate("chat_list") },
                 onFamilyModeClick = { navController.navigate("family_mode") },
                 onAppointmentClick ={navController.navigate("appointment")},
-                onAdherenceClick = {navController.navigate("adherence_statistics")}
+                onAdherenceClick = {navController.navigate("adherence_statistics")},
+                onScanClick = {navController.navigate("scan")}
+
             )
         }
 
@@ -319,17 +310,25 @@ fun AppNavGraph(
         }
 
         composable("scan") {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                ScanRouteContent(
-                    showManualDialog = showManualDialog,
-                    onShowManualDialogChange = { showManualDialog = it },
-                    context = context
+            ScannerScreen(
+                onBarcodeScanned = { barcode: String ->
+                },
+                onManualInput = {
+                    showManualDialog = true
+                },
+                onFlashToggle = { isOn: Boolean -> },
+                onGalleryPick = {},
+                onBackClick = {  },
+                context = context
+            )
+
+            if (showManualDialog) {
+                ManualInputDialog(
+                    onDismiss = { showManualDialog = false },
+                    onSearch = { malNumber: String ->
+                        showManualDialog = false
+                    }
                 )
-            } else {
-                // Barcode scanning needs Android 8.0+; avoid crashing on older devices.
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Scan requires Android 8.0 or newer.")
-                }
             }
         }
 
@@ -357,9 +356,10 @@ fun AppNavGraph(
             )
         }
 
-        composable("adherence_statistics") {
+        composable("adherence_statistics/{patientId}") { backStackEntry ->
+            val patientId = backStackEntry.arguments?.getString("patientId")?.toIntOrNull() ?: 2
             AdherenceStatisticScreen(
-                patientId = currentUserId,
+                patientId = patientId,
                 onBack = { navController.popBackStack() }
             )
         }
@@ -450,9 +450,35 @@ fun AppNavGraph(
             var initialMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
             var isLoading by remember { mutableStateOf(true) }
 
+            var selectedPatientId by remember { mutableStateOf<Int?>(null) }
+
+            fun handleNewMessage(message: Message, conversationId: String, currentUserId: Int) {
+                val isFromOther = message.senderId != currentUserId
+                val isMuted = conversationId in mutedConversations
+
+                if (isFromOther && !isMuted) {
+                    Notification.showSafely(
+                        context = context,
+                        title = "New message from ${message.senderName}",
+                        message = message.content.take(40)
+                    )
+                }
+            }
+
+            var lastLoadedMessageId by remember { mutableStateOf<Long?>(null) }
+
             LaunchedEffect(conversationId) {
                 try {
                     initialMessages = getMessagesByConversation(conversationId)
+
+                    val latestMessage = initialMessages.lastOrNull()
+                    if (latestMessage != null) {
+                        if (lastLoadedMessageId != null && latestMessage.id != lastLoadedMessageId) {
+                            handleNewMessage(latestMessage, conversationId, currentUserId)
+                        }
+                        lastLoadedMessageId = latestMessage.id
+                    }
+
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
@@ -479,9 +505,46 @@ fun AppNavGraph(
                         coroutineScope.launch {
                             sendMessage(message)
                         }
+                    },
+                    onDeleteMessage = { message ->
+                        GlobalScope.launch {
+                            val success = deleteMessage(message.id.toString())
+                            if (success) {
+                                Log.d("Chat", "Message deleted from cloud")
+                            }
+                        }
+                    },
+                    onAvatarClick = { patientId ->
+                        navController.navigate("adherence_statistics/$patientId")
+                    },
+                    isMuted = conversationId in mutedConversations,
+                    onMuteChanged = { newState ->
+                        if (newState) mutedConversations.add(conversationId)
+                        else mutedConversations.remove(conversationId)
+                    },
+                    onClearAllMessages = {
+                        GlobalScope.launch {
+                            val success = clearMessagesByConversation(conversationId)
+                            if (success) {
+                                Log.d("Chat", "All messages cleared from cloud")
+                            }
+                        }
                     }
                 )
+                LaunchedEffect(selectedPatientId) {
+                    selectedPatientId?.let { id ->
+                        navController.navigate("adherence_statistics/$id")
+                        selectedPatientId = null // Reset after navigate
+                    }
+                }
             }
+        }
+
+        //doctor part
+        composable("dcotor"){
+            DoctorDashboardScreen(
+
+            )
         }
 
         composable("admin") {

@@ -6,8 +6,10 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.example.healt4u.R
 
 // Two channels: one for "time to take your medicine" alarms, one for the
@@ -51,6 +53,7 @@ object NotificationHelper {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun showDoseReminder(context: Context, notificationId: Int, medicineName: String, time: String) {
         if (!hasPermission(context)) return
 
@@ -62,10 +65,11 @@ object NotificationHelper {
             .setAutoCancel(true)
             .build()
 
-        androidx.core.app.NotificationManagerCompat.from(context)
+        NotificationManagerCompat.from(context)
             .notify(notificationId, notification)
     }
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     fun showStockAlert(context: Context, notificationId: Int, title: String, message: String) {
         if (!hasPermission(context)) return
 
@@ -77,7 +81,7 @@ object NotificationHelper {
             .setAutoCancel(true)
             .build()
 
-        androidx.core.app.NotificationManagerCompat.from(context)
+        NotificationManagerCompat.from(context)
             .notify(notificationId, notification)
     }
 }

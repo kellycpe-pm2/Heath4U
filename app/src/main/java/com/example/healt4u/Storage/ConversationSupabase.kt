@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.model.Message
+import com.example.healt4u.model.PatientUser
 import com.example.healt4u.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -13,6 +14,7 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
+import io.github.jan.supabase.postgrest.from
 
 private const val TAG = "SupabaseStorage"
 
@@ -280,19 +282,26 @@ suspend fun createConversation(
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun sendMessage(message: Message): Boolean {
     return try {
+        Log.d(TAG, "sendMessage called: ${message.content}")
+        Log.d(TAG, "Message data: id=${message.id}, conversationId=${message.conversationId}, senderId=${message.senderId}")
+
+        // 1. Insert message
         SupabaseClient.supabase
             .from("messages")
             .insert(message)
+        Log.d(TAG, "Message inserted to Supabase: ${message.id}")
 
+        // 2. Update conversation's last message
         updateConversationLastMessage(
             message.conversationId,
             message.content,
             message.timestamp,
             1
         )
+        Log.d(TAG, "Conversation updated: ${message.conversationId}")
         true
     } catch (e: Exception) {
-        Log.e("TAG", "Error: ${e.message}", e)
+        Log.e(TAG, "Error sending message: ${e.message}", e)
         false
     }
 }
@@ -330,7 +339,7 @@ suspend fun getMessagesByConversation(conversationId: String): List<Message> {
         return messages
 
     } catch (e: Exception) {
-        Log.e(TAG, "Error: ${e.message}", e)
+        Log.e(TAG, "Error loading messages: ${e.message}", e)
         emptyList()
     }
 }
@@ -420,6 +429,7 @@ suspend fun clearMessagesByConversation(conversationId: String): Boolean {
                 filter { eq("conversation_id", conversationId) }
             }
 
+        // Update conversation
         SupabaseClient.supabase
             .from("conversations")
             .update(

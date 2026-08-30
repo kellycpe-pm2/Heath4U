@@ -30,6 +30,8 @@ import com.example.healt4u.Storage.getConversationsByDoctor
 import com.example.healt4u.Storage.getConversationsByPatient
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
+import com.example.healt4u.screen.formatTimeString
+import java.time.Instant.parse
 import java.util.*
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -50,7 +52,6 @@ fun ChatListScreen(
     var reloadKey by remember { mutableStateOf(0) }
 
     LaunchedEffect(userId, userRole,reloadKey) {
-        Log.d("ChatDebug", "📦 userId: $userId, userRole: $userRole")
         try {
             isLoading = true
             errorMessage = null
@@ -197,6 +198,22 @@ fun ConversationItem(
     conversation: Conversation,
     onClick: () -> Unit
 ) {
+    val timestampMillis = try {
+        val str = conversation.lastMessageTime
+        when {
+            str.all { it.isDigit() } -> str.toLong()
+            else -> {
+                // Parse safely using tolerant formatter
+                java.time.OffsetDateTime.parse(str)
+                    .toInstant()
+                    .toEpochMilli()
+            }
+        }
+    } catch (e: Exception) {
+        Log.w("DateParse", "Failed to parse time", e)
+        System.currentTimeMillis()
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,24 +237,21 @@ fun ConversationItem(
                     .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
+                val displayName = if (userRole == "doctor") {
+                    conversation.patientName
+                } else {
+                    conversation.doctorName
+                }
                 Text(
-                    text = if (userRole == "doctor") {
-                        conversation.patientName
-                            .split(" ")
-                            .mapNotNull { it.firstOrNull()?.toString() }
-                            .take(2)
-                            .joinToString("")
-                            .uppercase()
-                    } else {
-                        conversation.doctorName
-                            .split(" ")
-                            .mapNotNull { it.firstOrNull()?.toString() }
-                            .take(2)
-                            .joinToString("")
-                            .uppercase()
-                    },
+                    text = displayName
+                        .split(" ")
+                        .mapNotNull { it.firstOrNull()?.toString() }
+                        .take(2)
+                        .joinToString("")
+                        .uppercase(),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+
                 )
             }
 
@@ -249,19 +263,23 @@ fun ConversationItem(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = conversation.doctorName,
+                        text = if (userRole == "doctor") {
+                            conversation.patientName
+                        } else {
+                            conversation.doctorName
+                        },
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = formatTime(conversation.lastMessageTime),
+                        text = formatTime(timestampMillis),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Text(
-                    text = conversation.lastMessage,
+                    text = formatTime(timestampMillis),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -300,12 +318,23 @@ fun ConversationItem(
     }
 }
 @RequiresApi(Build.VERSION_CODES.O)
-private fun formatTime(timestamp: String): String {
+private fun formatTime(timestamp: Long): String {
     return try {
-        val instant = java.time.Instant.parse(timestamp)
-        val date = Date.from(instant)
-        val format = android.icu.text.SimpleDateFormat("HH:mm", Locale.getDefault())
-        format.format(date)
+        val date = Date(timestamp)
+        val now = Calendar.getInstance()
+        val cal = Calendar.getInstance().apply { time = date }
+
+        when {
+            isSameDay(cal, now) -> {
+                val format = android.icu.text.SimpleDateFormat("HH:mm", Locale.getDefault())
+                format.format(date)
+            }
+            isYesterday(cal, now) -> "Yesterday"
+            else -> {
+                val format = android.icu.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                format.format(date)
+            }
+        }
     } catch (e: Exception) {
         "??:??"
     }

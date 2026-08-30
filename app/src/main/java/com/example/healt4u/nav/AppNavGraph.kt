@@ -8,6 +8,7 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,11 +66,14 @@ import com.example.healt4u.data.HospitalData.getDoctorById
 import com.example.healt4u.model.Message
 import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
+import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.model.PatientUser
 import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
 import com.example.healt4u.screen.DoctorPatientChat.Notification
+import com.example.healt4u.screen.PatientListScreen
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.util.Locale
@@ -95,6 +99,8 @@ fun AppNavGraph(
     var loggedInAdminUsername by remember { mutableStateOf("") }
     var currentUserName by remember { mutableStateOf("") }
     var currentUserPhone by remember { mutableStateOf("") }
+    val patient = remember { mutableStateOf<PatientUser?>(null) }
+
 
 
     LaunchedEffect(Unit) {
@@ -353,8 +359,6 @@ fun AppNavGraph(
                         val parsedDate = inputFormat.parse(displayDate)
                         val standardDate = outputFormat.format(parsedDate!!)
 
-                        android.util.Log.d("APPT_DEBUG", "Saving appointment: $standardDate at $time, Dr.$doctorName, Hospital: $hospitalName")
-
                         vm_reminder.addAppointmentReminder(
                             hospitalName = hospitalName,
                             doctorName = doctorName,
@@ -367,15 +371,31 @@ fun AppNavGraph(
             )
         }
 
-        /*composable("adherence_statistics/{patientId}") { backStack ->
+        composable(
+            route = "adherence_statistics/{patientId}",
+            arguments = listOf(navArgument("patientId") { type = NavType.IntType })
+        ) { backStack ->
             val pid = backStack.arguments?.getString("patientId")?.toIntOrNull() ?: 1
             AdherenceStatisticScreen(
                 patientId = pid,
                 onBack = { navController.popBackStack() }
             )
-        }*/
+        }
+
+        composable("patient_list") {
+            PatientListScreen(
+                doctorId = currentUserId,
+                onPatientClick = { patientId, conversation ->
+                    navController.navigate("adherence_statistics/${patientId}")
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
 
         composable("chat_list") {
+            LaunchedEffect(currentUserId, currentUserRole) {
+                Log.d("CHAT_ROLE_DEBUG", "userId=$currentUserId, role=$currentUserRole")
+            }
             ChatListScreen(
                 userId = currentUserId,
                 userRole = currentUserRole,
@@ -447,15 +467,22 @@ fun AppNavGraph(
             val ids = conversationId.split("_")
             val doctorId = ids.getOrNull(0)?.toIntOrNull() ?: 0
             val patientId = ids.getOrNull(1)?.toIntOrNull() ?: 0
+            var patientName by remember { mutableStateOf("Patient") }
+            var doctorName by remember { mutableStateOf("Doctor") }
 
-            val doctor = getDoctorById(doctorId)
-            //val patient = getUserById(patientId)
+
+            LaunchedEffect(doctorId, patientId) {
+                val doctor = getDoctorById(doctorId)
+                val patient = getPatientById(patientId)
+
+                doctorName = doctor?.name ?: "Doctor"
+                patientName = patient?.name ?: "Patient"
+            }
 
             val chatName = if (currentUserRole == "doctor") {
-                //patient?.name ?:
-                "Patient"
+                patientName
             } else {
-                doctor?.name ?: "Doctor"
+                doctorName
             }
 
             var initialMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
@@ -511,13 +538,17 @@ fun AppNavGraph(
                     CircularProgressIndicator()
                 }
             } else {
+                var reloadKey by remember { mutableStateOf(0) }
+
                 ChatScreen(
                     chatName = chatName,
                     userId = currentUserId,
                     userRole = currentUserRole,
                     conversationId = conversationId,
                     initialMessages = initialMessages,
-                    onBack = { navController.popBackStack() },
+                    onBack = {
+                        reloadKey++
+                        navController.popBackStack() },
                     onSendMessage = { message ->
                         coroutineScope.launch {
                             sendMessage(message)
@@ -558,17 +589,22 @@ fun AppNavGraph(
         }
 
 
-        composable("adherence_statistic") {
-            AdherenceStatisticScreen(onBack = { navController.popBackStack() })
-        }
-
         //doctor part
-        composable("doctor"){
+        composable("doctor") {
+            currentUserRole = "doctor"
+
             DoctorDashboardScreen(
-                onPatientClick = { },
-                onListClick = { /* navController.navigate("patient_list") */ },
-                onChatClick = { /* navController.navigate("chat_list") */ },
-                onStatisticClick = { navController.navigate("adherence_statistic") },
+                onPatientClick = { patient ->
+                    navController.navigate("adherence_statistics/${patient.id}")
+                },
+                onListClick = { navController.navigate("patient_list") },
+                onChatClick = {
+                    currentUserRole = "doctor"
+                    navController.navigate("chat_list")
+                },
+                onStatisticClick = {
+                    navController.navigate("adherence_statistics/$currentUserId")  // ✅ Fixed typo + slash
+                },
                 onSettingClick = { },
                 onScanClick = { },
                 onProfileClick = { }

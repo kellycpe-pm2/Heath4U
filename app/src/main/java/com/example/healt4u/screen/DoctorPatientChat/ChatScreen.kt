@@ -352,20 +352,37 @@ fun ChatScreen(
     }
 }
 
-
+@RequiresApi(Build.VERSION_CODES.O)
 private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
     val groups = mutableListOf<MessageGroup>()
     if (messages.isEmpty()) return groups
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun tsToLong(ts: String): Long = java.time.Instant.parse(ts).toEpochMilli()
+    fun getTimestampMs(ts: Any): Long {
+        return when (ts) {
+            is Long -> ts
+            is String -> {
+                try {
+                    java.time.Instant.parse(ts).toEpochMilli()
+                } catch (e: Exception) {
+                    try {
+                        ts.toLongOrNull() ?: 0L
+                    } catch (e2: Exception) {
+                        0L
+                    }
+                }
+            }
+            else -> 0L
+        }
+    }
 
-    val sorted = messages.sortedBy { tsToLong(it.timestamp) }
-    var currentDate = getDateKey(tsToLong(sorted.first().timestamp))
+    val sorted = messages.sortedBy { getTimestampMs(it.timestamp) }
+    if (sorted.isEmpty()) return groups
+
+    var currentDate = getDateKey(getTimestampMs(sorted.first().timestamp))
     var currentMessages = mutableListOf<Message>()
 
     for (message in sorted) {
-        val messageDate = getDateKey(tsToLong(message.timestamp))
+        val messageDate = getDateKey(getTimestampMs(message.timestamp))
         if (messageDate != currentDate) {
             groups.add(MessageGroup(date = currentDate, messages = currentMessages))
             currentDate = messageDate

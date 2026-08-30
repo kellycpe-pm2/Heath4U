@@ -9,6 +9,8 @@ import kotlinx.serialization.Serializable
 data class ReminderLog(
     val id: String,
 
+    val patientId: Int,
+
     @SerialName("medicine_id")
     val medicineId: Int,
 

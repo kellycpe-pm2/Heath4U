@@ -1,7 +1,10 @@
 package com.example.healt4u.ViewModel
 
+import android.Manifest
 import android.app.Application
 import android.content.Context
+import android.util.Log
+import androidx.annotation.RequiresPermission
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healt4u.Storage.getReminderLogsForDate
@@ -57,7 +60,7 @@ class ReminderViewModel(
     // Builds today's schedule from every saved medicine (reminder_time + times_per_day),
     // then overlays any status already recorded for today so marks survive app restarts.
     fun loadTodaySchedule(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) @androidx.annotation.RequiresPermission(android.Manifest.permission.POST_NOTIFICATIONS) {
             _isLoading.value = true
             try {
                 NotificationHelper.createChannels(context)
@@ -93,7 +96,7 @@ class ReminderViewModel(
                 scheduleAlarmsForPendingDoses(context, allItems.filter { it.medicineId != -1 })
                 checkMedicineAlerts(context, medicines)
             } catch (e: Exception) {
-                android.util.Log.e("APPT_DEBUG", "Error loading schedule", e)
+                Log.e("APPT_DEBUG", "Error loading schedule", e)
                 e.printStackTrace()
             } finally {
                 _isLoading.value = false
@@ -116,6 +119,7 @@ class ReminderViewModel(
     // 7 days before expiry, or stock at/under the low-stock threshold — posts a
     // notification once per app session per medicine, and always refreshes the
     // banner list shown on Dashboard/Schedule.
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun checkMedicineAlerts(context: Context, medicines: List<Medicine>) {
         val now = System.currentTimeMillis()
         val warningWindowMillis = EXPIRY_WARNING_DAYS * 24L * 60 * 60 * 1000
@@ -196,7 +200,8 @@ class ReminderViewModel(
                         date = date,
                         time = timeLabel,
                         status = "PENDING",
-                        type = "MEDICINE"
+                        type = "MEDICINE",
+                        patientId = 0
                     )
                 )
             }
@@ -282,7 +287,8 @@ class ReminderViewModel(
                 date = date,
                 time = time,
                 status = "PENDING",
-                type = "APPOINTMENT"
+                type = "APPOINTMENT",
+                patientId = 0
             )
 
             upsertReminderLogLocal(getApplication(), reminderLog)

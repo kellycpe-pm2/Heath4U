@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalLocale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdherenceStatisticScreen(
+    patientId: Int,
     onBack: () -> Unit,
     vm: ReminderViewModel = viewModel()
 ) {
@@ -51,7 +52,8 @@ fun AdherenceStatisticScreen(
         vm.loadTodaySchedule(context)
     }
 
-    val medicineLogs = fullSchedule.filter { it.type != "APPOINTMENT" }
+    val patientLogs = fullSchedule.filter { it.patientId == patientId }
+    val medicineLogs = patientLogs.filter { it.type != "APPOINTMENT" }
     val stats = calculateStats(medicineLogs)
     val dateFormat = SimpleDateFormat("dd MMM yyyy", LocalLocale.current.platformLocale)
 
@@ -61,9 +63,7 @@ fun AdherenceStatisticScreen(
                 title = {
                     Text(
                         text = "Adherence Statistics",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        style = MaterialTheme.typography.headlineSmall
                     )
                 },
                 navigationIcon = {
@@ -301,6 +301,6 @@ private fun adjustDate(current: String, days: Int): String {
 @Composable
 fun PreviewAdherenceScreen() {
     colorTheme {
-        AdherenceStatisticScreen(onBack = {})
+        AdherenceStatisticScreen(1, onBack = {})
     }
 }

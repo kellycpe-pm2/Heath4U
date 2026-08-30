@@ -1,13 +1,14 @@
 package com.example.healt4u.screen.Dashboard
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -28,30 +29,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.healt4u.model.AdminUser
+import com.example.healt4u.model.PatientUser
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
-import kotlinx.coroutines.launch
 
-@RequiresApi(Build.VERSION_CODES.HONEYCOMB_MR2)
+@SuppressLint("ConfigurationScreenWidthHeight")
 @Composable
 fun DoctorDashboardScreen(
+    patientList: List<PatientUser> = emptyList(),
+    onPatientClick: (PatientUser) -> Unit = {},
     onMedicineClick: () -> Unit = {},
     onListClick: () -> Unit = {},
     onChatClick: () -> Unit = {},
     onChangeStatus: (String) -> Unit = {},
     onStatisticClick: () -> Unit = {},
-    onSettingClick:()-> Unit ={},
-    onScanClick: ()->Unit ={},
-    onProfileClick : ()->Unit ={},
-    onPatientClick:()->Unit
-    
+    onSettingClick: () -> Unit = {},
+    onScanClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val scheduleCardMinHeight = (screenHeightDp * 0.45f).dp
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var selectedStatus by remember { mutableStateOf("AVAILABLE") }
-
 
     colorTheme {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -61,7 +60,7 @@ fun DoctorDashboardScreen(
                     .verticalScroll(rememberScrollState())
                     .background(MaterialTheme.colorScheme.background)
             ) {
-                // ===== Top bar =====
+                // ===== Top Bar =====
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -87,6 +86,7 @@ fun DoctorDashboardScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // ===== Patient List Card =====
                     Card(
                         modifier = Modifier
                             .padding(10.dp)
@@ -121,30 +121,24 @@ fun DoctorDashboardScreen(
                                         fontSize = 16.sp,
                                         fontWeight = FontWeight.Medium
                                     )
-
-                                    Row(
-                                        horizontalArrangement = Arrangement.End
-                                    ){
-                                        Text("")
-                                    }
-
                                 }
                             }
                             Spacer(Modifier.height(12.dp))
-                            // Add patient list items here
-                            /*
+
                             if (patientList.isEmpty()) {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(vertical = 30.dp),
+                                        .padding(vertical = 40.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Text(
-                                        text = "No patients assigned yet",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = "No patients assigned yet",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             } else {
                                 LazyColumn(
@@ -158,10 +152,11 @@ fun DoctorDashboardScreen(
                                         )
                                     }
                                 }
-                            }*/
+                            }
                         }
                     }
 
+                    // ===== Availability Status Card =====
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -170,62 +165,46 @@ fun DoctorDashboardScreen(
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.onPrimary
                         ),
-                        border = BorderStroke(2.dp, color = MaterialTheme.colorScheme.secondary)
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(5.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    "AVAILABILITY STATUS",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontSize = 20.sp
-                                )
-                            }
+                        Column(modifier = Modifier.padding(15.dp)) {
+                            Text(
+                                text = "Availability Status",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontSize = 20.sp,
+                                modifier = Modifier.align(Alignment.CenterHorizontally)
+                            )
+                            Spacer(Modifier.height(10.dp))
                             val statusPairs = listOf(
                                 "AVAILABLE" to Color(0xFF4CAF50),
                                 "BUSY" to Color(0xFFFF5722),
                                 "OFFLINE" to Color(0xFF9E9E9E)
                             )
-
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(10.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
                                 statusPairs.forEach { (status, statusColor) ->
                                     Row(
                                         modifier = Modifier.selectable(
-                                            selected = (selectedStatus == status),
-                                            onClick = { selectedStatus = status },
+                                            selected = selectedStatus == status,
+                                            onClick = { selectedStatus = status; onChangeStatus(status) },
                                             role = Role.RadioButton
                                         ),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         RadioButton(
-                                            selected = (selectedStatus == status),
-                                            onClick = {
-                                                selectedStatus = status
-                                                onChangeStatus(status)
-                                            },
-                                            colors = RadioButtonColors(
+                                            selected = selectedStatus == status,
+                                            onClick = { selectedStatus = status; onChangeStatus(status) },
+                                            colors = RadioButtonDefaults.colors(
                                                 selectedColor = statusColor,
-                                                unselectedColor = statusColor,
-                                                disabledSelectedColor = MaterialTheme.colorScheme.onPrimary,
-                                                disabledUnselectedColor = MaterialTheme.colorScheme.onPrimary
+                                                unselectedColor = statusColor
                                             )
                                         )
                                         Text(
                                             text = status,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = statusColor
+                                            color = statusColor,
+                                            fontSize = 14.sp
                                         )
                                     }
                                 }
@@ -233,7 +212,7 @@ fun DoctorDashboardScreen(
                         }
                     }
 
-                    // ===== Quick access tiles =====
+                    // ===== Quick Access Tiles =====
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -254,47 +233,27 @@ fun DoctorDashboardScreen(
                         )
                     }
 
-                    Spacer(Modifier.height(80.dp)) // Space for bottom nav
+                    Spacer(Modifier.height(80.dp))
                 }
             }
 
-            // ===== Bottom navigation =====
+            // ===== Bottom Navigation =====
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.onPrimary)
                     .padding(top = 10.dp, bottom = 22.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                BottomNavItem(
-                    label = "Home",
-                    icon = Icons.Filled.CheckCircle,
-                    selected = true,
-                    onClick = {}
-                )
-                BottomNavItem(
-                    label = "Chat",
-                    icon = Icons.Filled.Message,
-                    selected = false,
-                    onClick = onChatClick
-                )
-                Spacer(modifier = Modifier.width(56.dp))
-                BottomNavItem(
-                    label = "Statistic",
-                    icon = Icons.Filled.QueryStats,
-                    selected = false,
-                    onClick = onStatisticClick
-                )
-                BottomNavItem(
-                    label = "Settings",
-                    icon = Icons.Filled.Settings,
-                    selected = false,
-                    onClick = { onSettingClick() }
-                )
+                BottomNavItem("Home", Icons.Filled.Home, true, {})
+                BottomNavItem("Chat", Icons.Filled.Message, false, onChatClick)
+                Spacer(Modifier.width(56.dp))
+                BottomNavItem("Statistic", Icons.Filled.QueryStats, false, onStatisticClick)
+                BottomNavItem("Settings", Icons.Filled.Settings, false, onSettingClick)
             }
 
+            // ===== Scan Button (Center Floating) =====
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.secondary,
@@ -324,7 +283,7 @@ fun DoctorDashboardScreen(
     }
 }
 
-// ===== Helper Composables =====
+
 @Composable
 private fun DashboardTile(
     label: String,
@@ -336,7 +295,7 @@ private fun DashboardTile(
         modifier = modifier.clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.onPrimary
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
@@ -392,9 +351,11 @@ private fun BottomNavItem(
     }
 }
 
-/*
 @Composable
-private fun PatientListItem(patient: User, onClick: () -> Unit) {
+private fun PatientListItem(
+    patient: PatientUser,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -437,18 +398,20 @@ private fun PatientListItem(patient: User, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Icon(Icons.Filled.ChevronRight, "Open", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = "Open",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
-}*/
-
+}
 
 // ===== Preview =====
 @Preview(showBackground = true)
 @Composable
 fun PreviewDoctorDashboard() {
     colorTheme {
-        DoctorDashboardScreen(onPatientClick = {}
-        )
+        DoctorDashboardScreen()
     }
 }

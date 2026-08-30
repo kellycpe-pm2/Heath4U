@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.Admin
+package com.example.healt4u.screen.Patient
 
 import android.util.Patterns
 import androidx.compose.foundation.BorderStroke
@@ -9,10 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AdminPanelSettings
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Emergency
-import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -29,9 +27,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.healt4u.Storage.adminSignIn
-import com.example.healt4u.Storage.adminSignUp
-import kotlinx.coroutines.CoroutineScope
+import com.example.healt4u.Storage.patientSignIn
+import com.example.healt4u.Storage.patientSignUp
+import com.example.healt4u.model.PatientUser
 import kotlinx.coroutines.launch
 
 private val AppBlue = Color(0xFF3779EE)
@@ -51,20 +49,17 @@ private fun isValidPassword(password: String): Boolean {
 }
 
 @Composable
-fun AdminLoginScreen(
-    onAdminLoginSuccess: (String) -> Unit,
-    onPatientLoginClick: () -> Unit = {},
-    onForgotPassword: () -> Unit = {},
-    onDoctorSuccessClick : ()->Unit  ={}
+fun PatientLoginScreen(
+    onLoginSuccess: (userId: Int, userName: String, userPhone: String) -> Unit,
+    onBack: () -> Unit = {}
 ) {
-    var selectedRole by remember { mutableStateOf<String?>(null) }
     var isSignUp by remember { mutableStateOf(false) }
     var loginMethod by remember { mutableStateOf("email") }
     var isLoading by remember { mutableStateOf(false) }
 
+    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -81,7 +76,18 @@ fun AdminLoginScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(40.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF101820))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Box(
                 modifier = Modifier
@@ -102,90 +108,68 @@ fun AdminLoginScreen(
                 letterSpacing = 2.sp
             )
 
-            Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            if (selectedRole == null) {
-                RoleSelectionContent(
-                    onAdminClick = { selectedRole = "admin" },
-                    onPatientClick = { onPatientLoginClick() },
-                    onDoctorClick = {onDoctorSuccessClick()  }
-                )
-            } else {
-                AdminAuthContent(
-                    isSignUp = isSignUp,
-                    loginMethod = loginMethod,
-                    email = email,
-                    phone = phone,
-                    username = username,
-                    password = password,
-                    confirmPassword = confirmPassword,
-                    passwordVisible = passwordVisible,
-                    confirmPasswordVisible = confirmPasswordVisible,
-                    isLoading = isLoading,
-                    onEmailChange = { email = it },
-                    onPhoneChange = { phone = it },
-                    onUsernameChange = { username = it },
-                    onPasswordChange = { password = it },
-                    onConfirmPasswordChange = { confirmPassword = it },
-                    onTogglePassword = { passwordVisible = !passwordVisible },
-                    onToggleConfirmPassword = { confirmPasswordVisible = !confirmPasswordVisible },
-                    onLoginMethodChange = { loginMethod = it },
-                    onToggleMode = {
-                        isSignUp = !isSignUp
-                        email = ""
-                        phone = ""
-                        username = ""
-                        password = ""
-                        confirmPassword = ""
-                    },
-                    onBack = {
-                        selectedRole = null
-                        isSignUp = false
-                        email = ""
-                        phone = ""
-                        username = ""
-                        password = ""
-                        confirmPassword = ""
-                    },
-                    onForgotPassword = onForgotPassword,
-                    onSubmit = {
-                        scope.launch {
-                            if (isSignUp) {
-                                handleSignUp(
-                                    loginMethod = loginMethod,
-                                    email = email,
-                                    phone = phone,
-                                    username = username,
-                                    password = password,
-                                    confirmPassword = confirmPassword,
-                                    snackbarHostState = snackbarHostState,
-                                    scope = scope,
-                                    isLoading = { isLoading = it },
-                                    onSuccess = {
-                                        isSignUp = false
-                                        email = ""
-                                        phone = ""
-                                        username = ""
-                                        password = ""
-                                        confirmPassword = ""
-                                    }
-                                )
-                            } else {
-                                handleSignIn(
-                                    loginMethod = loginMethod,
-                                    email = email,
-                                    phone = phone,
-                                    password = password,
-                                    snackbarHostState = snackbarHostState,
-                                    scope = scope,
-                                    isLoading = { isLoading = it },
-                                    onSuccess = onAdminLoginSuccess
-                                )
-                            }
+            PatientAuthContent(
+                isSignUp = isSignUp,
+                loginMethod = loginMethod,
+                name = name,
+                email = email,
+                phone = phone,
+                password = password,
+                confirmPassword = confirmPassword,
+                passwordVisible = passwordVisible,
+                confirmPasswordVisible = confirmPasswordVisible,
+                isLoading = isLoading,
+                onNameChange = { name = it },
+                onEmailChange = { email = it },
+                onPhoneChange = { phone = it },
+                onPasswordChange = { password = it },
+                onConfirmPasswordChange = { confirmPassword = it },
+                onTogglePassword = { passwordVisible = !passwordVisible },
+                onToggleConfirmPassword = { confirmPasswordVisible = !confirmPasswordVisible },
+                onLoginMethodChange = { loginMethod = it },
+                onToggleMode = {
+                    isSignUp = !isSignUp
+                    name = ""
+                    email = ""
+                    phone = ""
+                    password = ""
+                    confirmPassword = ""
+                },
+                onBack = onBack,
+                onSubmit = {
+                    scope.launch {
+                        if (isSignUp) {
+                            handlePatientSignUp(
+                                name = name,
+                                loginMethod = loginMethod,
+                                email = email,
+                                phone = phone,
+                                password = password,
+                                confirmPassword = confirmPassword,
+                                snackbarHostState = snackbarHostState,
+                                isLoading = { isLoading = it },
+                                onSuccess = { user ->
+                                    onLoginSuccess(user.id, user.name, user.phone ?: "")
+                                }
+                            )
+                        } else {
+                            handlePatientSignIn(
+                                loginMethod = loginMethod,
+                                email = email,
+                                phone = phone,
+                                password = password,
+                                snackbarHostState = snackbarHostState,
+                                isLoading = { isLoading = it },
+                                onSuccess = { user ->
+                                    onLoginSuccess(user.id, user.name, user.phone ?: "")
+                                }
+                            )
                         }
                     }
-                )
-            }
+                }
+            )
         }
 
         SnackbarHost(
@@ -197,264 +181,131 @@ fun AdminLoginScreen(
     }
 }
 
-private suspend fun handleSignUp(
+private suspend fun handlePatientSignUp(
+    name: String,
     loginMethod: String,
     email: String,
     phone: String,
-    username: String,
     password: String,
     confirmPassword: String,
     snackbarHostState: SnackbarHostState,
-    scope: CoroutineScope,
     isLoading: (Boolean) -> Unit,
-    onSuccess: () -> Unit
+    onSuccess: (PatientUser) -> Unit
 ) {
-    if (username.isBlank()) {
-        scope.launch { snackbarHostState.showSnackbar("Please enter a username") }
+    if (name.isBlank()) {
+        snackbarHostState.showSnackbar("Please enter your name")
         return
     }
-    if (username.length < 3) {
-        scope.launch { snackbarHostState.showSnackbar("Username must be at least 3 characters") }
+    if (name.length < 3) {
+        snackbarHostState.showSnackbar("Name must be at least 3 characters")
         return
     }
     if (loginMethod == "email") {
         if (email.isBlank()) {
-            scope.launch { snackbarHostState.showSnackbar("Please enter your email address") }
+            snackbarHostState.showSnackbar("Please enter your email address")
             return
         }
         if (!isValidEmail(email)) {
-            scope.launch { snackbarHostState.showSnackbar("Please enter a valid email address") }
+            snackbarHostState.showSnackbar("Please enter a valid email address")
             return
         }
     } else {
         if (phone.isBlank()) {
-            scope.launch { snackbarHostState.showSnackbar("Please enter your phone number") }
+            snackbarHostState.showSnackbar("Please enter your phone number")
             return
         }
         if (!isValidPhone(phone)) {
-            scope.launch { snackbarHostState.showSnackbar("Please enter a valid phone number (10-15 digits)") }
+            snackbarHostState.showSnackbar("Please enter a valid phone number (10-15 digits)")
             return
         }
     }
     if (password.isBlank()) {
-        scope.launch { snackbarHostState.showSnackbar("Please enter a password") }
+        snackbarHostState.showSnackbar("Please enter a password")
         return
     }
     if (!isValidPassword(password)) {
-        scope.launch { snackbarHostState.showSnackbar("Password must be at least 6 characters") }
+        snackbarHostState.showSnackbar("Password must be at least 6 characters")
         return
     }
     if (password != confirmPassword) {
-        scope.launch { snackbarHostState.showSnackbar("Passwords do not match") }
+        snackbarHostState.showSnackbar("Passwords do not match")
         return
     }
 
     isLoading(true)
-    val signUpResult = adminSignUp(
-        username = username,
+    val signUpResult = patientSignUp(
+        name = name,
         password = password,
         email = if (loginMethod == "email") email else null,
         phone = if (loginMethod == "phone") phone else null
     )
     isLoading(false)
     signUpResult.fold(
-        onSuccess = {
-            scope.launch { snackbarHostState.showSnackbar("Account created! You can now log in.") }
-            onSuccess()
+        onSuccess = { user ->
+            snackbarHostState.showSnackbar("Account created! Logging you in...")
+            onSuccess(user)
         },
         onFailure = { e ->
-            scope.launch { snackbarHostState.showSnackbar(e.message ?: "Registration failed") }
+            snackbarHostState.showSnackbar(e.message ?: "Registration failed")
         }
     )
 }
 
-private suspend fun handleSignIn(
+private suspend fun handlePatientSignIn(
     loginMethod: String,
     email: String,
     phone: String,
     password: String,
     snackbarHostState: SnackbarHostState,
-    scope: CoroutineScope,
     isLoading: (Boolean) -> Unit,
-    onSuccess: (String) -> Unit
+    onSuccess: (PatientUser) -> Unit
 ) {
     val credential = if (loginMethod == "email") email else phone
     if (credential.isBlank()) {
-        scope.launch {
-            snackbarHostState.showSnackbar(
-                if (loginMethod == "email") "Please enter your email address" else "Please enter your phone number"
-            )
-        }
+        snackbarHostState.showSnackbar(
+            if (loginMethod == "email") "Please enter your email address" else "Please enter your phone number"
+        )
         return
     }
     if (loginMethod == "email" && !isValidEmail(email)) {
-        scope.launch { snackbarHostState.showSnackbar("Please enter a valid email address") }
+        snackbarHostState.showSnackbar("Please enter a valid email address")
         return
     }
     if (loginMethod == "phone" && !isValidPhone(phone)) {
-        scope.launch { snackbarHostState.showSnackbar("Please enter a valid phone number") }
+        snackbarHostState.showSnackbar("Please enter a valid phone number")
         return
     }
     if (password.isBlank()) {
-        scope.launch { snackbarHostState.showSnackbar("Please enter your password") }
+        snackbarHostState.showSnackbar("Please enter a password")
         return
     }
 
     isLoading(true)
-    val result = adminSignIn(credential, password, loginMethod)
+    val result = patientSignIn(credential, password, loginMethod)
     isLoading(false)
     result.fold(
-        onSuccess = { username -> onSuccess(username) },
+        onSuccess = { user -> onSuccess(user) },
         onFailure = { e ->
-            scope.launch { snackbarHostState.showSnackbar(e.message ?: "Login failed") }
+            snackbarHostState.showSnackbar(e.message ?: "Login failed")
         }
     )
 }
 
 @Composable
-private fun RoleSelectionContent(
-    onAdminClick: () -> Unit,
-    onPatientClick: () -> Unit,
-    onDoctorClick : ()->Unit
-
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 28.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(AppBlue, RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
-                .padding(vertical = 28.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Login To Your\nAccount",
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                lineHeight = 32.sp
-            )
-        }
-
-        Spacer(modifier = Modifier.height(36.dp))
-
-        Text(
-            text = "Choose your role",
-            color = Color(0xFF101820),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onAdminClick() },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(AppBlue, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.AdminPanelSettings, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text("Admin", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                    Text("Manage inventory, hospitals, doctors", fontSize = 12.sp, color = Color(0xFF61717D))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onPatientClick() },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color(0xFF4CAF50), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.LocalHospital, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text("Patient", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                    Text("View medicine schedule & chat with doctors", fontSize = 12.sp, color = Color(0xFF61717D))
-                }
-            }
-        }
-
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onDoctorClick() },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color(0xFF4CAF50), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Emergency, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text("Doctor", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun AdminAuthContent(
+private fun PatientAuthContent(
     isSignUp: Boolean,
     loginMethod: String,
+    name: String,
     email: String,
     phone: String,
-    username: String,
     password: String,
     confirmPassword: String,
     passwordVisible: Boolean,
     confirmPasswordVisible: Boolean,
     isLoading: Boolean,
+    onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
-    onUsernameChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onConfirmPasswordChange: (String) -> Unit,
     onTogglePassword: () -> Unit,
@@ -462,7 +313,6 @@ private fun AdminAuthContent(
     onLoginMethodChange: (String) -> Unit,
     onToggleMode: () -> Unit,
     onBack: () -> Unit,
-    onForgotPassword: () -> Unit,
     onSubmit: () -> Unit
 ) {
     Column(
@@ -479,7 +329,7 @@ private fun AdminAuthContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = if (isSignUp) "Create Admin\nAccount" else "Admin\nLogin",
+                text = if (isSignUp) "Create Patient\nAccount" else "Patient\nLogin",
                 color = Color.White,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
@@ -489,6 +339,28 @@ private fun AdminAuthContent(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
+
+        if (isSignUp) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = onNameChange,
+                placeholder = { Text("Full Name", color = Color(0xFF9E9E9E)) },
+                leadingIcon = {
+                    Icon(Icons.Default.Person, contentDescription = null, tint = AppBlue)
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(50.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedIndicatorColor = AppBlue,
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
+                    cursorColor = AppBlue
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -535,29 +407,6 @@ private fun AdminAuthContent(
                 placeholder = { Text("Phone Number", color = Color(0xFF9E9E9E)) },
                 leadingIcon = {
                     Icon(Icons.Default.Phone, contentDescription = null, tint = AppBlue)
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(50.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedIndicatorColor = AppBlue,
-                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
-                    cursorColor = AppBlue
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
-        if (isSignUp) {
-            Spacer(modifier = Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = username,
-                onValueChange = onUsernameChange,
-                placeholder = { Text("Username", color = Color(0xFF9E9E9E)) },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = null, tint = AppBlue)
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(50.dp),
@@ -661,18 +510,6 @@ private fun AdminAuthContent(
                     fontWeight = FontWeight.Bold
                 )
             }
-        }
-
-        if (!isSignUp) {
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = "Forgot Password?",
-                color = AppBlue,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.clickable { onForgotPassword() }
-            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))

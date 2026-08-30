@@ -4,12 +4,19 @@ import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.core.content.edit
+import com.example.healt4u.Storage.addCaregiverLink
+import com.example.healt4u.Storage.getCaregiversForPatient
+import com.example.healt4u.Storage.getPatientsForCaregiver
+import com.example.healt4u.Storage.removeCaregiverLink
+import com.example.healt4u.Storage.getPatientByPhone
 import com.example.healt4u.Storage.upsertFamilyAlertCloud
 import com.example.healt4u.Storage.upsertFamilyAlertsCloud
+import com.example.healt4u.Storage.getFamilyAlertsForCaregiver
 import com.example.healt4u.data.local.loadFamilyAlerts
 import com.example.healt4u.data.local.loadReminderLogsForDate
 import com.example.healt4u.data.local.saveFamilyAlerts
-import com.example.healt4u.model.CaregiverProfile
+import com.example.healt4u.model.CaregiverLink
 import com.example.healt4u.model.FamilyAlert
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,15 +26,22 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+@Suppress("unused")
 class FamilyModeViewModel(
-    private val application: Application
+    application: Application
 ) : AndroidViewModel(application) {
 
-    private val _caregivers = MutableStateFlow<List<CaregiverProfile>>(emptyList())
-    val caregivers: StateFlow<List<CaregiverProfile>> = _caregivers
+    private val _caregivers = MutableStateFlow<List<CaregiverLink>>(emptyList())
+    val caregivers: StateFlow<List<CaregiverLink>> = _caregivers
+
+    private val _myPatients = MutableStateFlow<List<CaregiverLink>>(emptyList())
+    val myPatients: StateFlow<List<CaregiverLink>> = _myPatients
 
     private val _alerts = MutableStateFlow<List<FamilyAlert>>(emptyList())
     val alerts: StateFlow<List<FamilyAlert>> = _alerts
+
+    private val _caregiverAlerts = MutableStateFlow<List<FamilyAlert>>(emptyList())
+    val caregiverAlerts: StateFlow<List<FamilyAlert>> = _caregiverAlerts
 
     private val _patientPhone = MutableStateFlow("")
     val patientPhone: StateFlow<String> = _patientPhone
@@ -46,47 +60,97 @@ class FamilyModeViewModel(
 
     fun savePatientPhone(context: Context, phone: String) {
         val prefs = context.getSharedPreferences("family_mode_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("patient_phone", phone).apply()
+        prefs.edit { putString("patient_phone", phone) }
         _patientPhone.value = phone
     }
 
-    fun refreshCaregivers(context: Context) {
+    fun refreshCaregivers(patientUserId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            val file = java.io.File(context.filesDir, "caregivers.json")
-            if (!file.exists()) return@launch
             try {
-                val list = kotlinx.serialization.json.Json.decodeFromString<List<CaregiverProfile>>(file.readText())
-                _caregivers.value = list
-            } catch (_: Exception) { }
+                val links = getCaregiversForPatient(patientUserId)
+                _caregivers.value = links
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
-    fun addCaregiver(context: Context, name: String, phone: String, relationship: String) {
+    fun refreshMyPatients(caregiverUserId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            val id = "cg_${System.currentTimeMillis()}"
-            val caregiver = CaregiverProfile(
-                id = id,
-                name = name,
-                phone = phone,
-                relationship = relationship,
-                patientPhone = _patientPhone.value,
-                patientId = "p001"
-            )
-            val updated = _caregivers.value + caregiver
-            _caregivers.value = updated
-            val json = kotlinx.serialization.json.Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
-            val jsonString = json.encodeToString(updated)
-            context.openFileOutput("caregivers.json", Context.MODE_PRIVATE).use { it.write(jsonString.toByteArray()) }
+            try {
+                val links = getPatientsForCaregiver(caregiverUserId)
+                _myPatients.value = links
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
-    fun removeCaregiver(context: Context, caregiverId: String) {
+    private val _addCaregiverResult = MutableStateFlow<String?>(null)
+    val addCaregiverResult: StateFlow<String?> = _addCaregiverResult
+
+    fun clearAddCaregiverResult() {
+        _addCaregiverResult.value = null
+    }
+
+    fun addCaregiver(
+        patientUserId: Int,
+        phone: String,
+        relationship: String,
+        patientName: String,
+        patientPhone: String
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
-            val updated = _caregivers.value.filter { it.id != caregiverId }
-            _caregivers.value = updated
-            val json = kotlinx.serialization.json.Json { prettyPrint = true; ignoreUnknownKeys = true; encodeDefaults = true }
-            val jsonString = json.encodeToString(updated)
-            context.openFileOutput("caregivers.json", Context.MODE_PRIVATE).use { it.write(jsonString.toByteArray()) }
+            try {
+                val caregiverUser = getPatientByPhone(phone)
+                if (caregiverUser == null) {
+                    _addCaregiverResult.value = "No user found with this phone number"
+                    return@launch
+                }
+
+                val existingLink = com.example.healt4u.Storage.getCaregiverLinkByPatientAndCaregiver(
+                    patientUserId = patientUserId,
+                    caregiverUserId = caregiverUser.id
+                )
+                if (existingLink != null) {
+                    _addCaregiverResult.value = "This user is already your caregiver"
+                    return@launch
+                }
+
+                val link = CaregiverLink(
+                    id = 0,
+                    patientUserId = patientUserId,
+                    caregiverUserId = caregiverUser.id,
+                    relationship = relationship,
+                    status = "ACCEPTED",
+                    caregiverName = caregiverUser.name,
+                    caregiverPhone = caregiverUser.phone ?: "",
+                    patientName = patientName,
+                    patientPhone = patientPhone
+                )
+
+                val success = addCaregiverLink(link)
+                if (success) {
+                    refreshCaregivers(patientUserId)
+                    _addCaregiverResult.value = "SUCCESS"
+                } else {
+                    _addCaregiverResult.value = "Failed to add caregiver"
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _addCaregiverResult.value = "Error: ${e.message}"
+            }
+        }
+    }
+
+    fun removeCaregiver(linkId: Int, patientUserId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                removeCaregiverLink(linkId)
+                refreshCaregivers(patientUserId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
@@ -101,7 +165,18 @@ class FamilyModeViewModel(
         }
     }
 
-    fun checkOverdueAndCreateAlerts(context: Context) {
+    fun loadCaregiverAlerts(caregiverUserId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val alertsList = getFamilyAlertsForCaregiver(caregiverUserId)
+                _caregiverAlerts.value = alertsList
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun checkOverdueAndCreateAlerts(context: Context, patientUserId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
@@ -140,8 +215,10 @@ class FamilyModeViewModel(
                                 date = date,
                                 patientPhone = _patientPhone.value,
                                 status = "PENDING",
-                                caregiverName = cg.name,
-                                caregiverPhone = cg.phone
+                                caregiverName = cg.caregiverName,
+                                caregiverPhone = cg.caregiverPhone,
+                                caregiverUserId = cg.caregiverUserId,
+                                patientUserId = patientUserId
                             )
                         )
                     }
@@ -171,15 +248,18 @@ class FamilyModeViewModel(
         }
     }
 
-    fun resolveAlert(context: Context, alert: FamilyAlert) {
+    fun resolveAlert(alert: FamilyAlert) {
         viewModelScope.launch(Dispatchers.IO) {
             val updated = alert.copy(
                 status = "RESOLVED",
                 resolvedAt = System.currentTimeMillis()
             )
-            val all = _alerts.value.map { if (it.id == updated.id) updated else it }
-            _alerts.value = all
-            saveFamilyAlerts(context, all)
+            val allAlerts = _alerts.value.map { if (it.id == updated.id) updated else it }
+            _alerts.value = allAlerts
+
+            val allCaregiverAlerts = _caregiverAlerts.value.map { if (it.id == updated.id) updated else it }
+            _caregiverAlerts.value = allCaregiverAlerts
+
             upsertFamilyAlertCloud(updated)
         }
     }

@@ -1,8 +1,9 @@
 package com.example.healt4u.screen.FamilyMode
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,11 +19,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Message
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,37 +53,32 @@ private val ResolvedGreen = Color(0xFF4CAF50)
 @Composable
 fun CaregiverAlertScreen(
     vm: FamilyModeViewModel,
+    currentUserId: Int,
     onBack: () -> Unit = {}
 ) {
-    val alerts by vm.alerts.collectAsStateWithLifecycle()
+    val caregiverAlerts by vm.caregiverAlerts.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
-        vm.loadAlerts(context)
+        vm.loadCaregiverAlerts(currentUserId)
     }
 
-    val pendingAlerts = alerts.filter { it.status == "PENDING" }
-    val calledAlerts = alerts.filter { it.status == "CALLED" }
-    val resolvedAlerts = alerts.filter { it.status == "RESOLVED" }
+    val pendingAlerts = caregiverAlerts.filter { it.status == "PENDING" }
+    val calledAlerts = caregiverAlerts.filter { it.status == "CALLED" }
+    val resolvedAlerts = caregiverAlerts.filter { it.status == "RESOLVED" }
 
     Column(
         modifier = Modifier.fillMaxSize().background(Color(0xFFF5F6FA))
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().background(AppBlue).padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF101820))
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
-            Box(
-                modifier = Modifier.size(38.dp).background(AlertOrange, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Notifications, null, tint = Color.White, modifier = Modifier.size(20.dp))
-            }
-            Spacer(Modifier.width(10.dp))
-            Text("Missed Dose Alerts", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0xFF101820))
+            Spacer(Modifier.width(8.dp))
+            Text("Caregiver Alerts", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
         }
 
         LazyColumn(
@@ -105,7 +100,7 @@ fun CaregiverAlertScreen(
                             Icon(Icons.Default.CheckCircle, null, tint = ResolvedGreen, modifier = Modifier.size(48.dp))
                             Spacer(Modifier.height(8.dp))
                             Text("No alerts", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text("The patient has not missed any doses.", fontSize = 12.sp, color = Color(0xFF61717D))
+                            Text("Your patients have not missed any doses.", fontSize = 12.sp, color = Color(0xFF61717D))
                         }
                     }
                 }
@@ -120,21 +115,21 @@ fun CaregiverAlertScreen(
                         alert = alert,
                         onCall = {
                             val intent = Intent(Intent.ACTION_DIAL).apply {
-                                data = Uri.parse("tel:${alert.patientPhone}")
+                                data = "tel:${alert.patientPhone}".toUri()
                             }
                             context.startActivity(intent)
                             vm.markAlertCalled(context, alert)
                         },
                         onMessage = {
                             val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = Uri.parse("smsto:${alert.patientPhone}")
+                                data = "smsto:${alert.patientPhone}".toUri()
                                 putExtra("sms_body", "Hi, I noticed you missed your ${alert.medicineName} dose at ${alert.scheduledTime}. Please confirm you've taken it.")
                             }
                             context.startActivity(intent)
                             vm.markAlertCalled(context, alert)
                         },
                         onResolve = {
-                            vm.resolveAlert(context, alert)
+                            vm.resolveAlert(alert)
                         }
                     )
                 }
@@ -147,7 +142,7 @@ fun CaregiverAlertScreen(
                 items(calledAlerts, key = { it.id }) { alert ->
                     CalledAlertCard(
                         alert = alert,
-                        onResolve = { vm.resolveAlert(context, alert) }
+                        onResolve = { vm.resolveAlert(alert) }
                     )
                 }
             }
@@ -156,7 +151,7 @@ fun CaregiverAlertScreen(
                 item {
                     Text("Resolved", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = ResolvedGreen)
                 }
-                items(resolvedAlerts.take(5), key = { it.id }) { alert ->
+                items(resolvedAlerts.take(10), key = { it.id }) { alert ->
                     ResolvedAlertCard(alert)
                 }
             }
@@ -189,7 +184,7 @@ private fun CaregiverAlertCard(
                 Column(Modifier.weight(1f)) {
                     Text(alert.medicineName, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("Scheduled at ${alert.scheduledTime}", fontSize = 12.sp, color = Color(0xFF61717D))
-                    Text("Patient phone: ${alert.patientPhone}", fontSize = 11.sp, color = Color(0xFF90A4AE))
+                    Text("Patient: ${alert.patientPhone}", fontSize = 11.sp, color = Color(0xFF90A4AE))
                 }
             }
 
@@ -199,9 +194,8 @@ private fun CaregiverAlertCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Call button - direct dial
                 Card(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).clickable { onCall() },
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = AppBlue),
                     elevation = CardDefaults.cardElevation(0.dp)
@@ -217,9 +211,8 @@ private fun CaregiverAlertCard(
                     }
                 }
 
-                // Message button - SMS
                 Card(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).clickable { onMessage() },
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = ResolvedGreen),
                     elevation = CardDefaults.cardElevation(0.dp)
@@ -229,7 +222,7 @@ private fun CaregiverAlertCard(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Message, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.Message, null, tint = Color.White, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text("Message", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }

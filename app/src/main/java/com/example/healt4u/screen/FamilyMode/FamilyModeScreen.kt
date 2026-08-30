@@ -17,8 +17,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Notifications
@@ -32,6 +32,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.healt4u.ViewModel.FamilyModeViewModel
-import com.example.healt4u.model.CaregiverProfile
+import com.example.healt4u.model.CaregiverLink
 import com.example.healt4u.model.FamilyAlert
 import com.example.healt4u.screen.componentUI.button
 
@@ -55,25 +57,42 @@ private val ResolvedGreen = Color(0xFF4CAF50)
 @Composable
 fun FamilyModeScreen(
     vm: FamilyModeViewModel,
+    currentUserId: Int,
+    currentUserName: String,
+    currentUserPhone: String,
     onBack: () -> Unit = {},
     onAddCaregiverClick: () -> Unit = {},
-    onSetPhoneClick: () -> Unit = {}
+    onSetPhoneClick: () -> Unit = {},
+    onCaregiverAlertsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val caregivers by vm.caregivers.collectAsStateWithLifecycle()
+    val myPatients by vm.myPatients.collectAsStateWithLifecycle()
     val alerts by vm.alerts.collectAsStateWithLifecycle()
+    val caregiverAlerts by vm.caregiverAlerts.collectAsStateWithLifecycle()
     val patientPhone by vm.patientPhone.collectAsStateWithLifecycle()
-    val isLoading by vm.isLoading.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentUserId) {
         vm.loadPatientPhone(context)
-        vm.refreshCaregivers(context)
+        vm.refreshCaregivers(currentUserId)
+        vm.refreshMyPatients(currentUserId)
         vm.loadAlerts(context)
-        vm.checkOverdueAndCreateAlerts(context)
+        vm.loadCaregiverAlerts(currentUserId)
+        vm.checkOverdueAndCreateAlerts(context, currentUserId)
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        vm.loadPatientPhone(context)
+        vm.refreshCaregivers(currentUserId)
+        vm.refreshMyPatients(currentUserId)
+        vm.loadAlerts(context)
+        vm.loadCaregiverAlerts(currentUserId)
     }
 
     val pendingAlerts = alerts.filter { it.status == "PENDING" }
     val resolvedAlerts = alerts.filter { it.status == "RESOLVED" }
+
+    val pendingCaregiverAlerts = caregiverAlerts.filter { it.status == "PENDING" }
 
     Column(
         modifier = Modifier.fillMaxSize().background(ScreenBlue)
@@ -128,8 +147,8 @@ fun FamilyModeScreen(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    StatCard("Caregivers", caregivers.size.toString(), AppBlue, Modifier.weight(1f))
-                    StatCard("Pending", pendingAlerts.size.toString(), AlertOrange, Modifier.weight(1f))
+                    StatCard("My Caregivers", caregivers.size.toString(), AppBlue, Modifier.weight(1f))
+                    StatCard("My Alerts", pendingAlerts.size.toString(), AlertOrange, Modifier.weight(1f))
                     StatCard("Resolved", resolvedAlerts.size.toString(), ResolvedGreen, Modifier.weight(1f))
                 }
             }
@@ -160,7 +179,7 @@ fun FamilyModeScreen(
                 items(caregivers, key = { it.id }) { caregiver ->
                     CaregiverCard(
                         caregiver = caregiver,
-                        onRemove = { vm.removeCaregiver(context, caregiver.id) }
+                        onRemove = { vm.removeCaregiver(caregiver.id, currentUserId) }
                     )
                 }
             }
@@ -172,14 +191,14 @@ fun FamilyModeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Active Alerts", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
+                        Text("My Missed Dose Alerts", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
                         Text("${pendingAlerts.size} pending", fontSize = 12.sp, color = AlertOrange, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 items(pendingAlerts, key = { it.id }) { alert ->
                     AlertCard(
                         alert = alert,
-                        onResolve = { vm.resolveAlert(context, alert) }
+                        onResolve = { vm.resolveAlert(alert) }
                     )
                 }
             }
@@ -199,6 +218,34 @@ fun FamilyModeScreen(
                 }
             }
 
+            if (myPatients.isNotEmpty()) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("My Patients (I'm their caregiver)", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
+                        if (pendingCaregiverAlerts.isNotEmpty()) {
+                            Text(
+                                "${pendingCaregiverAlerts.size} pending",
+                                fontSize = 12.sp,
+                                color = AlertRed,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.clickable { onCaregiverAlertsClick() }
+                            )
+                        }
+                    }
+                }
+                items(myPatients, key = { it.id }) { patient ->
+                    PatientCard(
+                        patient = patient,
+                        pendingCount = pendingCaregiverAlerts.filter { it.patientUserId == patient.patientUserId }.size,
+                        onClick = { onCaregiverAlertsClick() }
+                    )
+                }
+            }
+
             item { Spacer(Modifier.height(16.dp)) }
         }
     }
@@ -214,7 +261,7 @@ private fun FamilyModeHeader(onBack: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
         }
         Spacer(Modifier.width(8.dp))
         Text(
@@ -243,7 +290,7 @@ private fun StatCard(label: String, value: String, color: Color, modifier: Modif
 }
 
 @Composable
-private fun CaregiverCard(caregiver: CaregiverProfile, onRemove: () -> Unit) {
+private fun CaregiverCard(caregiver: CaregiverLink, onRemove: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         shape = RoundedCornerShape(14.dp),
@@ -262,11 +309,48 @@ private fun CaregiverCard(caregiver: CaregiverProfile, onRemove: () -> Unit) {
             }
             Spacer(Modifier.width(11.dp))
             Column(Modifier.weight(1f)) {
-                Text(caregiver.name, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("${caregiver.relationship} — ${caregiver.phone}", fontSize = 11.sp, color = Color(0xFF61717D))
+                Text(caregiver.caregiverName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("${caregiver.relationship} — ${caregiver.caregiverPhone}", fontSize = 11.sp, color = Color(0xFF61717D))
             }
             IconButton(onClick = onRemove) {
                 Icon(Icons.Default.Delete, "Remove", tint = AlertRed, modifier = Modifier.size(20.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun PatientCard(patient: CaregiverLink, pendingCount: Int, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).clickable { onClick() },
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Row(
+            Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(38.dp).background(Color(0xFFE8F5E9), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Groups, null, tint = ResolvedGreen, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.width(11.dp))
+            Column(Modifier.weight(1f)) {
+                Text(patient.patientName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("${patient.relationship} — ${patient.patientPhone}", fontSize = 11.sp, color = Color(0xFF61717D))
+            }
+            if (pendingCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(AlertRed, RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(pendingCount.toString(), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

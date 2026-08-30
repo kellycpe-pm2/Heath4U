@@ -27,6 +27,12 @@ data class FamilyAlert(
     @SerialName("caregiver_phone")
     val caregiverPhone: String = "",
 
+    @SerialName("caregiver_user_id")
+    val caregiverUserId: Int = 0,
+
+    @SerialName("patient_user_id")
+    val patientUserId: Int = 0,
+
     @SerialName("created_at")
     val createdAt: Long = System.currentTimeMillis(),
 

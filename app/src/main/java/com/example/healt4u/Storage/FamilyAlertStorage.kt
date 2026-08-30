@@ -91,4 +91,22 @@ suspend fun deleteFamilyAlert(alertId: String): Boolean {
     }
 }
 
+suspend fun getFamilyAlertsForCaregiver(caregiverUserId: Int): List<FamilyAlert> {
+    return try {
+        withContext(Dispatchers.IO) {
+            supabase
+                .from("family_alerts")
+                .select {
+                    filter {
+                        eq(column = "caregiver_user_id", value = caregiverUserId)
+                    }
+                }
+                .decodeList<FamilyAlert>()
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        emptyList()
+    }
+}
+
 

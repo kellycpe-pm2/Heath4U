@@ -54,6 +54,7 @@ import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
 import com.example.healt4u.screen.FamilyMode.CaregiverAlertScreen
 import com.example.healt4u.screen.FamilyMode.FamilyModeScreen
 import com.example.healt4u.screen.FamilyMode.SetPatientPhoneScreen
+import com.example.healt4u.screen.Patient.PatientLoginScreen
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
 import com.example.healt4u.screen.Medicine.MedicineDetailScreen
@@ -92,6 +93,8 @@ fun AppNavGraph(
     var currentUserId by remember { mutableStateOf(2) }
     var currentUserRole by remember { mutableStateOf("patient") }
     var loggedInAdminUsername by remember { mutableStateOf("") }
+    var currentUserName by remember { mutableStateOf("") }
+    var currentUserPhone by remember { mutableStateOf("") }
 
 
     LaunchedEffect(Unit) {
@@ -125,21 +128,31 @@ fun AppNavGraph(
                         popUpTo("login") { inclusive = true }
                     }
                 },
-                onPatientLoginSuccess = {
-                    navController.navigate("dashboard") {
-                        popUpTo("login") { inclusive = true }
-                    }
-
-
+                onPatientLoginClick = {
+                    navController.navigate("patient_login")
                 },
                 onForgotPassword = {
                     navController.navigate("forgot_password")
-                }
-                ,
+                },
                 onDoctorSuccessClick = {
                     navController.navigate("doctor")
-
+                }
+            )
         }
+
+        composable("patient_login") {
+            PatientLoginScreen(
+                onLoginSuccess = { userId, userName, userPhone ->
+                    currentUserId = userId
+                    currentUserName = userName
+                    currentUserPhone = userPhone
+                    currentUserRole = "patient"
+                    vm_family.savePatientPhone(context, userPhone)
+                    navController.navigate("dashboard") {
+                        popUpTo("login") { inclusive = true }
+                    }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -615,15 +628,22 @@ fun AppNavGraph(
         composable("family_mode") {
             FamilyModeScreen(
                 vm = vm_family,
+                currentUserId = currentUserId,
+                currentUserName = currentUserName,
+                currentUserPhone = currentUserPhone,
                 onBack = { navController.popBackStack() },
                 onAddCaregiverClick = { navController.navigate("add_caregiver") },
-                onSetPhoneClick = { navController.navigate("set_patient_phone") }
+                onSetPhoneClick = { navController.navigate("set_patient_phone") },
+                onCaregiverAlertsClick = { navController.navigate("caregiver_alerts") }
             )
         }
 
         composable("add_caregiver") {
             AddCaregiverScreen(
                 vm = vm_family,
+                currentUserId = currentUserId,
+                currentUserName = currentUserName,
+                currentUserPhone = currentUserPhone,
                 onBack = { navController.popBackStack() },
                 onAdded = { navController.popBackStack() }
             )
@@ -640,6 +660,7 @@ fun AppNavGraph(
         composable("caregiver_alerts") {
             CaregiverAlertScreen(
                 vm = vm_family,
+                currentUserId = currentUserId,
                 onBack = { navController.popBackStack() }
             )
         }

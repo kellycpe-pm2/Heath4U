@@ -207,23 +207,23 @@ fun FamilyModeScreen(
 @Composable
 private fun FamilyModeHeader(onBack: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(AppBlue)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color(0xFF101820))
+            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
         }
-        Box(
-            modifier = Modifier.size(38.dp).background(AppBlue, RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(Icons.Default.Groups, null, tint = Color.White, modifier = Modifier.size(22.dp))
-        }
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text("HEALTH4U", color = AppBlue, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-            Text("FAMILY MODE", color = Color(0xFF63727D), fontSize = 9.sp, letterSpacing = 1.sp)
-        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "FAMILY MODE",
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
     }
 }
 

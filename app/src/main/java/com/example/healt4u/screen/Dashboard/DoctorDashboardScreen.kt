@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -18,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.healt4u.model.AdminUser
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import kotlinx.coroutines.launch
 
@@ -39,7 +42,8 @@ fun DoctorDashboardScreen(
     onStatisticClick: () -> Unit = {},
     onSettingClick:()-> Unit ={},
     onScanClick: ()->Unit ={},
-    onProfileClick : ()->Unit ={}
+    onProfileClick : ()->Unit ={},
+    onPatientClick:()->Unit
     
 ) {
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -95,7 +99,7 @@ fun DoctorDashboardScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                text = "Today,",
+                                text = "Today",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontSize = 20.sp
                             )
@@ -128,6 +132,33 @@ fun DoctorDashboardScreen(
                             }
                             Spacer(Modifier.height(12.dp))
                             // Add patient list items here
+                            /*
+                            if (patientList.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 30.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No patients assigned yet",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.heightIn(max = 280.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(patientList) { patient ->
+                                        PatientListItem(
+                                            patient = patient,
+                                            onClick = { onPatientClick(patient) }
+                                        )
+                                    }
+                                }
+                            }*/
                         }
                     }
 
@@ -213,7 +244,7 @@ fun DoctorDashboardScreen(
                             label = "Doctor-Patient Chat",
                             icon = Icons.Filled.Message,
                             modifier = Modifier.weight(1f),
-                            onClick = onMedicineClick
+                            onClick = onChatClick
                         )
                         DashboardTile(
                             label = "Patient List",
@@ -361,12 +392,63 @@ private fun BottomNavItem(
     }
 }
 
+/*
+@Composable
+private fun PatientListItem(patient: User, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = patient.name.firstOrNull()?.uppercase() ?: "P",
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = patient.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = "Tap to view stats or chat",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(Icons.Filled.ChevronRight, "Open", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}*/
+
+
 // ===== Preview =====
 @Preview(showBackground = true)
 @Composable
 fun PreviewDoctorDashboard() {
     colorTheme {
-        DoctorDashboardScreen(
+        DoctorDashboardScreen(onPatientClick = {}
         )
     }
 }

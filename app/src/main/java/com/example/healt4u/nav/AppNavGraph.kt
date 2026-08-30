@@ -187,7 +187,7 @@ fun AppNavGraph(
                 onChatClick = { navController.navigate("chat_list") },
                 onFamilyModeClick = { navController.navigate("family_mode") },
                 onAppointmentClick ={navController.navigate("appointment")},
-                onAdherenceClick = {navController.navigate("adherence_statistics")},
+                onAdherenceClick = {navController.navigate("adherence_statistics/$currentUserId")},
                 onScanClick = {navController.navigate("scan")}
 
             )
@@ -354,13 +354,13 @@ fun AppNavGraph(
             )
         }
 
-        composable("adherence_statistics/{patientId}") { backStackEntry ->
-            val patientId = backStackEntry.arguments?.getString("patientId")?.toIntOrNull() ?: 2
+        /*composable("adherence_statistics/{patientId}") { backStack ->
+            val pid = backStack.arguments?.getString("patientId")?.toIntOrNull() ?: 1
             AdherenceStatisticScreen(
-                patientId = patientId,
+                patientId = pid,
                 onBack = { navController.popBackStack() }
             )
-        }
+        }*/
 
         composable("chat_list") {
             ChatListScreen(
@@ -484,6 +484,12 @@ fun AppNavGraph(
                 }
             }
 
+            LaunchedEffect(selectedPatientId) {
+                val targetId = selectedPatientId ?: return@LaunchedEffect
+                navController.navigate("adherence_statistics/$targetId")
+                selectedPatientId = null
+            }
+
             if (isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -513,7 +519,7 @@ fun AppNavGraph(
                         }
                     },
                     onAvatarClick = { patientId ->
-                        navController.navigate("adherence_statistics/$patientId")
+                        selectedPatientId = patientId
                     },
                     isMuted = conversationId in mutedConversations,
                     onMuteChanged = { newState ->
@@ -538,10 +544,21 @@ fun AppNavGraph(
             }
         }
 
+
+        composable("adherence_statistic") {
+            AdherenceStatisticScreen(onBack = { navController.popBackStack() })
+        }
+
         //doctor part
         composable("doctor"){
             DoctorDashboardScreen(
-
+                onPatientClick = { },
+                onListClick = { /* navController.navigate("patient_list") */ },
+                onChatClick = { /* navController.navigate("chat_list") */ },
+                onStatisticClick = { navController.navigate("adherence_statistic") },
+                onSettingClick = { },
+                onScanClick = { },
+                onProfileClick = { }
             )
         }
 

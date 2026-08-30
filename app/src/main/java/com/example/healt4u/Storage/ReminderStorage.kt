@@ -4,10 +4,7 @@ import com.example.healt4u.model.ReminderLog
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-// Reuses the same `supabase` client already created in MedicineStorage.kt.
-// Requires a "reminder_logs" table in the same Supabase project — see the
-// SQL at the bottom of this file for the schema to run once in the Supabase dashboard.
+import java.util.Objects.isNull
 
 suspend fun getReminderLogsForDate(date: String): List<ReminderLog> {
     return try {
@@ -16,7 +13,7 @@ suspend fun getReminderLogsForDate(date: String): List<ReminderLog> {
                 .from("reminder_logs")
                 .select {
                     filter {
-                        eq(column = "date", value = date)
+                        eq("date", date)
                     }
                 }
                 .decodeList<ReminderLog>()

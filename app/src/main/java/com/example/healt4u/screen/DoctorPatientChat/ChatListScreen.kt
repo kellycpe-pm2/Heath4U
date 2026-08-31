@@ -28,10 +28,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.getConversationsByDoctor
 import com.example.healt4u.Storage.getConversationsByPatient
+import com.example.healt4u.Storage.getPatientById
+import com.example.healt4u.data.HospitalData.getDoctorById
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.formatTimeString
-import java.time.Instant.parse
 import java.util.*
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -180,6 +181,7 @@ fun ChatListScreen(
                             key = { it.id }
                         ) { conversation ->
                             ConversationItem(
+                                userId = userId,
                                 userRole = userRole,
                                 conversation = conversation,
                                 onClick = { onConversationClick(conversation) }
@@ -191,19 +193,42 @@ fun ChatListScreen(
         }
     }
 }
+
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ConversationItem(
+    userId: Int,
     userRole: String,
     conversation: Conversation,
     onClick: () -> Unit
 ) {
+    val ids = conversation.id.split("_")
+    val doctorId = ids.getOrNull(0)?.toIntOrNull() ?: 0
+    val patientId = ids.getOrNull(1)?.toIntOrNull() ?: 0
+
+    var doctorName by remember { mutableStateOf("Doctor") }
+    var patientName by remember { mutableStateOf("Patient") }
+
+    LaunchedEffect(doctorId, patientId) {
+        doctorName = getDoctorById(doctorId)?.name ?: "Doctor"
+        patientName = getPatientById(patientId)?.name ?: "Patient"
+    }
+
+    val effectiveRole = when {
+        userRole == "doctor" || userId == doctorId -> "doctor"
+        userRole == "patient" || userId == patientId -> "patient"
+        else -> "patient"
+    }
+
+    val displayName = remember(effectiveRole, doctorName, patientName) {
+        if (effectiveRole == "doctor") patientName else doctorName
+    }
+
     val timestampMillis = try {
         val str = conversation.lastMessageTime
         when {
             str.all { it.isDigit() } -> str.toLong()
             else -> {
-                // Parse safely using tolerant formatter
                 java.time.OffsetDateTime.parse(str)
                     .toInstant()
                     .toEpochMilli()
@@ -237,11 +262,6 @@ fun ConversationItem(
                     .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                val displayName = if (userRole == "doctor") {
-                    conversation.patientName
-                } else {
-                    conversation.doctorName
-                }
                 Text(
                     text = displayName
                         .split(" ")
@@ -250,8 +270,7 @@ fun ConversationItem(
                         .joinToString("")
                         .uppercase(),
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -263,11 +282,7 @@ fun ConversationItem(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = if (userRole == "doctor") {
-                            conversation.patientName
-                        } else {
-                            conversation.doctorName
-                        },
+                        text = displayName,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -279,18 +294,20 @@ fun ConversationItem(
                 }
 
                 Text(
-                    text = formatTime(timestampMillis),
+                    text = conversation.lastMessage.takeIf { it.isNotEmpty() } ?: "No messages yet",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Text(
-                    text = conversation.hospitalName,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
+                if (userRole=="patient") {
+                    Text(
+                        text = conversation.hospitalName,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
             }
 
             if (conversation.unreadCount > 0) {
@@ -317,6 +334,7 @@ fun ConversationItem(
         }
     }
 }
+
 @RequiresApi(Build.VERSION_CODES.O)
 private fun formatTime(timestamp: Long): String {
     return try {

@@ -78,7 +78,6 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.util.Locale
 
-
 @RequiresApi(Build.VERSION_CODES.O)
 @androidx.camera.core.ExperimentalGetImage
 @OptIn(ExperimentalGetImage::class, DelicateCoroutinesApi::class)
@@ -100,8 +99,6 @@ fun AppNavGraph(
     var currentUserName by remember { mutableStateOf("") }
     var currentUserPhone by remember { mutableStateOf("") }
     val patient = remember { mutableStateOf<PatientUser?>(null) }
-
-
 
     LaunchedEffect(Unit) {
         vm_med.loadFromLocal(context)
@@ -205,10 +202,9 @@ fun AppNavGraph(
                 onScheduleClick = { navController.navigate("schedule") },
                 onChatClick = { navController.navigate("chat_list") },
                 onFamilyModeClick = { navController.navigate("family_mode") },
-                onAppointmentClick ={navController.navigate("appointment")},
-                onAdherenceClick = {navController.navigate("adherence_statistics/$currentUserId")},
-                onScanClick = {navController.navigate("scan")}
-
+                onAppointmentClick = { navController.navigate("appointment") },
+                onAdherenceClick = { navController.navigate("adherence_statistics/$currentUserId") },
+                onScanClick = { navController.navigate("scan") }
             )
         }
 
@@ -249,7 +245,6 @@ fun AppNavGraph(
         }
 
         composable("add") {
-            // Handle navigation on success
             LaunchedEffect(success) {
                 if (success == true) {
                     navController.popBackStack()
@@ -277,7 +272,6 @@ fun AppNavGraph(
             val medicineId = backStackEntry.arguments?.getInt("medicineId") ?: -1
             val medicine = medicines.find { it.id == medicineId }
 
-            // Handle navigation on success
             LaunchedEffect(success) {
                 if (success == true) {
                     navController.popBackStack()
@@ -290,7 +284,6 @@ fun AppNavGraph(
                     medicine = medicine,
                     onEdit = { updatedMedicine ->
                         vm_med.updateMedicineWithValidation(updatedMedicine, context)
-                        // Navigation handled by LaunchedEffect above
                     },
                     onBack = {
                         navController.popBackStack()
@@ -328,14 +321,13 @@ fun AppNavGraph(
 
         composable("scan") {
             ScannerScreen(
-                onBarcodeScanned = { barcode: String ->
-                },
+                onBarcodeScanned = { barcode: String -> },
                 onManualInput = {
                     showManualDialog = true
                 },
                 onFlashToggle = { isOn: Boolean -> },
                 onGalleryPick = {},
-                onBackClick = {  },
+                onBackClick = { },
                 context = context
             )
 
@@ -470,7 +462,6 @@ fun AppNavGraph(
             var patientName by remember { mutableStateOf("Patient") }
             var doctorName by remember { mutableStateOf("Doctor") }
 
-
             LaunchedEffect(doctorId, patientId) {
                 val doctor = getDoctorById(doctorId)
                 val patient = getPatientById(patientId)
@@ -548,7 +539,8 @@ fun AppNavGraph(
                     initialMessages = initialMessages,
                     onBack = {
                         reloadKey++
-                        navController.popBackStack() },
+                        navController.popBackStack()
+                    },
                     onSendMessage = { message ->
                         coroutineScope.launch {
                             sendMessage(message)
@@ -582,14 +574,12 @@ fun AppNavGraph(
                 LaunchedEffect(selectedPatientId) {
                     selectedPatientId?.let { id ->
                         navController.navigate("adherence_statistics/$id")
-                        selectedPatientId = null // Reset after navigate
+                        selectedPatientId = null
                     }
                 }
             }
         }
 
-
-        //doctor part
         composable("doctor") {
             currentUserRole = "doctor"
 
@@ -603,7 +593,7 @@ fun AppNavGraph(
                     navController.navigate("chat_list")
                 },
                 onStatisticClick = {
-                    navController.navigate("adherence_statistics/$currentUserId")  // ✅ Fixed typo + slash
+                    navController.navigate("adherence_statistics/$currentUserId")
                 },
                 onSettingClick = { },
                 onScanClick = { },

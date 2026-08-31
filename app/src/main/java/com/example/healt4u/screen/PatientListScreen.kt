@@ -27,10 +27,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.getConversationsByDoctor
+import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import java.text.SimpleDateFormat
-import java.time.Instant.parse
 import java.util.*
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -167,12 +167,22 @@ fun PatientItem(
     conversation: Conversation,
     onClick: () -> Unit
 ) {
+    val ids = conversation.id.split("_")
+    val patientIdFromConv = ids.getOrNull(1)?.toIntOrNull() ?: conversation.patientId
+
+    var realPatientName by remember { mutableStateOf(conversation.patientName) }
+
+    LaunchedEffect(patientIdFromConv) {
+        getPatientById(patientIdFromConv)?.name?.let {
+            realPatientName = it
+        }
+    }
+
     val timestampMillis = try {
         val str = conversation.lastMessageTime
         when {
             str.all { it.isDigit() } -> str.toLong()
             else -> {
-                // Parse safely using tolerant formatter
                 java.time.OffsetDateTime.parse(str)
                     .toInstant()
                     .toEpochMilli()
@@ -205,7 +215,7 @@ fun PatientItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = conversation.patientName.take(2).uppercase(),
+                    text = realPatientName.take(2).uppercase(),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary
@@ -216,10 +226,10 @@ fun PatientItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                    Text(conversation.patientName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(realPatientName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Text(formatTimeString(timestampMillis), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text("ID: ${conversation.patientId}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("ID: $patientIdFromConv", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text(
                         text = formatTimeString(timestampMillis),

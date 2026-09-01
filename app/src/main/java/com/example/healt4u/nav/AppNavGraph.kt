@@ -11,6 +11,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -68,16 +69,19 @@ import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.ViewModel.NPRAMedicineViewModel
 import com.example.healt4u.model.PatientUser
 import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
 import com.example.healt4u.screen.DoctorPatientChat.Notification
 import com.example.healt4u.screen.PatientListScreen
+import com.example.healt4u.screen.ScanScreen.ScanResult
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.util.Locale
-
+import androidx.hilt.navigation.compose.hiltViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @androidx.camera.core.ExperimentalGetImage
@@ -88,8 +92,9 @@ fun AppNavGraph(
     vm_med: ViewModelMedicine = viewModel(),
     vm_reminder: ReminderViewModel = viewModel(),
     vm_admin: AdminManagementViewModel = viewModel(),
-    vm_hospital: HospitalViewModel = viewModel(),
-    vm_family: FamilyModeViewModel = viewModel()
+    vm_family: FamilyModeViewModel = viewModel(),
+    npra_vm: NPRAMedicineViewModel = hiltViewModel()
+
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -328,26 +333,61 @@ fun AppNavGraph(
 
         composable("scan") {
             ScannerScreen(
-                onBarcodeScanned = { barcode: String ->
+                onBarcodeScanned = { scannedData ->
+                    npra_vm.searchMedicine(scannedData)
+                    navController.navigate("detail/$scannedData")
                 },
                 onManualInput = {
                     showManualDialog = true
                 },
-                onFlashToggle = { isOn: Boolean -> },
-                onGalleryPick = {},
-                onBackClick = {  },
-                context = context
+                onFlashToggle = { isOn ->
+                },
+                onGalleryPick = {
+                },
+                onBackClick = {navController.popBackStack()}
             )
 
             if (showManualDialog) {
                 ManualInputDialog(
                     onDismiss = { showManualDialog = false },
-                    onSearch = { malNumber: String ->
+                    onSearch = { query ->
                         showManualDialog = false
+                        npra_vm.searchMedicine(query)
+                        navController.navigate("detail/$query")
                     }
                 )
             }
         }
+
+        composable(
+            route = "detail/{barcode}",
+            arguments = listOf(
+                navArgument("barcode") {
+                    type = NavType.StringType
+                    nullable = false
+                }
+            )
+        ) { backStackEntry ->
+            val barcode = backStackEntry.arguments?.getString("barcode") ?: ""
+
+            val searchResult by npra_vm.searchResult.collectAsState()
+            val isLoading by npra_vm.isLoading.collectAsState()
+            val errorMessage by npra_vm.errorMessage.collectAsState()
+            val medicines by npra_vm.medicines.collectAsState()
+
+            ScanResult(
+                barcode = barcode,
+                medicine = searchResult,
+                medicines = medicines,
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                onBack = {
+                    navController.popBackStack()
+                    npra_vm.resetSearch()
+                }
+            )
+        }
+
 
         composable("appointment") {
             AppointmentScreen(
@@ -603,7 +643,7 @@ fun AppNavGraph(
                     navController.navigate("chat_list")
                 },
                 onStatisticClick = {
-                    navController.navigate("adherence_statistics/$currentUserId")  // ✅ Fixed typo + slash
+                    navController.navigate("adherence_statistics/$currentUserId")
                 },
                 onSettingClick = { },
                 onScanClick = { },

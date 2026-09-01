@@ -1,73 +1,223 @@
 package com.example.healt4u.Service
 
+import android.content.Context
+import android.util.Log
 import com.example.healt4u.model.NPRAMedicine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.StringReader
+import java.util.concurrent.TimeUnit
 
+class NPRADataService(private val context: Context) {
 
-class NPRADataService {
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .build()
+
     private val csvUrl = "https://storage.data.gov.my/healthcare/pharmaceutical_products.csv"
 
-    suspend fun fetchAllMedicines(): List<NPRAMedicine> {
-        return withContext(Dispatchers.IO) {
-            val request = Request.Builder().url(csvUrl).build()
-            val response = client.newCall(request).execute()
-            val csvContent = response.body?.string() ?: return@withContext emptyList()
+    private var cachedMedicines: List<NPRAMedicine>? = null
+    private var isLoading = false
+    private var loadError: String? = null
 
-            parseCSV(csvContent)
+    fun getLoadStatus(): Pair<Boolean, String?> {
+        return Pair(isLoading, loadError)
+    }
+
+    suspend fun fetchAllMedicines(forceRefresh: Boolean = false): List<NPRAMedicine> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 如果有缓存且不强制刷新，直接返回
+                if (!forceRefresh && cachedMedicines != null) {
+                    return@withContext cachedMedicines!!
+                }
+
+                // 防止重复加载
+                if (isLoading) {
+                    return@withContext cachedMedicines ?: emptyList()
+                }
+
+                isLoading = true
+                loadError = null
+
+                val request = Request.Builder()
+                    .url(csvUrl)
+                    .header("User-Agent", "Health4U-App")
+                    .build()
+
+                val response = client.newCall(request).execute()
+
+                if (!response.isSuccessful) {
+                    loadError = "HTTP Error: ${response.code}"
+                    Log.e("NPRADataService", "HTTP Error: ${response.code}")
+                    return@withContext loadFromAssets()
+                }
+
+                val csvContent = response.body?.string()
+                if (csvContent.isNullOrEmpty()) {
+                    loadError = "Empty response"
+                    return@withContext loadFromAssets()
+                }
+
+                val medicines = parseCSV(csvContent)
+                if (medicines.isNotEmpty()) {
+                    cachedMedicines = medicines
+                } else {
+                    loadError = "No valid data found"
+                    return@withContext loadFromAssets()
+                }
+
+                isLoading = false
+                medicines
+            } catch (e: Exception) {
+                isLoading = false
+                loadError = e.message
+                loadFromAssets()
+            }
         }
     }
 
-
+    fun loadFromAssets(fileName: String = "npra_data.csv"): List<NPRAMedicine> {
+        return try {
+            val inputStream = context.assets.open(fileName)
+            val csvContent = inputStream.bufferedReader().use { it.readText() }
+            val medicines = parseCSV(csvContent)
+            if (medicines.isNotEmpty()) {
+                cachedMedicines = medicines
+            }
+            medicines
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     private fun parseCSV(csvContent: String): List<NPRAMedicine> {
         val medicines = mutableListOf<NPRAMedicine>()
         val lines = csvContent.split("\n")
         if (lines.isEmpty()) return emptyList()
 
-        val header = lines[0].split(",").map { it.trim() }
-
-        val columnMap = header.mapIndexed { index, name -> name to index }.toMap()
-
-        fun List<NPRAMedicine>.getByColumn(columnName: String): String {
-            val index = columnMap[columnName] ?: return ""
-            return if (index < this.size) this[index].toString() else ""
-        }
+        val header = parseCSVLine(lines[0])
+        val columnMap = header.mapIndexed { index, name -> name.trim() to index }.toMap()
 
         for (i in 1 until lines.size) {
             val line = lines[i].trim()
             if (line.isEmpty()) continue
 
-            val columns = parseCSV(line)
+            try {
+                val columns = parseCSVLine(line)
 
+                fun List<String>.getColumn(name: String): String {
+                    val index = columnMap[name] ?: return ""
+                    return if (index < this.size) this[index].trim() else ""
+                }
 
-            val medicine = NPRAMedicine(
-                regNo = columns.getByColumn("reg_no"),
-                refNo = columns.getByColumn("ref_no"),
-                product = columns.getByColumn("product"),
-                status = columns.getByColumn("status"),
-                description = columns.getByColumn("description"),
-                holder = columns.getByColumn("holder"),
-                holderOsa = columns.getByColumn("holder_osa"),
-                manufacturer = columns.getByColumn("manufacturer"),
-                manufacturerOsa = columns.getByColumn("manufacturer_osa"),
-                importer = columns.getByColumn("importer"),
-                importerOsa = columns.getByColumn("importer_osa"),
-                dateReg = columns.getByColumn("date_reg"),
-                dateEnd = columns.getByColumn("date_end"),
-                activeIngredient = columns.getByColumn("active_ingredient"),
-                mdcCode = columns.getByColumn("mdc_code"),
-                genericName = columns.getByColumn("generic_name")
-            )
-            medicines.add(medicine)
+                val medicine = NPRAMedicine(
+                    regNo = columns.getColumn("reg_no"),
+                    refNo = columns.getColumn("ref_no"),
+                    product = columns.getColumn("product"),
+                    status = columns.getColumn("status"),
+                    description = columns.getColumn("description"),
+                    holder = columns.getColumn("holder"),
+                    holderOsa = columns.getColumn("holder_osa"),
+                    manufacturer = columns.getColumn("manufacturer"),
+                    manufacturerOsa = columns.getColumn("manufacturer_osa"),
+                    importer = columns.getColumn("importer"),
+                    importerOsa = columns.getColumn("importer_osa"),
+                    dateReg = columns.getColumn("date_reg"),
+                    dateEnd = columns.getColumn("date_end"),
+                    activeIngredient = columns.getColumn("active_ingredient"),
+                    mdcCode = columns.getColumn("mdc_code"),
+                    genericName = columns.getColumn("generic_name")
+                )
+
+                if (medicine.regNo.isNotEmpty() || medicine.product.isNotEmpty()) {
+                    medicines.add(medicine)
+                }
+            } catch (e: Exception) {
+                // 跳过有问题的行
+                continue
+            }
         }
+
         return medicines
     }
+
+    private fun parseCSVLine(line: String): List<String> {
+        val result = mutableListOf<String>()
+        val reader = StringReader(line)
+        var current = StringBuilder()
+        var inQuotes = false
+
+        while (true) {
+            val char = reader.read()
+            if (char == -1) break
+
+            val c = char.toChar()
+
+            when {
+                c == '"' -> {
+                    inQuotes = !inQuotes
+                }
+                c == ',' && !inQuotes -> {
+                    result.add(current.toString().trim())
+                    current = StringBuilder()
+                }
+                else -> {
+                    current.append(c)
+                }
+            }
+        }
+
+        result.add(current.toString().trim())
+        return result
+    }
+
+    // ============ 搜索方法 ============
+
+    fun searchByRegNo(regNo: String): NPRAMedicine? {
+        val all = cachedMedicines ?: return null
+        val cleanRegNo = regNo.trim().uppercase()
+        return all.find { it.regNo.uppercase() == cleanRegNo }
+    }
+
+    fun searchByProductName(query: String): List<NPRAMedicine> {
+        val all = cachedMedicines ?: return emptyList()
+        val cleanQuery = query.trim().lowercase()
+        return all.filter {
+            it.product.lowercase().contains(cleanQuery) ||
+                    it.genericName?.lowercase()?.contains(cleanQuery) == true ||
+                    it.activeIngredient?.lowercase()?.contains(cleanQuery) == true
+        }
+    }
+
+    fun searchByBarcode(barcode: String): NPRAMedicine? {
+        val all = cachedMedicines ?: return null
+        // 直接搜索 barcode 字段
+        val result = all.find { it.barcode == barcode }
+        // 如果找不到，尝试用注册号搜索
+        return result ?: searchByRegNo(barcode)
+    }
+
+    fun searchByRegNoContains(query: String): List<NPRAMedicine> {
+        val all = cachedMedicines ?: return emptyList()
+        val cleanQuery = query.trim().uppercase()
+        return all.filter { it.regNo.uppercase().contains(cleanQuery) }
+    }
+
+    fun getAllMedicines(): List<NPRAMedicine> {
+        return cachedMedicines ?: emptyList()
+    }
+
+    fun getProductCount(): Int {
+        return cachedMedicines?.size ?: 0
+    }
+
+    fun clearCache() {
+        cachedMedicines = null
+        loadError = null
+    }
 }
-
-
-
-

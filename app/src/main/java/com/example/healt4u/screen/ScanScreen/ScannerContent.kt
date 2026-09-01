@@ -1,51 +1,50 @@
 package com.example.healt4u.screen.ScanScreen
 
+import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Vibrator
 import android.util.Log
+import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.camera.core.Camera
-import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.Preview
+import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.PermissionState
-import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.*
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
@@ -59,23 +58,28 @@ fun ScannerContent(
     onFlashToggle: (Boolean) -> Unit,
     onGalleryPick: () -> Unit,
     storagePermissionState: PermissionState,
-    context: Context,
     onBackClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
 
     var isScanning by remember { mutableStateOf(true) }
     var isFlashOn by remember { mutableStateOf(false) }
+    var isCameraReady by remember { mutableStateOf(false) }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    var lastScanTime by remember { mutableStateOf(0L) }
+    var showResultDialog by remember { mutableStateOf(false) }
+    var scannedResult by remember { mutableStateOf<String?>(null) }
+    var isEleaflet by remember { mutableStateOf(false) }
+
     var scanResult by remember { mutableStateOf<String?>(null) }
     var isScanningAnimation by remember { mutableStateOf(true) }
-    var isCameraReady by remember { mutableStateOf(false) }
 
     var cameraInstance by remember { mutableStateOf<Camera?>(null) }
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
 
-    var lastScanTime by remember { mutableStateOf(0L) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "scanAnimation")
     val scanLineOffset by infiniteTransition.animateFloat(
@@ -256,4 +260,67 @@ fun ScannerContent(
             }
         }
     }
+}
+
+private fun scanBarcodeFromImage(
+    context: Context,
+    imageUri: Uri,
+    onResult: (String) -> Unit
+) {
+    try {
+        val inputStream = context.contentResolver.openInputStream(imageUri)
+        val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+
+        bitmap?.let {
+            val inputImage = InputImage.fromBitmap(it, 0)
+            val scanner = BarcodeScanning.getClient()
+            scanner.process(inputImage)
+                .addOnSuccessListener { barcodes ->
+                    for (barcode in barcodes) {
+                        barcode.rawValue?.let { value ->
+                            if (value.isNotEmpty()) {
+                                onResult(value)
+                                return@addOnSuccessListener
+                            }
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("Scanner", "Image scan failed", e)
+                }
+        }
+    } catch (e: Exception) {
+        Log.e("Scanner", "Image processing failed", e)
+    }
+}
+
+@ExperimentalGetImage
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
+@OptIn(ExperimentalGetImage::class)
+private fun processImageProxy(
+    imageProxy: ImageProxy,
+    onBarcodeDetected: (Barcode) -> Unit
+) {
+    val mediaImage = imageProxy.image ?: return
+    val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+    val scanner = BarcodeScanning.getClient()
+
+    scanner.process(inputImage)
+        .addOnSuccessListener { barcodes ->
+            for (barcode in barcodes) {
+                barcode.rawValue?.let {
+                    if (it.isNotEmpty()) {
+                        onBarcodeDetected(barcode)
+                        break
+                    }
+                }
+            }
+        }
+        .addOnFailureListener { e ->
+            Log.e("Scanner", "Barcode scan failed", e)
+        }
+        .addOnCompleteListener {
+            imageProxy.close()
+        }
 }

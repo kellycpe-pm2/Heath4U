@@ -44,7 +44,6 @@ import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Admin.AdminLoginScreen
 import com.example.healt4u.screen.Admin.AdminResetPasswordScreen
 import com.example.healt4u.screen.Admin.AdminSettingsScreen
-import com.example.healt4u.screen.Admin.AdminSubscriptionScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
@@ -619,7 +618,6 @@ fun AppNavGraph(
                 },
                 onHospitalsClick = { navController.navigate("admin_hospitals") },
                 onDoctorsClick = { navController.navigate("admin_doctors") },
-                onSubscriptionClick = { navController.navigate("admin_subscription") },
                 onSettingsClick = { navController.navigate("admin_settings") }
             )
         }
@@ -657,9 +655,6 @@ fun AppNavGraph(
             )
         }
 
-        composable("admin_subscription") {
-            AdminSubscriptionScreen(onBack = { navController.popBackStack() })
-        }
 
         composable("family_mode") {
             FamilyModeScreen(

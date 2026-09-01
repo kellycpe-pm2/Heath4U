@@ -17,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
@@ -41,7 +40,6 @@ private val ScreenBlue = Color(0xFFE6F8FC)
 fun AdminDashboardScreen(
     onDoctorsClick: () -> Unit = {},
     onHospitalsClick: () -> Unit = {},
-    onSubscriptionClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onBack: (() -> Unit)? = null
 ) {
@@ -94,15 +92,6 @@ fun AdminDashboardScreen(
                 )
             }
 
-            item {
-                DashboardCard(
-                    title = "Subscription Management",
-                    subtitle = "View subscriptions and total revenue",
-                    icon = Icons.Default.CardMembership,
-                    iconBg = Color(0xFFF3E5F5),
-                    onClick = onSubscriptionClick
-                )
-            }
         }
 
         AdminBottomNavigation(

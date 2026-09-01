@@ -75,7 +75,7 @@ class AdminManagementViewModel : ViewModel() {
                 Doctor(
                     name = name, ic = ic, phone = phone, email = email,
                     specialization = specialization, hospitalId = hospitalId,
-                    verificationStatus = "pending"
+                    verificationStatus = "approved"
                 )
             )
             result.fold(

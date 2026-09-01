@@ -90,8 +90,6 @@ fun AdminDoctorScreen(
                     DoctorCard(
                         doctor = doctor,
                         hospitalName = hospitals.find { it.id == doctor.hospitalId }?.name ?: "Unassigned",
-                        onApprove = { vm.approveDoctor(doctor.id) },
-                        onReject = { vm.rejectDoctor(doctor.id) },
                         onDelete = { vm.removeDoctor(doctor.id) }
                     )
                 }
@@ -104,60 +102,21 @@ fun AdminDoctorScreen(
 private fun DoctorCard(
     doctor: Doctor,
     hospitalName: String,
-    onApprove: () -> Unit,
-    onReject: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val statusColor = when (doctor.verificationStatus) {
-        "approved" -> Color(0xFF4CAF50)
-        "rejected" -> Color(0xFFE53935)
-        else -> Color(0xFFFF9800)
-    }
-
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(doctor.name, fontWeight = FontWeight.Bold)
-                    Text(doctor.specialization, fontSize = 12.sp)
-                    Text("Hospital: $hospitalName", fontSize = 11.sp, color = Color(0xFF61717D))
-                    Text(doctor.phone, fontSize = 12.sp)
-                }
-                Surface(color = statusColor.copy(alpha = 0.15f)) {
-                    Text(
-                        doctor.verificationStatus.uppercase(),
-                        color = statusColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
+            Column {
+                Text(doctor.name, fontWeight = FontWeight.Bold)
+                Text(doctor.specialization, fontSize = 12.sp)
+                Text("Hospital: $hospitalName", fontSize = 11.sp, color = Color(0xFF61717D))
+                Text(doctor.phone, fontSize = 12.sp)
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (doctor.verificationStatus == "pending") {
-                    Button(
-                        onClick = onApprove,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-                    ) {
-                        Text("Approve", color = Color.White)
-                    }
-                    Button(
-                        onClick = onReject,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
-                    ) {
-                        Text("Reject", color = Color.White)
-                    }
-                }
                 IconButton(onClick = onDelete) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
                 }

@@ -215,8 +215,16 @@ fun AdminAddDoctorScreen(
                         scope.launch { snackbarHostState.showSnackbar("Please enter phone number") }
                         return@Button
                     }
+                    if (phone.length !in 10..11 || !phone.all { it.isDigit() }) {
+                        scope.launch { snackbarHostState.showSnackbar("Phone number must be 10 to 11 digits only") }
+                        return@Button
+                    }
                     if (email.isBlank()) {
                         scope.launch { snackbarHostState.showSnackbar("Please enter email") }
+                        return@Button
+                    }
+                    if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                        scope.launch { snackbarHostState.showSnackbar("Invalid email format") }
                         return@Button
                     }
                     if (selectedSpecialization.isBlank()) {

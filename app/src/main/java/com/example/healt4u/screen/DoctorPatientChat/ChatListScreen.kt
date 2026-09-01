@@ -13,7 +13,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,13 +25,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.healt4u.Storage.getConversationsByDoctor
-import com.example.healt4u.Storage.getConversationsByPatient
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.healt4u.ViewModel.ConversationViewModel
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.data.HospitalData.getDoctorById
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
-import com.example.healt4u.screen.formatTimeString
+import java.time.Instant
+import java.time.OffsetDateTime
 import java.util.*
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -43,33 +44,20 @@ fun ChatListScreen(
     userRole: String,
     onConversationClick: (Conversation) -> Unit,
     onNewChatClick: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: ConversationViewModel = viewModel()
 ) {
-    var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    val coroutineScope = rememberCoroutineScope()
-    var reloadKey by remember { mutableStateOf(0) }
-
-    LaunchedEffect(userId, userRole,reloadKey) {
-        try {
-            isLoading = true
-            errorMessage = null
-
-            val result = if (userRole == "doctor") {
-                getConversationsByDoctor(userId.toString())
-            } else {
-                getConversationsByPatient(userId.toString())
-            }
-
-            conversations = result
-        } catch (e: Exception) {
-            errorMessage = e.message ?: "Failed to load conversations"
-        } finally {
-            isLoading = false
+    LaunchedEffect(userId, userRole) {
+        if (userRole == "doctor") {
+            viewModel.loadConversationsForDoctor(userId)
+        } else {
+            viewModel.loadConversations(userId)
         }
     }
+
+    val conversations by viewModel.conversations.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
@@ -142,7 +130,11 @@ fun ChatListScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = {
-                                reloadKey++
+                                if (userRole == "doctor") {
+                                    viewModel.loadConversationsForDoctor(userId)
+                                } else {
+                                    viewModel.loadConversations(userId)
+                                }
                             }
                         ) {
                             Text("Retry")
@@ -202,9 +194,9 @@ fun ConversationItem(
     conversation: Conversation,
     onClick: () -> Unit
 ) {
-    val ids = conversation.id.split("_")
-    val doctorId = ids.getOrNull(0)?.toIntOrNull() ?: 0
-    val patientId = ids.getOrNull(1)?.toIntOrNull() ?: 0
+
+    val doctorId = conversation.doctorId
+    val patientId = conversation.patientId
 
     var doctorName by remember { mutableStateOf("Doctor") }
     var patientName by remember { mutableStateOf("Patient") }
@@ -224,19 +216,8 @@ fun ConversationItem(
         if (effectiveRole == "doctor") patientName else doctorName
     }
 
-    val timestampMillis = try {
-        val str = conversation.lastMessageTime
-        when {
-            str.all { it.isDigit() } -> str.toLong()
-            else -> {
-                java.time.OffsetDateTime.parse(str)
-                    .toInstant()
-                    .toEpochMilli()
-            }
-        }
-    } catch (e: Exception) {
-        Log.w("DateParse", "Failed to parse time", e)
-        System.currentTimeMillis()
+    val timestampMillis = remember(conversation.lastMessageTime) {
+        parseTimestampSafe(conversation.lastMessageTime)
     }
 
     Card(
@@ -301,7 +282,7 @@ fun ConversationItem(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (userRole=="patient") {
+                if (userRole == "patient") {
                     Text(
                         text = conversation.hospitalName,
                         fontSize = 12.sp,
@@ -331,6 +312,20 @@ fun ConversationItem(
                 contentDescription = "Open chat",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+private fun parseTimestampSafe(timestampStr: String): Long {
+    return try {
+        OffsetDateTime.parse(timestampStr).toInstant().toEpochMilli()
+    } catch (e: Exception) {
+        try {
+            Instant.parse(timestampStr).toEpochMilli()
+        } catch (e2: Exception) {
+            Log.w("DateParse", "Failed to parse time: $timestampStr", e2)
+            System.currentTimeMillis()
         }
     }
 }

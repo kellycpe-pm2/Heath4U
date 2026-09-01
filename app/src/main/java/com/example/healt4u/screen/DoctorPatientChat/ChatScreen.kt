@@ -1,6 +1,7 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,8 +23,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -57,12 +56,11 @@ import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.data.HospitalData.getDoctorById
 import com.example.healt4u.model.Message
 import com.example.healt4u.screen.componentUI.DateHeader
-import java.lang.System.currentTimeMillis
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeParseException
-import java.time.temporal.ChronoUnit
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,20 +69,18 @@ fun ChatScreen(
     chatName: String,
     userId: Int,
     userRole: String,
-    conversationId: String,
+    conversationId: Int,
+    doctorId: Int,
+    patientId: Int,
     initialMessages: List<Message>,
     onBack: () -> Unit,
     onSendMessage: (Message) -> Unit,
     onDeleteMessage: (Message) -> Unit,
-    onAvatarClick:(Int)-> Unit,
+    onAvatarClick: (Int) -> Unit,
     onClearAllMessages: () -> Unit,
     isMuted: Boolean = false,
     onMuteChanged: (Boolean) -> Unit = {}
-){
-    val ids = conversationId.split("_")
-    val doctorId = ids.getOrNull(0)?.toIntOrNull() ?: 0
-    val patientId = ids.getOrNull(1)?.toIntOrNull() ?: 0
-
+) {
     var doctorName by remember { mutableStateOf("Doctor") }
     var patientName by remember { mutableStateOf("Patient") }
 
@@ -97,6 +93,10 @@ fun ChatScreen(
         userRole == "doctor" || userId == doctorId -> "doctor"
         userRole == "patient" || userId == patientId -> "patient"
         else -> "patient"
+    }
+
+    val myName = remember(effectiveRole, doctorName, patientName) {
+        if (effectiveRole == "doctor") doctorName else patientName
     }
 
     var messages by remember { mutableStateOf(initialMessages) }
@@ -112,18 +112,12 @@ fun ChatScreen(
         if (effectiveRole == "doctor") patientName else doctorName
     }
 
-    val userDisplayName = when (effectiveRole) {
-        "doctor" -> "Dr. ${doctorName.split(" ").lastOrNull() ?: "Doctor"}"
-        "patient" -> patientName
-        else -> "User"
-    }
-
-    val groupedMessages = remember(messages){
+    val groupedMessages = remember(messages) {
         groupMessagesByDate(messages)
     }
 
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()){
+        if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
@@ -224,7 +218,10 @@ fun ChatScreen(
                     ) {
                         DropdownMenuItem(
                             text = {
-                                Text(if (mutedState) "Unmute Notifications" else "Mute Notifications", color = MaterialTheme.colorScheme.secondary)
+                                Text(
+                                    if (mutedState) "Unmute Notifications" else "Mute Notifications",
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
                             },
                             onClick = {
                                 mutedState = !mutedState
@@ -272,15 +269,14 @@ fun ChatScreen(
                     )
                     FloatingActionButton(
                         onClick = {
-                            if (textInput.isNotBlank()){
-                                val now = currentTimeMillis()
-                                val nowIso = Instant.ofEpochMilli(now).toString()
+                            if (textInput.isNotBlank()) {
+                                val nowIso = Instant.now().toString()
                                 val newMessage = Message(
-                                    id = now,
+                                    id = Instant.now().toEpochMilli().toInt(),
                                     conversationId = conversationId,
                                     content = textInput,
                                     senderId = userId,
-                                    senderName = userDisplayName,
+                                    senderName = myName,
                                     timestamp = nowIso,
                                     type = "text"
                                 )
@@ -289,12 +285,12 @@ fun ChatScreen(
                                 textInput = ""
                             }
                         },
-                        containerColor = if (textInput.isNotEmpty()){
+                        containerColor = if (textInput.isNotEmpty()) {
                             MaterialTheme.colorScheme.secondary
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                        contentColor = if (textInput.isNotEmpty()){
+                        contentColor = if (textInput.isNotEmpty()) {
                             MaterialTheme.colorScheme.onSecondary
                         } else {
                             MaterialTheme.colorScheme.surface
@@ -328,7 +324,7 @@ fun ChatScreen(
                     Text(
                         text = "No messages yet",
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             } else {
@@ -364,6 +360,20 @@ fun ChatScreen(
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
+private fun parseTimestampSafe(timestampStr: String): Instant {
+    return try {
+        OffsetDateTime.parse(timestampStr).toInstant()
+    } catch (e: Exception) {
+        try {
+            Instant.parse(timestampStr)
+        } catch (e2: Exception) {
+            Log.w("DateParse", "Failed to parse time: $timestampStr", e2)
+            Instant.now()
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
 private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
     if (messages.isEmpty()) return emptyList()
 
@@ -375,7 +385,6 @@ private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
         .sortedBy { it.key }
         .map { entry ->
             val dayKey = entry.key
-            // Convert LocalDate key → epoch millis at start of day (system timezone)
             val dateMillis = dayKey.atStartOfDay(ZoneId.systemDefault())
                 .toInstant()
                 .toEpochMilli()
@@ -385,22 +394,7 @@ private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
 
 @RequiresApi(Build.VERSION_CODES.O)
 private fun getMessageDayKey(timestamp: String): LocalDate {
-    val instant = try {
-        when {
-            timestamp.all { it.isDigit() } -> {
-                Instant.ofEpochMilli(timestamp.toLong())
-            }
-            else -> {
-                try {
-                    java.time.OffsetDateTime.parse(timestamp).toInstant()
-                } catch (e: DateTimeParseException) {
-                    Instant.parse(timestamp)
-                }
-            }
-        }
-    } catch (e: Exception) {
-        Instant.now()
-    }
+    val instant = parseTimestampSafe(timestamp)
     return instant.atZone(ZoneId.systemDefault()).toLocalDate()
 }
 

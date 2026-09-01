@@ -12,52 +12,56 @@ import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.boolean
-import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 import io.github.jan.supabase.postgrest.from
+import java.time.Instant
 
 private const val TAG = "SupabaseStorage"
 
 @RequiresApi(Build.VERSION_CODES.O)
-suspend fun getConversationsByPatient(patientId: String): List<Conversation> {
+private fun parseTimestampToEpochMs(timestampStr: String): Long {
+    return try {
+        java.time.OffsetDateTime.parse(timestampStr).toInstant().toEpochMilli()
+    } catch (e: Exception) {
+        try {
+            Instant.parse(timestampStr).toEpochMilli()
+        } catch (e2: Exception) {
+            System.currentTimeMillis()
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun getConversationsByPatient(patientId: Int): List<Conversation> {
     return try {
         Log.d("SupabaseStorage", "patientId: $patientId")
 
-        val id = patientId.toIntOrNull()
-        if (id == null) {
-            Log.e("SupabaseStorage", "patientId is not a valid Int: $patientId")
-            return emptyList()
-        }
-
-        Log.d("SupabaseStorage", "id as Int: $id")
-
         val response = SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .select {
-                filter { eq("patient_id", id) }
-                order("last_message_time", Order.DESCENDING)
+                filter { eq("patient_id", patientId) }
             }
 
         val rawList = Json.decodeFromString<List<Map<String, JsonElement>>>(response.data)
 
         Log.d("SupabaseStorage", "Raw items count: ${rawList.size}")
         if (rawList.isNotEmpty()) {
-            Log.d("SupabaseStorage", "First item doctor_id: ${rawList.first()["doctor_id"]}")
+            Log.d("SupabaseStorage", "First item id: ${rawList.first()["id"]}")
         }
 
         val conversations = rawList.map { map ->
             Conversation(
-                id = map["id"]?.jsonPrimitive?.content ?: "",
-                doctorId = map["doctor_id"]?.jsonPrimitive?.int ?: 0,
+                id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                doctorId = map["doctor_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 doctorName = map["doctor_name"]?.jsonPrimitive?.content ?: "",
-                patientId = map["patient_id"]?.jsonPrimitive?.int ?: 0,
+                patientId = map["patient_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 patientName = map["patient_name"]?.jsonPrimitive?.content ?: "",
-                hospitalId = map["hospital_id"]?.jsonPrimitive?.content ?: "",
+                hospitalId = map["hospital_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "",
                 lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
                 lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
-                    ?: java.time.Instant.now().toString(),
-                unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
+                    ?: Instant.now().toString(),
+                unreadCount = map["unread_count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
             )
         }
@@ -73,7 +77,7 @@ suspend fun getConversationsByPatient(patientId: String): List<Conversation> {
             }
         }
 
-        Log.d("SupabaseStorage", "Returning ${syncedConversations.size} conversations")
+        Log.d("SupabaseStorage", "Returning synced ${syncedConversations.size} conversations")
         return syncedConversations
 
     } catch (e: Exception) {
@@ -83,36 +87,35 @@ suspend fun getConversationsByPatient(patientId: String): List<Conversation> {
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-suspend fun getConversationsByDoctor(doctorId: String): List<Conversation> {
+suspend fun getConversationsByDoctor(doctorId: Int): List<Conversation> {
     return try {
-        val id = doctorId.toIntOrNull() ?: return emptyList()
-
         val response = SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .select {
-                filter { eq("doctor_id", id) }
-                order("last_message_time", Order.DESCENDING)
+                filter { eq("doctor_id", doctorId) }
             }
 
         val rawList = Json.decodeFromString<List<Map<String, JsonElement>>>(response.data)
+
         val conversations = rawList.map { map ->
             Conversation(
-                id = map["id"]?.jsonPrimitive?.content ?: "",
-                doctorId = map["doctor_id"]?.jsonPrimitive?.int ?: 0,
+                id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                doctorId = map["doctor_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 doctorName = map["doctor_name"]?.jsonPrimitive?.content ?: "",
-                patientId = map["patient_id"]?.jsonPrimitive?.int ?: 0,
+                patientId = map["patient_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 patientName = map["patient_name"]?.jsonPrimitive?.content ?: "",
-                hospitalId = map["hospital_id"]?.jsonPrimitive?.content ?: "",
+                hospitalId = map["hospital_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "",
                 lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
                 lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
-                    ?: java.time.Instant.now().toString(),
-                unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
+                    ?: Instant.now().toString(),
+                unreadCount = map["unread_count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
             )
         }
 
         Log.d(TAG, "Loaded ${conversations.size} conversations")
+
         val syncedConversations = conversations.map { conv ->
             val latestMsg = getLastMessage(conv.id)
             if (latestMsg != null) {
@@ -132,10 +135,10 @@ suspend fun getConversationsByDoctor(doctorId: String): List<Conversation> {
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-suspend fun getConversationById(conversationId: String): Conversation? {
+suspend fun getConversationById(conversationId: Int): Conversation? {
     return try {
         val response = SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .select {
                 filter { eq("id", conversationId) }
             }
@@ -145,17 +148,17 @@ suspend fun getConversationById(conversationId: String): Conversation? {
 
         val map = rawList.first()
         Conversation(
-            id = map["id"]?.jsonPrimitive?.content ?: "",
-            doctorId = map["doctor_id"]?.jsonPrimitive?.int ?: 0,
+            id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+            doctorId = map["doctor_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
             doctorName = map["doctor_name"]?.jsonPrimitive?.content ?: "",
-            patientId = map["patient_id"]?.jsonPrimitive?.int ?: 0,
+            patientId = map["patient_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
             patientName = map["patient_name"]?.jsonPrimitive?.content ?: "",
-            hospitalId = map["hospital_id"]?.jsonPrimitive?.content ?: "",
+            hospitalId = map["hospital_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
             hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "",
             lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
             lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
-                ?: java.time.Instant.now().toString(),
-            unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
+                ?: Instant.now().toString(),
+            unreadCount = map["unread_count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
             isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
         )
     } catch (e: Exception) {
@@ -167,9 +170,9 @@ suspend fun getConversationById(conversationId: String): Conversation? {
 suspend fun upsertConversation(conversation: Conversation): Boolean {
     return try {
         SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .upsert(conversation)
-        Log.d(TAG, "Conversation upserted: ${conversation.id}")
+        Log.d(TAG, "Conversation upserted: id=${conversation.id}")
         true
     } catch (e: Exception) {
         Log.e(TAG, "Error upserting conversation: ${e.message}", e)
@@ -179,7 +182,7 @@ suspend fun upsertConversation(conversation: Conversation): Boolean {
 
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun updateConversationLastMessage(
-    conversationId: String,
+    conversationId: Int,
     lastMessage: String,
     lastMessageTime: String,
     incrementUnread: Int = 1
@@ -187,12 +190,12 @@ suspend fun updateConversationLastMessage(
     return try {
         val conversation = getConversationById(conversationId)
         if (conversation == null) {
-            Log.e(TAG, "Conversation not found: $conversationId")
+            Log.e(TAG, "Conversation not found: id=$conversationId")
             return false
         }
 
         SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .update(
                 mapOf(
                     "last_message" to lastMessage,
@@ -202,7 +205,8 @@ suspend fun updateConversationLastMessage(
             ) {
                 filter { eq("id", conversationId) }
             }
-        Log.d(TAG, "Updated last message for: $conversationId")
+
+        Log.d(TAG, "Updated last message for: id=$conversationId")
         true
     } catch (e: Exception) {
         Log.e(TAG, "Error updating last message: ${e.message}", e)
@@ -210,16 +214,16 @@ suspend fun updateConversationLastMessage(
     }
 }
 
-suspend fun markConversationAsRead(conversationId: String): Boolean {
+suspend fun markConversationAsRead(conversationId: Int): Boolean {
     return try {
         SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .update(
                 mapOf("unread_count" to 0)
             ) {
                 filter { eq("id", conversationId) }
             }
-        Log.d(TAG, "Marked as read: $conversationId")
+        Log.d(TAG, "Marked as read: id=$conversationId")
         true
     } catch (e: Exception) {
         Log.e(TAG, "Error marking as read: ${e.message}", e)
@@ -227,16 +231,16 @@ suspend fun markConversationAsRead(conversationId: String): Boolean {
     }
 }
 
-suspend fun deleteConversation(conversationId: String): Boolean {
+suspend fun deleteConversation(conversationId: Int): Boolean {
     return try {
         SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .update(
                 mapOf("is_active" to false)
             ) {
                 filter { eq("id", conversationId) }
             }
-        Log.d(TAG, "Deleted conversation: $conversationId")
+        Log.d(TAG, "Deleted conversation: id=$conversationId")
         true
     } catch (e: Exception) {
         Log.e(TAG, "Error deleting conversation: ${e.message}", e)
@@ -252,31 +256,38 @@ suspend fun createConversation(
     patientName: String,
     hospitalId: Int,
     hospitalName: String
-): String {
-    val conversationId = "${doctorId}_${patientId}"
-    val existing = getConversationById(conversationId)
+): Conversation? {
+    return try {
+        val existing = getConversationById(doctorId)
+        if (existing != null) {
+            Log.d(TAG, "Conversation already exists: id=${existing.id}")
+            return existing
+        }
 
-    if (existing == null) {
+        val nowIso = Instant.now().toString()
         val conversation = Conversation(
-            id = conversationId,
+            id = 0,
             doctorId = doctorId,
             doctorName = doctorName,
             patientId = patientId,
             patientName = patientName,
-            hospitalId = hospitalId.toString(),
+            hospitalId = hospitalId,
             hospitalName = hospitalName,
             lastMessage = "Start your conversation!",
-            lastMessageTime = System.currentTimeMillis().let {
-                java.time.Instant.ofEpochMilli(it).toString()
-            },
+            lastMessageTime = nowIso,
             unreadCount = 0,
             isActive = true
         )
-        upsertConversation(conversation)
-        Log.d(TAG, "Created conversation: $conversationId")
-    }
 
-    return conversationId
+        val success = upsertConversation(conversation)
+        if (success) {
+            Log.d(TAG, "Conversation created")
+        }
+        conversation
+    } catch (e: Exception) {
+        Log.e(TAG, "Error creating conversation: ${e.message}", e)
+        null
+    }
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -285,20 +296,18 @@ suspend fun sendMessage(message: Message): Boolean {
         Log.d(TAG, "sendMessage called: ${message.content}")
         Log.d(TAG, "Message data: id=${message.id}, conversationId=${message.conversationId}, senderId=${message.senderId}")
 
-        // 1. Insert message
         SupabaseClient.supabase
-            .from("messages")
+            .from("message")
             .insert(message)
         Log.d(TAG, "Message inserted to Supabase: ${message.id}")
 
-        // 2. Update conversation's last message
         updateConversationLastMessage(
             message.conversationId,
             message.content,
-            message.timestamp,
+            Instant.now().toString(),
             1
         )
-        Log.d(TAG, "Conversation updated: ${message.conversationId}")
+        Log.d(TAG, "Conversation updated: id=${message.conversationId}")
         true
     } catch (e: Exception) {
         Log.e(TAG, "Error sending message: ${e.message}", e)
@@ -307,12 +316,12 @@ suspend fun sendMessage(message: Message): Boolean {
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-suspend fun getMessagesByConversation(conversationId: String): List<Message> {
+suspend fun getMessagesByConversation(conversationId: Int): List<Message> {
     return try {
-        Log.d(TAG, "Searching messages with conversationId: '$conversationId'")
+        Log.d(TAG, "Searching messages with conversationId: $conversationId")
 
         val response = SupabaseClient.supabase
-            .from("messages")
+            .from("message")
             .select {
                 filter { eq("conversation_id", conversationId) }
                 order("timestamp", Order.ASCENDING)
@@ -325,8 +334,8 @@ suspend fun getMessagesByConversation(conversationId: String): List<Message> {
             val timestampStr = map["timestamp"]?.jsonPrimitive?.content ?: ""
 
             Message(
-                id = map["id"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0L,
-                conversationId = map["conversation_id"]?.jsonPrimitive?.content ?: "",
+                id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                conversationId = map["conversation_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 content = map["content"]?.jsonPrimitive?.content ?: "",
                 senderId = map["sender_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
                 senderName = map["sender_name"]?.jsonPrimitive?.content ?: "",
@@ -345,12 +354,12 @@ suspend fun getMessagesByConversation(conversationId: String): List<Message> {
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-suspend fun getLastMessage(conversationId: String): Message? {
+suspend fun getLastMessage(conversationId: Int): Message? {
     return try {
-        Log.d(TAG, "Getting last message for: '$conversationId'")
+        Log.d(TAG, "Getting last message for conversationId: $conversationId")
 
         val response = SupabaseClient.supabase
-            .from("messages")
+            .from("message")
             .select {
                 filter { eq("conversation_id", conversationId) }
             }
@@ -365,14 +374,7 @@ suspend fun getLastMessage(conversationId: String): Message? {
 
         for (map in rawList) {
             val timestampStr = map["timestamp"]?.jsonPrimitive?.content
-            val time = try {
-                timestampStr?.let { java.time.Instant.parse(it).toEpochMilli() } ?: 0L
-            } catch (e: Exception) {
-                0L
-            }
-
-            val content = map["content"]?.jsonPrimitive?.content ?: ""
-            Log.d(TAG, "Message -> time=$time | $content")
+            val time = parseTimestampToEpochMs(timestampStr ?: "")
 
             if (time > newestTime) {
                 newestTime = time
@@ -383,11 +385,11 @@ suspend fun getLastMessage(conversationId: String): Message? {
         if (newestMap == null) return null
 
         val timestampStr = newestMap["timestamp"]?.jsonPrimitive?.content
-            ?: java.time.Instant.now().toString()
+            ?: Instant.now().toString()
 
         val message = Message(
-            id = newestMap["id"]?.jsonPrimitive?.content?.toLongOrNull() ?: 0L,
-            conversationId = newestMap["conversation_id"]?.jsonPrimitive?.content ?: "",
+            id = newestMap["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+            conversationId = newestMap["conversation_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
             content = newestMap["content"]?.jsonPrimitive?.content ?: "",
             senderId = newestMap["sender_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
             senderName = newestMap["sender_name"]?.jsonPrimitive?.content ?: "",
@@ -404,14 +406,14 @@ suspend fun getLastMessage(conversationId: String): Message? {
     }
 }
 
-suspend fun deleteMessage(messageId: String): Boolean {
+suspend fun deleteMessage(messageId: Int): Boolean {
     return try {
         SupabaseClient.supabase
-            .from("messages")
+            .from("message")
             .delete {
                 filter { eq("id", messageId) }
             }
-        Log.d(TAG, "Deleted message: $messageId")
+        Log.d(TAG, "Deleted message: id=$messageId")
         true
     } catch (e: Exception) {
         Log.e(TAG, "Error deleting message: ${e.message}", e)
@@ -420,29 +422,27 @@ suspend fun deleteMessage(messageId: String): Boolean {
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-suspend fun clearMessagesByConversation(conversationId: String): Boolean {
+suspend fun clearMessagesByConversation(conversationId: Int): Boolean {
     return try {
-        // Delete ALL messages in this conversation
         SupabaseClient.supabase
-            .from("messages")
+            .from("message")
             .delete {
                 filter { eq("conversation_id", conversationId) }
             }
 
-        // Update conversation
         SupabaseClient.supabase
-            .from("conversations")
+            .from("conversation")
             .update(
                 mapOf(
                     "last_message" to "No messages yet",
-                    "last_message_time" to java.time.Instant.now().toString(),
+                    "last_message_time" to Instant.now().toString(),
                     "unread_count" to 0
                 )
             ) {
                 filter { eq("id", conversationId) }
             }
 
-        Log.d(TAG, "Cleared ALL messages for: $conversationId")
+        Log.d(TAG, "Cleared ALL messages for conversationId: $conversationId")
         true
     } catch (e: Exception) {
         Log.e(TAG, "Error clearing messages: ${e.message}", e)

@@ -53,11 +53,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.healt4u.Storage.getPatientById
+import com.example.healt4u.data.HospitalData.getDoctorById
 import com.example.healt4u.model.Message
 import com.example.healt4u.screen.componentUI.DateHeader
 import java.lang.System.currentTimeMillis
-import java.util.Calendar
-import java.util.Date
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,6 +81,24 @@ fun ChatScreen(
     isMuted: Boolean = false,
     onMuteChanged: (Boolean) -> Unit = {}
 ){
+    val ids = conversationId.split("_")
+    val doctorId = ids.getOrNull(0)?.toIntOrNull() ?: 0
+    val patientId = ids.getOrNull(1)?.toIntOrNull() ?: 0
+
+    var doctorName by remember { mutableStateOf("Doctor") }
+    var patientName by remember { mutableStateOf("Patient") }
+
+    LaunchedEffect(doctorId, patientId) {
+        doctorName = getDoctorById(doctorId)?.name ?: "Doctor"
+        patientName = getPatientById(patientId)?.name ?: "Patient"
+    }
+
+    val effectiveRole = when {
+        userRole == "doctor" || userId == doctorId -> "doctor"
+        userRole == "patient" || userId == patientId -> "patient"
+        else -> "patient"
+    }
+
     var messages by remember { mutableStateOf(initialMessages) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -85,9 +108,13 @@ fun ChatScreen(
     var messageToDelete by remember { mutableStateOf<Message?>(null) }
     var mutedState by remember { mutableStateOf(isMuted) }
 
-    val userDisplayName = when (userRole) {
-        "doctor" -> "Dr. ${chatName.split(" ").lastOrNull() ?: "Doctor"}"
-        "patient" -> chatName
+    val displayName = remember(effectiveRole, doctorName, patientName) {
+        if (effectiveRole == "doctor") patientName else doctorName
+    }
+
+    val userDisplayName = when (effectiveRole) {
+        "doctor" -> "Dr. ${doctorName.split(" ").lastOrNull() ?: "Doctor"}"
+        "patient" -> patientName
         else -> "User"
     }
 
@@ -95,7 +122,6 @@ fun ChatScreen(
         groupMessagesByDate(messages)
     }
 
-    //auto scroll to the bottom when received new message
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()){
             listState.animateScrollToItem(messages.size - 1)
@@ -105,7 +131,6 @@ fun ChatScreen(
     LaunchedEffect(isMuted) {
         mutedState = isMuted
     }
-
 
     if (messageToDelete != null) {
         AlertDialog(
@@ -162,7 +187,6 @@ fun ChatScreen(
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondary
                         )
-
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -172,7 +196,6 @@ fun ChatScreen(
                                     .background(Color(0xFF4CAF50), CircleShape)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
-
                             Text(
                                 text = "Online",
                                 fontSize = 12.sp,
@@ -195,36 +218,26 @@ fun ChatScreen(
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "More options")
                     }
-
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
-                        // Mute / Unmute Notifications
                         DropdownMenuItem(
                             text = {
-                                Text(if (mutedState) "Unmute Notifications" else "Mute Notifications", color = MaterialTheme.colorScheme.secondary) },
+                                Text(if (mutedState) "Unmute Notifications" else "Mute Notifications", color = MaterialTheme.colorScheme.secondary)
+                            },
                             onClick = {
-                                mutedState= !mutedState
+                                mutedState = !mutedState
                                 onMuteChanged(mutedState)
                                 showMenu = false
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    if (mutedState) {
-                                        Icons.Default.NotificationsActive
-                                    } else Icons.Default.NotificationsOff,
-                                    contentDescription = null
-                                )
                             }
                         )
                         DropdownMenuItem(
                             text = { Text("Clear All Messages", color = MaterialTheme.colorScheme.secondary) },
                             onClick = {
                                 showMenu = false
-                                showClearAllDialog = true // Show confirmation dialog
-                            },
-                            leadingIcon = { Icon(Icons.Default.Delete, null) }
+                                showClearAllDialog = true
+                            }
                         )
                     }
                 },
@@ -257,13 +270,11 @@ fun ChatScreen(
                             unfocusedBorderColor = MaterialTheme.colorScheme.outline
                         )
                     )
-
                     FloatingActionButton(
                         onClick = {
                             if (textInput.isNotBlank()){
                                 val now = currentTimeMillis()
-                                val nowIso = java.time.Instant.ofEpochMilli(now).toString()
-
+                                val nowIso = Instant.ofEpochMilli(now).toString()
                                 val newMessage = Message(
                                     id = now,
                                     conversationId = conversationId,
@@ -329,18 +340,18 @@ fun ChatScreen(
                 ) {
                     groupedMessages.forEach { group ->
                         item {
-                            DateHeader(date = group.date)
+                            DateHeader(date = group.dateMillis)
                         }
                         items(
                             items = group.messages,
                             key = { it.id }
                         ) { message ->
                             val isFromCurrentUser = message.senderId == userId
-
                             MessageBubble(
                                 message = message,
                                 isFromCurrentUser = isFromCurrentUser,
-                                userRole = userRole,
+                                userRole = effectiveRole,
+                                otherPersonName = displayName,
                                 onAvatarClick = onAvatarClick,
                                 onDeleteClick = { messageToDelete = message }
                             )
@@ -354,59 +365,46 @@ fun ChatScreen(
 
 @RequiresApi(Build.VERSION_CODES.O)
 private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
-    val groups = mutableListOf<MessageGroup>()
-    if (messages.isEmpty()) return groups
+    if (messages.isEmpty()) return emptyList()
 
-    fun getTimestampMs(ts: Any): Long {
-        return when (ts) {
-            is Long -> ts
-            is String -> {
-                try {
-                    java.time.Instant.parse(ts).toEpochMilli()
-                } catch (e: Exception) {
-                    try {
-                        ts.toLongOrNull() ?: 0L
-                    } catch (e2: Exception) {
-                        0L
-                    }
-                }
-            }
-            else -> 0L
+    val groups = messages.groupBy { message ->
+        getMessageDayKey(message.timestamp)
+    }
+
+    return groups.entries
+        .sortedBy { it.key }
+        .map { entry ->
+            val dayKey = entry.key
+            // Convert LocalDate key → epoch millis at start of day (system timezone)
+            val dateMillis = dayKey.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+            MessageGroup(dateMillis = dateMillis, messages = entry.value)
         }
-    }
-
-    val sorted = messages.sortedBy { getTimestampMs(it.timestamp) }
-    if (sorted.isEmpty()) return groups
-
-    var currentDate = getDateKey(getTimestampMs(sorted.first().timestamp))
-    var currentMessages = mutableListOf<Message>()
-
-    for (message in sorted) {
-        val messageDate = getDateKey(getTimestampMs(message.timestamp))
-        if (messageDate != currentDate) {
-            groups.add(MessageGroup(date = currentDate, messages = currentMessages))
-            currentDate = messageDate
-            currentMessages = mutableListOf()
-        }
-        currentMessages.add(message)
-    }
-
-    if (currentMessages.isNotEmpty()) {
-        groups.add(MessageGroup(date = currentDate, messages = currentMessages))
-    }
-    return groups
 }
 
-private fun getDateKey(timestamp: Long): Long {
-    val cal = Calendar.getInstance().apply { time = Date(timestamp) }
-    cal.set(Calendar.HOUR_OF_DAY, 0)
-    cal.set(Calendar.MINUTE, 0)
-    cal.set(Calendar.SECOND, 0)
-    cal.set(Calendar.MILLISECOND, 0)
-    return cal.timeInMillis
+@RequiresApi(Build.VERSION_CODES.O)
+private fun getMessageDayKey(timestamp: String): LocalDate {
+    val instant = try {
+        when {
+            timestamp.all { it.isDigit() } -> {
+                Instant.ofEpochMilli(timestamp.toLong())
+            }
+            else -> {
+                try {
+                    java.time.OffsetDateTime.parse(timestamp).toInstant()
+                } catch (e: DateTimeParseException) {
+                    Instant.parse(timestamp)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        Instant.now()
+    }
+    return instant.atZone(ZoneId.systemDefault()).toLocalDate()
 }
 
 private data class MessageGroup(
-    val date: Long,
+    val dateMillis: Long,
     val messages: List<Message>
 )

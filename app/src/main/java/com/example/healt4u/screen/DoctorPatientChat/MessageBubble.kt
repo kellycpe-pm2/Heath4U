@@ -35,6 +35,8 @@ import com.example.healt4u.R
 import com.example.healt4u.model.Message
 import java.util.Date
 import java.util.Locale
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -42,6 +44,7 @@ fun MessageBubble(
     message: Message,
     isFromCurrentUser: Boolean,
     userRole: String,
+    otherPersonName: String = "",
     onAvatarClick:(Int)-> Unit,
     onDeleteClick:()-> Unit
 ){
@@ -53,8 +56,9 @@ fun MessageBubble(
         val canClickAvatar = (userRole == "doctor") && !isFromCurrentUser
 
         if (!isFromCurrentUser) {
+            val avatarName = otherPersonName.takeIf { it.isNotEmpty() } ?: message.senderName
             UserAvatar(
-                name = message.senderName,
+                name = avatarName,
                 canClick = canClickAvatar,
                 onClick = {if (canClickAvatar) onAvatarClick(message.senderId) else null},
                 modifier = Modifier.padding(8.dp)
@@ -103,12 +107,9 @@ fun MessageBubble(
                     }
                 )
             }
-
         }
-
     }
 }
-
 
 @Composable
 fun UserAvatar(
@@ -150,11 +151,24 @@ fun UserAvatar(
 @RequiresApi(Build.VERSION_CODES.O)
 private fun formatTimestamp(timestamp: String): String {
     return try {
-        val instant = java.time.Instant.parse(timestamp)
+        val instant = when {
+            timestamp.all { it.isDigit() } -> {
+                // Plain numeric timestamp (milliseconds since epoch)
+                java.time.Instant.ofEpochMilli(timestamp.toLong())
+            }
+            else -> {
+                // Try ISO 8601 with offset first, then fallback to Instant.parse
+                try {
+                    OffsetDateTime.parse(timestamp).toInstant()
+                } catch (e: DateTimeParseException) {
+                    java.time.Instant.parse(timestamp)
+                }
+            }
+        }
         val date = Date(instant.toEpochMilli())
         val format = SimpleDateFormat("HH:mm", Locale.getDefault())
         format.format(date)
     } catch (e: Exception) {
-        "??:??"  // Fallback if parsing fails
+        "??:??"
     }
 }

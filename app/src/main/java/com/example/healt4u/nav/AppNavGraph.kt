@@ -336,7 +336,6 @@ fun AppNavGraph(
                 onFlashToggle = { isOn: Boolean -> },
                 onGalleryPick = {},
                 onBackClick = {  },
-                context = context
             )
 
             if (showManualDialog) {

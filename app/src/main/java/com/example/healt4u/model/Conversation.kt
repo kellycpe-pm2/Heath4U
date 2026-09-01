@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Conversation(
-    val id: String,
+    val id: Int,
 
     @SerialName("doctor_id")
     val doctorId: Int,
@@ -20,7 +20,7 @@ data class Conversation(
     val patientName: String,
 
     @SerialName("hospital_id")
-    val hospitalId: String,
+    val hospitalId: Int,
 
     @SerialName("hospital_name")
     val hospitalName: String,

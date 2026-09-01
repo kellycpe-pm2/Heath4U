@@ -77,7 +77,6 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.util.Locale
 
-
 @RequiresApi(Build.VERSION_CODES.O)
 @androidx.camera.core.ExperimentalGetImage
 @OptIn(ExperimentalGetImage::class, DelicateCoroutinesApi::class)
@@ -100,8 +99,6 @@ fun AppNavGraph(
     var currentUserPhone by remember { mutableStateOf("") }
     val patient = remember { mutableStateOf<PatientUser?>(null) }
 
-
-
     LaunchedEffect(Unit) {
         vm_med.loadFromLocal(context)
     }
@@ -115,7 +112,6 @@ fun AppNavGraph(
     var showManualDialog by remember { mutableStateOf(false) }
     val mutedConversations = remember { mutableStateListOf<String>() }
 
-    // reset
     vm_med.clearSuccessState()
     vm_med.clearError()
     vm_med.clearValidationErrors()
@@ -204,10 +200,9 @@ fun AppNavGraph(
                 onScheduleClick = { navController.navigate("schedule") },
                 onChatClick = { navController.navigate("chat_list") },
                 onFamilyModeClick = { navController.navigate("family_mode") },
-                onAppointmentClick ={navController.navigate("appointment")},
-                onAdherenceClick = {navController.navigate("adherence_statistics/$currentUserId")},
-                onScanClick = {navController.navigate("scan")}
-
+                onAppointmentClick = { navController.navigate("appointment") },
+                onAdherenceClick = { navController.navigate("adherence_statistics/$currentUserId") },
+                onScanClick = { navController.navigate("scan") }
             )
         }
 
@@ -248,7 +243,6 @@ fun AppNavGraph(
         }
 
         composable("add") {
-            // Handle navigation on success
             LaunchedEffect(success) {
                 if (success == true) {
                     navController.popBackStack()
@@ -276,7 +270,6 @@ fun AppNavGraph(
             val medicineId = backStackEntry.arguments?.getInt("medicineId") ?: -1
             val medicine = medicines.find { it.id == medicineId }
 
-            // Handle navigation on success
             LaunchedEffect(success) {
                 if (success == true) {
                     navController.popBackStack()
@@ -289,7 +282,6 @@ fun AppNavGraph(
                     medicine = medicine,
                     onEdit = { updatedMedicine ->
                         vm_med.updateMedicineWithValidation(updatedMedicine, context)
-                        // Navigation handled by LaunchedEffect above
                     },
                     onBack = {
                         navController.popBackStack()
@@ -327,14 +319,13 @@ fun AppNavGraph(
 
         composable("scan") {
             ScannerScreen(
-                onBarcodeScanned = { barcode: String ->
-                },
+                onBarcodeScanned = { barcode: String -> },
                 onManualInput = {
                     showManualDialog = true
                 },
                 onFlashToggle = { isOn: Boolean -> },
                 onGalleryPick = {},
-                onBackClick = {  },
+                onBackClick = { }
             )
 
             if (showManualDialog) {
@@ -373,7 +364,7 @@ fun AppNavGraph(
             route = "adherence_statistics/{patientId}",
             arguments = listOf(navArgument("patientId") { type = NavType.IntType })
         ) { backStack ->
-            val pid = backStack.arguments?.getString("patientId")?.toIntOrNull() ?: 1
+            val pid = backStack.arguments?.getInt("patientId") ?: 1
             AdherenceStatisticScreen(
                 patientId = pid,
                 onBack = { navController.popBackStack() }
@@ -384,7 +375,7 @@ fun AppNavGraph(
             PatientListScreen(
                 doctorId = currentUserId,
                 onPatientClick = { patientId, conversation ->
-                    navController.navigate("adherence_statistics/${patientId}")
+                    navController.navigate("adherence_statistics/$patientId")
                 },
                 onBack = { navController.popBackStack() }
             )
@@ -398,7 +389,9 @@ fun AppNavGraph(
                 userId = currentUserId,
                 userRole = currentUserRole,
                 onConversationClick = { conversation ->
-                    navController.navigate("chat/${conversation.id}")
+                    navController.navigate(
+                        "chat/${conversation.id}/${conversation.doctorId}/${conversation.patientId}"
+                    )
                 },
                 onNewChatClick = {
                     navController.navigate("hospital_list")
@@ -419,9 +412,7 @@ fun AppNavGraph(
         composable(
             route = "doctor_list/{hospitalId}",
             arguments = listOf(
-                navArgument("hospitalId") {
-                    type = NavType.IntType
-                }
+                navArgument("hospitalId") { type = NavType.IntType }
             )
         ) { backStackEntry ->
             val hospitalId = backStackEntry.arguments?.getInt("hospitalId") ?: 0
@@ -431,10 +422,8 @@ fun AppNavGraph(
                 DoctorListScreen(
                     hospital = hospital,
                     onDoctorSelected = { doctor ->
-                        val conversationId = "${doctor.id}_$currentUserId"
-
                         coroutineScope.launch {
-                            createConversation(
+                            val conversation = createConversation(
                                 doctorId = doctor.id,
                                 patientId = currentUserId,
                                 doctorName = doctor.name,
@@ -442,8 +431,11 @@ fun AppNavGraph(
                                 hospitalId = hospital.id,
                                 hospitalName = hospital.name
                             )
-
-                            navController.navigate("chat/$conversationId")
+                            if (conversation != null) {
+                                navController.navigate(
+                                    "chat/${conversation.id}/${conversation.doctorId}/${conversation.patientId}"
+                                )
+                            }
                         }
                     },
                     onBack = { navController.popBackStack() }
@@ -454,44 +446,36 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "chat/{conversationId}",
+            route = "chat/{convId}/{doctorId}/{patientId}",
             arguments = listOf(
-                navArgument("conversationId") {
-                    type = NavType.StringType
-                }
+                navArgument("convId") { type = NavType.IntType },
+                navArgument("doctorId") { type = NavType.IntType },
+                navArgument("patientId") { type = NavType.IntType }
             )
         ) { backStackEntry ->
-            val conversationId = backStackEntry.arguments?.getString("conversationId") ?: ""
-            val ids = conversationId.split("_")
-            val doctorId = ids.getOrNull(0)?.toIntOrNull() ?: 0
-            val patientId = ids.getOrNull(1)?.toIntOrNull() ?: 0
+            val convId = backStackEntry.arguments?.getInt("convId") ?: 0
+            val doctorId = backStackEntry.arguments?.getInt("doctorId") ?: 0
+            val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
+
             var patientName by remember { mutableStateOf("Patient") }
             var doctorName by remember { mutableStateOf("Doctor") }
-
 
             LaunchedEffect(doctorId, patientId) {
                 val doctor = getDoctorById(doctorId)
                 val patient = getPatientById(patientId)
-
                 doctorName = doctor?.name ?: "Doctor"
                 patientName = patient?.name ?: "Patient"
             }
 
-            val chatName = if (currentUserRole == "doctor") {
-                patientName
-            } else {
-                doctorName
-            }
+            val chatName = if (currentUserRole == "doctor") patientName else doctorName
 
             var initialMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
             var isLoading by remember { mutableStateOf(true) }
-
             var selectedPatientId by remember { mutableStateOf<Int?>(null) }
 
-            fun handleNewMessage(message: Message, conversationId: String, currentUserId: Int) {
+            fun handleNewMessage(message: Message, convId: Int, currentUserId: Int) {
                 val isFromOther = message.senderId != currentUserId
-                val isMuted = conversationId in mutedConversations
-
+                val isMuted = convId.toString() in mutedConversations
                 if (isFromOther && !isMuted) {
                     Notification.showSafely(
                         context = context,
@@ -501,20 +485,18 @@ fun AppNavGraph(
                 }
             }
 
-            var lastLoadedMessageId by remember { mutableStateOf<Long?>(null) }
+            var lastLoadedMessageId by remember { mutableStateOf<Int?>(null) }
 
-            LaunchedEffect(conversationId) {
+            LaunchedEffect(convId) {
                 try {
-                    initialMessages = getMessagesByConversation(conversationId)
-
+                    initialMessages = getMessagesByConversation(convId)
                     val latestMessage = initialMessages.lastOrNull()
                     if (latestMessage != null) {
-                        if (lastLoadedMessageId != null && latestMessage.id != lastLoadedMessageId) {
-                            handleNewMessage(latestMessage, conversationId, currentUserId)
+                        if (latestMessage.id != lastLoadedMessageId) {
+                            handleNewMessage(latestMessage, convId, currentUserId)
                         }
                         lastLoadedMessageId = latestMessage.id
                     }
-
                 } catch (e: Exception) {
                     e.printStackTrace()
                 } finally {
@@ -542,11 +524,14 @@ fun AppNavGraph(
                     chatName = chatName,
                     userId = currentUserId,
                     userRole = currentUserRole,
-                    conversationId = conversationId,
+                    conversationId = convId,
+                    doctorId = doctorId,
+                    patientId = patientId,
                     initialMessages = initialMessages,
                     onBack = {
                         reloadKey++
-                        navController.popBackStack() },
+                        navController.popBackStack()
+                    },
                     onSendMessage = { message ->
                         coroutineScope.launch {
                             sendMessage(message)
@@ -554,43 +539,41 @@ fun AppNavGraph(
                     },
                     onDeleteMessage = { message ->
                         GlobalScope.launch {
-                            val success = deleteMessage(message.id.toString())
+                            val success = deleteMessage(message.id)
                             if (success) {
                                 Log.d("Chat", "Message deleted from cloud")
                             }
                         }
                     },
-                    onAvatarClick = { patientId ->
-                        selectedPatientId = patientId
+                    onAvatarClick = { pid ->
+                        selectedPatientId = pid
                     },
-                    isMuted = conversationId in mutedConversations,
+                    isMuted = convId.toString() in mutedConversations,
                     onMuteChanged = { newState ->
-                        if (newState) mutedConversations.add(conversationId)
-                        else mutedConversations.remove(conversationId)
+                        if (newState) mutedConversations.add(convId.toString())
+                        else mutedConversations.remove(convId.toString())
                     },
                     onClearAllMessages = {
                         GlobalScope.launch {
-                            val success = clearMessagesByConversation(conversationId)
+                            val success = clearMessagesByConversation(convId)
                             if (success) {
                                 Log.d("Chat", "All messages cleared from cloud")
                             }
                         }
                     }
                 )
+
                 LaunchedEffect(selectedPatientId) {
                     selectedPatientId?.let { id ->
                         navController.navigate("adherence_statistics/$id")
-                        selectedPatientId = null // Reset after navigate
+                        selectedPatientId = null
                     }
                 }
             }
         }
 
-
-        //doctor part
         composable("doctor") {
             currentUserRole = "doctor"
-
             DoctorDashboardScreen(
                 onPatientClick = { patient ->
                     navController.navigate("adherence_statistics/${patient.id}")
@@ -601,11 +584,11 @@ fun AppNavGraph(
                     navController.navigate("chat_list")
                 },
                 onStatisticClick = {
-                    navController.navigate("adherence_statistics/$currentUserId")  // ✅ Fixed typo + slash
+                    navController.navigate("adherence_statistics/$currentUserId")
                 },
-                onSettingClick = { },
-                onScanClick = { },
-                onProfileClick = { }
+                onSettingClick = {},
+                onScanClick = {},
+                onProfileClick = {}
             )
         }
 
@@ -642,8 +625,7 @@ fun AppNavGraph(
         composable("admin_doctors") {
             AdminDoctorScreen(
                 vm = vm_admin,
-                onBack = { navController.popBackStack() },
-                onAddDoctor = { navController.navigate("admin_add_doctor") }
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -654,7 +636,6 @@ fun AppNavGraph(
                 onDoctorAdded = { navController.popBackStack() }
             )
         }
-
 
         composable("family_mode") {
             FamilyModeScreen(

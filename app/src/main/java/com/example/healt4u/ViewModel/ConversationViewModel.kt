@@ -29,9 +29,8 @@ class ConversationViewModel : ViewModel() {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-
     @RequiresApi(Build.VERSION_CODES.O)
-    fun loadConversations(patientId: String) {
+    fun loadConversations(patientId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -47,7 +46,7 @@ class ConversationViewModel : ViewModel() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun loadConversationsForDoctor(doctorId: String) {
+    fun loadConversationsForDoctor(doctorId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -63,7 +62,7 @@ class ConversationViewModel : ViewModel() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun loadMessages(conversationId: String) {
+    fun loadMessages(conversationId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -84,6 +83,7 @@ class ConversationViewModel : ViewModel() {
             _isLoading.value = true
             _errorMessage.value = null
             try {
+                // Optimistically add message to UI
                 _messages.update { currentList ->
                     if (currentList.none { it.id == message.id }) {
                         currentList + message
@@ -93,15 +93,12 @@ class ConversationViewModel : ViewModel() {
                 }
 
                 val success = com.example.healt4u.Storage.sendMessage(message)
-
                 if (success) {
+                    // Reload fresh data from server to get correct IDs & timestamps
                     loadMessages(message.conversationId)
-                    val patientId = message.conversationId.split("_").lastOrNull() ?: ""
-                    if (patientId.isNotEmpty()) {
-                        loadConversations(patientId)
-                    }
                     onSuccess?.invoke()
                 } else {
+                    // Remove failed message
                     _messages.update { currentList ->
                         currentList.filter { it.id != message.id }
                     }

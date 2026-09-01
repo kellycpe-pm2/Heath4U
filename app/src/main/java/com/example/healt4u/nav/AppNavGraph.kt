@@ -644,7 +644,8 @@ fun AppNavGraph(
         composable("admin_doctors") {
             AdminDoctorScreen(
                 vm = vm_admin,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onAddDoctor = { navController.navigate("admin_add_doctor") }
             )
         }
 

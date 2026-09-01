@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -24,12 +25,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+
 @Composable
 fun TopBar(
     isFlashOn: Boolean,
     onFlashToggle: () -> Unit,
     onGalleryPick: () -> Unit,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -39,51 +41,22 @@ fun TopBar(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Back Button & Title Container
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(
-                        color = Color.White.copy(alpha = 0.2f),
-                        shape = CircleShape
-                    )
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-
-            Text(
-                text = "Scan Medicine",
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold
-            )
+        IconButton(onClick = onBackClick) {
+            Icon(Icons.Default.ArrowBack, contentDescription = "返回", tint = Color.White)
         }
 
-        // Action Buttons Container (Flash & Gallery)
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        Text("扫描药品", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             IconButton(
                 onClick = onFlashToggle,
                 modifier = Modifier
                     .size(44.dp)
-                    .background(
-                        color = Color.White.copy(alpha = 0.2f),
-                        shape = CircleShape
-                    )
+                    .background(Color.White.copy(alpha = 0.2f), CircleShape)
             ) {
                 Icon(
-                    imageVector = if (isFlashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
-                    contentDescription = if (isFlashOn) "Turn Off Flash" else "Turn On Flash",
+                    if (isFlashOn) Icons.Default.FlashOn else Icons.Default.FlashOff,
+                    contentDescription = "闪光灯",
                     tint = Color.White
                 )
             }
@@ -92,16 +65,9 @@ fun TopBar(
                 onClick = onGalleryPick,
                 modifier = Modifier
                     .size(44.dp)
-                    .background(
-                        color = Color.White.copy(alpha = 0.2f),
-                        shape = CircleShape
-                    )
+                    .background(Color.White.copy(alpha = 0.2f), CircleShape)
             ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoLibrary,
-                    contentDescription = "Select From Picture",
-                    tint = Color.White
-                )
+                Icon(Icons.Default.PhotoLibrary, contentDescription = "相册", tint = Color.White)
             }
         }
     }

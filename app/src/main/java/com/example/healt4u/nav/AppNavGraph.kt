@@ -11,6 +11,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -20,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -67,12 +69,17 @@ import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.ViewModel.NPRAMedicineViewModel
+import com.example.healt4u.model.NPRAMedicine
 import com.example.healt4u.model.PatientUser
 import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
 import com.example.healt4u.screen.DoctorPatientChat.Notification
 import com.example.healt4u.screen.PatientListScreen
+import com.example.healt4u.screen.ScanScreen.AddReminderScreen
+import com.example.healt4u.screen.ScanScreen.HistoryScreen
+import com.example.healt4u.screen.ScanScreen.ScanResult
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import java.util.Locale
@@ -88,7 +95,9 @@ fun AppNavGraph(
     vm_reminder: ReminderViewModel = viewModel(),
     vm_admin: AdminManagementViewModel = viewModel(),
     vm_hospital: HospitalViewModel = viewModel(),
-    vm_family: FamilyModeViewModel = viewModel()
+    vm_family: FamilyModeViewModel = viewModel(),
+    npraViewModel: NPRAMedicineViewModel = hiltViewModel()
+
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -324,28 +333,85 @@ fun AppNavGraph(
                 navController.popBackStack()
             }
         }
-
         composable("scan") {
             ScannerScreen(
-                onBarcodeScanned = { barcode: String ->
+                onBarcodeScanned = { scannedData ->
+                    npraViewModel.searchMedicine(scannedData)
+                    navController.navigate("detail/$scannedData")
                 },
                 onManualInput = {
                     showManualDialog = true
                 },
-                onFlashToggle = { isOn: Boolean -> },
+                onFlashToggle = {},
                 onGalleryPick = {},
-                onBackClick = {  },
+                onBackClick = {navController.popBackStack()}
             )
 
             if (showManualDialog) {
                 ManualInputDialog(
                     onDismiss = { showManualDialog = false },
-                    onSearch = { malNumber: String ->
+                    onSearch = { query ->
                         showManualDialog = false
+                        npraViewModel.searchMedicine(query)
+                        navController.navigate("detail/$query")
                     }
                 )
             }
         }
+
+
+        composable("history") {
+            HistoryScreen(
+                medicines = npraViewModel.medicines.value,
+                onItemClick = { regNo ->
+                    navController.navigate("detail/$regNo")
+                }
+            )
+        }
+
+        composable(
+            route = "detail/{barcode}",
+            arguments = listOf(
+                navArgument("barcode") {
+                    type = NavType.StringType
+                    nullable = false
+                }
+            )
+        ) { backStackEntry ->
+            val barcode = backStackEntry.arguments?.getString("barcode") ?: ""
+            val searchResult by npraViewModel.searchResult.collectAsState()
+            val isLoading by npraViewModel.isLoading.collectAsState()
+            val errorMessage by npraViewModel.errorMessage.collectAsState()
+
+            ScanResult(
+                barcode = barcode,
+                medicine = searchResult,
+                isLoading = isLoading,
+                errorMessage = errorMessage,
+                onBack = {
+                    navController.popBackStack()
+                    npraViewModel.resetSearch()
+                },
+                onAddToReminder = { medicine ->
+                   navController.navigate("add_reminder/${medicine.regNo}")
+        }
+            )
+        }
+
+        composable(
+            route = "add_reminder/{regNo}",
+            arguments = listOf(
+                navArgument("regNo") {
+                    type = NavType.StringType
+                    nullable = false
+                }
+            )
+        ) { backStackEntry ->
+            val regNo = backStackEntry.arguments?.getString("regNo") ?: ""
+             AddReminderScreen( onBack = { navController.popBackStack() })
+            androidx.compose.material3.Text("添加提醒 - $regNo")
+        }
+
 
         composable("appointment") {
             AppointmentScreen(
@@ -601,7 +667,7 @@ fun AppNavGraph(
                     navController.navigate("chat_list")
                 },
                 onStatisticClick = {
-                    navController.navigate("adherence_statistics/$currentUserId")  // ✅ Fixed typo + slash
+                    navController.navigate("adherence_statistics/$currentUserId")
                 },
                 onSettingClick = { },
                 onScanClick = { },

@@ -1,6 +1,5 @@
 package com.example.healt4u.database
 
-
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -10,10 +9,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface MedicineDao {
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMedicine(medicine: NPRAMedicine)
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAllMedicines(medicines: List<NPRAMedicine>)
 
@@ -22,9 +17,6 @@ interface MedicineDao {
 
     @Query("SELECT * FROM npra_medicines WHERE product LIKE '%' || :query || '%' OR genericName LIKE '%' || :query || '%'")
     suspend fun searchMedicines(query: String): List<NPRAMedicine>
-
-    @Query("SELECT * FROM npra_medicines WHERE status = 'Active'")
-    suspend fun getActiveMedicines(): List<NPRAMedicine>
 
     @Query("SELECT * FROM npra_medicines ORDER BY product ASC")
     fun getAllMedicines(): Flow<List<NPRAMedicine>>

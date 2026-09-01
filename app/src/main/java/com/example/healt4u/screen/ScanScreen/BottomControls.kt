@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -50,11 +51,7 @@ fun BottomControls(
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Search")
             }
@@ -68,22 +65,18 @@ fun BottomControls(
                 ),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Photo,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                Icon(Icons.Default.Photo, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Picture")
+                Text("相册")
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
-            text = "Support MAL Number And Product Barcode",
+            text = "SUPPORT MAL NUMBER / 条形码 / Farmatag / E-labelling",
             color = Color.White.copy(alpha = 0.5f),
-            fontSize = 12.sp
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center
         )
     }
 }

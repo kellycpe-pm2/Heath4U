@@ -19,30 +19,16 @@ class NPRADataService(private val context: Context) {
         .build()
 
     private val csvUrl = "https://storage.data.gov.my/healthcare/pharmaceutical_products.csv"
-
     private var cachedMedicines: List<NPRAMedicine>? = null
-    private var isLoading = false
-    private var loadError: String? = null
 
-    fun getLoadStatus(): Pair<Boolean, String?> {
-        return Pair(isLoading, loadError)
-    }
+    // ============ 获取数据 ============
 
     suspend fun fetchAllMedicines(forceRefresh: Boolean = false): List<NPRAMedicine> {
         return withContext(Dispatchers.IO) {
             try {
-                // 如果有缓存且不强制刷新，直接返回
                 if (!forceRefresh && cachedMedicines != null) {
                     return@withContext cachedMedicines!!
                 }
-
-                // 防止重复加载
-                if (isLoading) {
-                    return@withContext cachedMedicines ?: emptyList()
-                }
-
-                isLoading = true
-                loadError = null
 
                 val request = Request.Builder()
                     .url(csvUrl)
@@ -52,30 +38,23 @@ class NPRADataService(private val context: Context) {
                 val response = client.newCall(request).execute()
 
                 if (!response.isSuccessful) {
-                    loadError = "HTTP Error: ${response.code}"
                     Log.e("NPRADataService", "HTTP Error: ${response.code}")
                     return@withContext loadFromAssets()
                 }
 
                 val csvContent = response.body?.string()
                 if (csvContent.isNullOrEmpty()) {
-                    loadError = "Empty response"
                     return@withContext loadFromAssets()
                 }
 
                 val medicines = parseCSV(csvContent)
                 if (medicines.isNotEmpty()) {
                     cachedMedicines = medicines
-                } else {
-                    loadError = "No valid data found"
-                    return@withContext loadFromAssets()
+                    Log.d("NPRADataService", "✅ 加载了 ${medicines.size} 条药品数据")
                 }
-
-                isLoading = false
                 medicines
             } catch (e: Exception) {
-                isLoading = false
-                loadError = e.message
+                Log.e("NPRADataService", "❌ 网络错误: ${e.message}")
                 loadFromAssets()
             }
         }
@@ -91,9 +70,12 @@ class NPRADataService(private val context: Context) {
             }
             medicines
         } catch (e: Exception) {
+            Log.e("NPRADataService", "❌ 本地加载失败: ${e.message}")
             emptyList()
         }
     }
+
+    // ============ CSV 解析 ============
 
     private fun parseCSV(csvContent: String): List<NPRAMedicine> {
         val medicines = mutableListOf<NPRAMedicine>()
@@ -138,11 +120,9 @@ class NPRADataService(private val context: Context) {
                     medicines.add(medicine)
                 }
             } catch (e: Exception) {
-                // 跳过有问题的行
                 continue
             }
         }
-
         return medicines
     }
 
@@ -155,33 +135,24 @@ class NPRADataService(private val context: Context) {
         while (true) {
             val char = reader.read()
             if (char == -1) break
-
             val c = char.toChar()
-
             when {
-                c == '"' -> {
-                    inQuotes = !inQuotes
-                }
+                c == '"' -> inQuotes = !inQuotes
                 c == ',' && !inQuotes -> {
                     result.add(current.toString().trim())
                     current = StringBuilder()
                 }
-                else -> {
-                    current.append(c)
-                }
+                else -> current.append(c)
             }
         }
-
         result.add(current.toString().trim())
         return result
     }
 
-    // ============ 搜索方法 ============
 
     fun searchByRegNo(regNo: String): NPRAMedicine? {
         val all = cachedMedicines ?: return null
-        val cleanRegNo = regNo.trim().uppercase()
-        return all.find { it.regNo.uppercase() == cleanRegNo }
+        return all.find { it.regNo.uppercase() == regNo.trim().uppercase() }
     }
 
     fun searchByProductName(query: String): List<NPRAMedicine> {
@@ -196,16 +167,12 @@ class NPRADataService(private val context: Context) {
 
     fun searchByBarcode(barcode: String): NPRAMedicine? {
         val all = cachedMedicines ?: return null
-        // 直接搜索 barcode 字段
-        val result = all.find { it.barcode == barcode }
-        // 如果找不到，尝试用注册号搜索
-        return result ?: searchByRegNo(barcode)
+        return all.find { it.barcode == barcode } ?: searchByRegNo(barcode)
     }
 
     fun searchByRegNoContains(query: String): List<NPRAMedicine> {
         val all = cachedMedicines ?: return emptyList()
-        val cleanQuery = query.trim().uppercase()
-        return all.filter { it.regNo.uppercase().contains(cleanQuery) }
+        return all.filter { it.regNo.uppercase().contains(query.trim().uppercase()) }
     }
 
     fun getAllMedicines(): List<NPRAMedicine> {
@@ -214,10 +181,5 @@ class NPRADataService(private val context: Context) {
 
     fun getProductCount(): Int {
         return cachedMedicines?.size ?: 0
-    }
-
-    fun clearCache() {
-        cachedMedicines = null
-        loadError = null
     }
 }

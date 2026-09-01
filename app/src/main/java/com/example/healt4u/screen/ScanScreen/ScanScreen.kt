@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import com.example.healt4u.screen.scan.ScannerContent
 
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted

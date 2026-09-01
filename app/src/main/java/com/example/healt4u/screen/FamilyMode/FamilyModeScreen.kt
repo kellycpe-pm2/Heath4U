@@ -1,5 +1,7 @@
 package com.example.healt4u.screen.FamilyMode
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -321,8 +323,9 @@ private fun CaregiverCard(caregiver: CaregiverLink, onRemove: () -> Unit) {
 
 @Composable
 private fun PatientCard(patient: CaregiverLink, pendingCount: Int, onClick: () -> Unit) {
+    val context = LocalContext.current
     Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp).clickable { onClick() },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(2.dp)
@@ -338,9 +341,18 @@ private fun PatientCard(patient: CaregiverLink, pendingCount: Int, onClick: () -
                 Icon(Icons.Default.Groups, null, tint = ResolvedGreen, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(11.dp))
-            Column(Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f).clickable { onClick() }
+            ) {
                 Text(patient.patientName, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text("${patient.relationship} — ${patient.patientPhone}", fontSize = 11.sp, color = Color(0xFF61717D))
+                Text(
+                    patient.patientPhone,
+                    fontSize = 11.sp,
+                    color = Color(0xFF61717D),
+                    modifier = Modifier.clickable {
+                        context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${patient.patientPhone}")))
+                    }
+                )
             }
             if (pendingCount > 0) {
                 Box(

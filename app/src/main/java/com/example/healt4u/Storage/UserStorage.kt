@@ -164,3 +164,115 @@ suspend fun getAllPatients(): List<PatientUser> {
         emptyList()
     }
 }
+
+suspend fun patientUpdateName(patientId: Int, newName: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            if (newName.isBlank()) {
+                return@withContext Result.failure(Exception("Name cannot be empty"))
+            }
+
+            supabase
+                .from("Patient")
+                .update(mapOf("patient_name" to newName)) {
+                    filter { eq("id", patientId) }
+                }
+
+            Result.success("Name updated successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("PatientAuth", "patientUpdateName failed", e)
+        Result.failure(Exception("Name update failed: ${e.message}"))
+    }
+}
+
+suspend fun patientUpdateEmail(patientId: Int, newEmail: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            if (newEmail.isNotBlank()) {
+                val existing = supabase
+                    .from("Patient")
+                    .select {
+                        filter { eq("email", newEmail) }
+                    }
+                    .decodeList<PatientUser>()
+
+                if (existing.any { it.id != patientId }) {
+                    return@withContext Result.failure(Exception("Email already registered to another account"))
+                }
+            }
+
+            supabase
+                .from("Patient")
+                .update(mapOf("email" to newEmail.ifBlank { null })) {
+                    filter { eq("id", patientId) }
+                }
+
+            Result.success("Email updated successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("PatientAuth", "patientUpdateEmail failed", e)
+        Result.failure(Exception("Email update failed: ${e.message}"))
+    }
+}
+
+suspend fun patientUpdatePhone(patientId: Int, newPhone: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            if (newPhone.isNotBlank()) {
+                val existing = supabase
+                    .from("Patient")
+                    .select {
+                        filter { eq("phone", newPhone) }
+                    }
+                    .decodeList<PatientUser>()
+
+                if (existing.any { it.id != patientId }) {
+                    return@withContext Result.failure(Exception("Phone number already registered to another account"))
+                }
+            }
+
+            supabase
+                .from("Patient")
+                .update(mapOf("phone" to newPhone.ifBlank { null })) {
+                    filter { eq("id", patientId) }
+                }
+
+            Result.success("Phone updated successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("PatientAuth", "patientUpdatePhone failed", e)
+        Result.failure(Exception("Phone update failed: ${e.message}"))
+    }
+}
+
+suspend fun patientChangePassword(patientId: Int, currentPassword: String, newPassword: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            val patients = supabase
+                .from("Patient")
+                .select {
+                    filter { eq("id", patientId) }
+                }
+                .decodeList<PatientUser>()
+
+            val matched = patients.firstOrNull()
+                ?: return@withContext Result.failure(Exception("Account not found"))
+
+            if (matched.password != currentPassword) {
+                return@withContext Result.failure(Exception("Current password is incorrect"))
+            }
+
+            supabase
+                .from("Patient")
+                .update(mapOf("password" to newPassword)) {
+                    filter { eq("id", patientId) }
+                }
+
+            Result.success("Password changed successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("PatientAuth", "patientChangePassword failed", e)
+        Result.failure(Exception("Password change failed: ${e.message}"))
+    }
+}

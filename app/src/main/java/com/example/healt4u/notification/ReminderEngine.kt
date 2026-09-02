@@ -1,0 +1,215 @@
+package com.example.healt4u.notification
+
+import android.Manifest
+import android.content.Context
+import androidx.annotation.RequiresPermission
+import com.example.healt4u.Storage.getReminderLogsForDate
+import com.example.healt4u.data.local.load_Medicines
+import com.example.healt4u.data.local.loadReminderLogsForDate
+import com.example.healt4u.data.local.upsertReminderLogsLocal
+import com.example.healt4u.model.Medicine
+import com.example.healt4u.model.MedicineAlert
+import com.example.healt4u.model.ReminderLog
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+
+// Headless "build today's schedule + book alarms + check alerts" logic, usable
+// with or without a UI. ReminderViewModel calls this when the app is open (and
+// publishes the result to its StateFlows); DailyRefreshReceiver and BootReceiver
+// call it directly so the same thing happens even if the user never opens the
+// app that day — which is what previously caused dose/stock notifications to
+// only ever fire after a manual login.
+object ReminderEngine {
+
+    data class RefreshResult(
+        val schedule: List<ReminderLog>,
+        val alerts: List<MedicineAlert>
+    )
+
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    // Per-process dedupe. A background refresh runs in its own short-lived
+    // process, so this only prevents duplicate notifications within one run —
+    // that's fine, since each day's refresh is a fresh dedupe window anyway.
+    private val notifiedAlertKeys = mutableSetOf<String>()
+    private val scheduledAlarmIds = mutableSetOf<String>()
+
+    private const val EXPIRY_WARNING_DAYS = 7
+    private const val LOW_STOCK_THRESHOLD = 5
+
+    // Doses are spaced across waking hours only (07:00-22:00), not the full
+    // 24-hour clock, so a medicine taken 5x/day doesn't get scheduled at 3 AM.
+    private const val WAKING_START_MINUTES = 7 * 60
+    private const val WAKING_END_MINUTES = 22 * 60
+
+    fun todayDate(): String = dateFormat.format(Calendar.getInstance().time)
+
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    suspend fun refresh(context: Context): RefreshResult {
+        NotificationHelper.createChannels(context)
+
+        val date = todayDate()
+        val medicines = load_Medicines(context)
+        val generated = generateSlotsFor(medicines, date)
+
+        val savedLocal = loadReminderLogsForDate(context, date)
+        val appointments = savedLocal.filter { it.medicineId == -1 }
+        var merged = mergeGeneratedWithSaved(generated, savedLocal)
+        var allItems = (merged + appointments).distinctBy { it.id }
+        allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
+
+        val savedCloud = getReminderLogsForDate(date)
+        if (savedCloud.isNotEmpty()) {
+            merged = mergeGeneratedWithSaved(generated, savedCloud)
+            val cloudAppointments = savedCloud.filter { it.medicineId == -1 }
+            allItems = (merged + cloudAppointments).distinctBy { it.id }
+            allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
+            upsertReminderLogsLocal(context, allItems)
+        }
+
+        // Only real medicine doses get a "time to take" alarm — appointments
+        // belong to a different module and will get their own reminders later.
+        scheduleAlarmsForPendingDoses(context, allItems.filter { it.medicineId != -1 })
+        val alerts = checkMedicineAlerts(context, medicines)
+
+        return RefreshResult(allItems, alerts)
+    }
+
+    private fun scheduleAlarmsForPendingDoses(context: Context, logs: List<ReminderLog>) {
+        for (log in logs) {
+            if (log.status == "PENDING" && log.id !in scheduledAlarmIds) {
+                ReminderScheduler.scheduleAlarm(context, log)
+                scheduledAlarmIds.add(log.id)
+            }
+        }
+    }
+
+    // 7 days before expiry, or stock at/under the low-stock threshold — posts a
+    // notification once per dedupe window per medicine, and returns the full
+    // alert list for the banner shown on Dashboard/Schedule.
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    private fun checkMedicineAlerts(context: Context, medicines: List<Medicine>): List<MedicineAlert> {
+        val now = System.currentTimeMillis()
+        val warningWindowMillis = EXPIRY_WARNING_DAYS * 24L * 60 * 60 * 1000
+        val alerts = mutableListOf<MedicineAlert>()
+
+        for (med in medicines) {
+            val expiredDate = med.expiredDate
+            if (expiredDate != null) {
+                val msUntilExpiry = expiredDate - now
+                if (msUntilExpiry in 0..warningWindowMillis) {
+                    val daysLeft = (msUntilExpiry / (24 * 60 * 60 * 1000)).toInt()
+                    alerts.add(
+                        MedicineAlert(
+                            medicineId = med.id,
+                            medicineName = med.name_medicine,
+                            kind = MedicineAlert.Kind.EXPIRING_SOON,
+                            message = "${med.name_medicine} expires in $daysLeft day${if (daysLeft != 1) "s" else ""}"
+                        )
+                    )
+                } else if (msUntilExpiry < 0) {
+                    alerts.add(
+                        MedicineAlert(
+                            medicineId = med.id,
+                            medicineName = med.name_medicine,
+                            kind = MedicineAlert.Kind.EXPIRING_SOON,
+                            message = "${med.name_medicine} has expired"
+                        )
+                    )
+                }
+            }
+
+            val quantityLeft = med.quantityLeft ?: med.quantity
+            if (quantityLeft <= LOW_STOCK_THRESHOLD) {
+                alerts.add(
+                    MedicineAlert(
+                        medicineId = med.id,
+                        medicineName = med.name_medicine,
+                        kind = MedicineAlert.Kind.LOW_STOCK,
+                        message = "${med.name_medicine} is running low ($quantityLeft left)"
+                    )
+                )
+            }
+        }
+
+        for (alert in alerts) {
+            val key = "${alert.medicineId}_${alert.kind}_${todayDate()}"
+            if (key !in notifiedAlertKeys) {
+                notifiedAlertKeys.add(key)
+                val title = if (alert.kind == MedicineAlert.Kind.EXPIRING_SOON) "Medicine expiring soon" else "Medicine running low"
+                NotificationHelper.showStockAlert(context, key.hashCode(), title, alert.message)
+            }
+        }
+
+        return alerts
+    }
+
+    private fun generateSlotsFor(medicines: List<Medicine>, date: String): List<ReminderLog> {
+        val slots = mutableListOf<ReminderLog>()
+        for (med in medicines) {
+            val timesPerDay = (med.timesPerDay ?: 1).coerceIn(1, 6)
+            val startTime = med.reminderTime ?: "08:00"
+            val startMinutes = timeStringToMinutes(startTime).coerceIn(WAKING_START_MINUTES, WAKING_END_MINUTES)
+
+            val windowMinutes = (WAKING_END_MINUTES - startMinutes).coerceAtLeast(0)
+            val intervalMinutes = if (timesPerDay > 1) windowMinutes / (timesPerDay - 1) else 0
+
+            for (slot in 0 until timesPerDay) {
+                val minutesOfDay = (startMinutes + slot * intervalMinutes).coerceAtMost(WAKING_END_MINUTES)
+                val timeLabel = minutesToTimeString(minutesOfDay)
+                slots.add(
+                    ReminderLog(
+                        id = "${med.id}_${date}_$slot",
+                        patientId = 0,
+                        medicineId = med.id,
+                        medicineName = med.name_medicine,
+                        date = date,
+                        time = timeLabel,
+                        status = "PENDING",
+                        type = "MEDICINE"
+                    )
+                )
+            }
+        }
+        return slots.sortedBy { it.time }
+    }
+
+    private fun mergeGeneratedWithSaved(
+        generated: List<ReminderLog>,
+        saved: List<ReminderLog>
+    ): List<ReminderLog> {
+        val savedById = saved.associateBy { it.id }
+        return generated.map { savedById[it.id] ?: it }
+    }
+
+    // Anything still PENDING more than 30 minutes past its slot time is auto-flagged
+    // MISSED — this is what drives the family "missed-dose alert" on the dashboard.
+    private fun flagOverdueAsMissed(logs: List<ReminderLog>): List<ReminderLog> {
+        val now = Calendar.getInstance()
+        val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
+        val graceMinutes = 30
+
+        return logs.map { log ->
+            if (log.status == "PENDING") {
+                val slotMinutes = timeStringToMinutes(log.time)
+                if (nowMinutes - slotMinutes > graceMinutes) {
+                    log.copy(status = "MISSED")
+                } else log
+            } else log
+        }
+    }
+
+    private fun timeStringToMinutes(time: String): Int {
+        val parts = time.split(":")
+        val h = parts.getOrNull(0)?.toIntOrNull() ?: 8
+        val m = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        return h * 60 + m
+    }
+
+    private fun minutesToTimeString(totalMinutes: Int): String {
+        val h = (totalMinutes / 60) % 24
+        val m = totalMinutes % 60
+        return "%02d:%02d".format(h, m)
+    }
+}

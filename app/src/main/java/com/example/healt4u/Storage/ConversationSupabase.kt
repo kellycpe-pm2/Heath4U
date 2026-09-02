@@ -207,36 +207,19 @@ suspend fun upsertConversation(conversation: Conversation): Conversation? {
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
-suspend fun updateConversationLastMessage(
-    conversationId: Int,
-    lastMessage: String,
-    lastMessageTime: String,
-    incrementUnread: Int = 1
-): Boolean {
-    return try {
-        val conversation = getConversationById(conversationId)
-        if (conversation == null) {
-            Log.e(TAG, "Conversation not found: id=$conversationId")
-            return false
-        }
-
-        val updateData = mapOf(
-            "last_message" to lastMessage,
-            "last_message_time" to lastMessageTime,
-            "unread_count" to (conversation.unreadCount + incrementUnread)
-        )
-
+suspend fun updateConversationLastMessage(convId: Int, lastMsg: String, msgTime: String) {
+    try {
         SupabaseClient.supabase
             .from("conversation")
-            .update(updateData) {
-                filter { eq("id", conversationId) }
+            .update({
+                set("last_message", lastMsg)
+                set("last_message_time", msgTime)
+            }) {
+                filter { eq("id", convId) }
             }
-
-        Log.d(TAG, "Updated last message for: id=$conversationId")
-        true
+        Log.d("SupabaseStorage", "✅ Conversation updated: id=$convId")
     } catch (e: Exception) {
-        Log.e(TAG, "Error updating last message: ${e.message}", e)
-        false
+        Log.w("SupabaseStorage", "⚠️ Updated last_message skipped: ${e.message}")
     }
 }
 
@@ -431,8 +414,7 @@ suspend fun sendMessage(message: Message): Boolean {
         updateConversationLastMessage(
             message.conversationId,
             message.content,
-            Instant.now().toString(),
-            1
+            Instant.now().toString()
         )
         Log.d(TAG, "Conversation updated: id=${message.conversationId}")
         true

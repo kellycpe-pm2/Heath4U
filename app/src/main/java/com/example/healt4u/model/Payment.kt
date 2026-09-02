@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Payment(
-    val id: String = "",
+    val id: String? = "",
 
     @SerialName("patient_id")
     val patientId: Int = 0,

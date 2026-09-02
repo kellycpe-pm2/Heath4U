@@ -8,7 +8,6 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -33,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.healt4u.Storage.clearMessagesByConversation
 import com.example.healt4u.Storage.createConversation
+import com.example.healt4u.Storage.createPayment
 import com.example.healt4u.Storage.deleteMessage
 import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getHospitalById
@@ -73,7 +73,8 @@ import com.example.healt4u.Storage.sendMessage
 import com.example.healt4u.ViewModel.NPRAMedicineViewModel
 import com.example.healt4u.model.Hospital
 import com.example.healt4u.model.PatientUser
-import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
+import com.example.healt4u.model.Payment
+import com.example.healt4u.screen.Statistics.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
 import com.example.healt4u.screen.DoctorPatientChat.Notification
@@ -82,9 +83,9 @@ import com.example.healt4u.screen.Payment.PaymentScreen
 import com.example.healt4u.screen.ScanScreen.AddReminderScreen
 import com.example.healt4u.screen.ScanScreen.HistoryScreen
 import com.example.healt4u.screen.ScanScreen.ScanResult
+import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import java.util.Locale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @androidx.camera.core.ExperimentalGetImage
@@ -546,7 +547,7 @@ fun AppNavGraph(
             LaunchedEffect(doctorId) {
                 coroutineScope.launch {
                     val doctor = getDoctorById(doctorId)
-                    doctorName = doctor?.name ?: "Doctor"
+                    doctorName = doctor?.name ?: "Dr. Unknown"
                     consultationFee = doctor?.consultationFee ?: 50.0
                 }
             }
@@ -557,7 +558,7 @@ fun AppNavGraph(
                 doctorName = doctorName,
                 consultationFee = consultationFee,
                 patientId = currentUserId,
-                onPaymentSuccess = { chatExpiryTime ->
+                onPaymentSuccess = { chatExpiryTime, paymentMethod ->
                     coroutineScope.launch {
                         val hospitalName = getHospitalById(hospitalId)?.name ?: ""
                         val conversation = createConversation(
@@ -568,7 +569,24 @@ fun AppNavGraph(
                             hospitalId = hospitalId,
                             hospitalName = hospitalName
                         )
+
                         if (conversation != null) {
+                            val payment = Payment(
+                                id = null,
+                                patientId = currentUserId,
+                                doctorId = doctorId,
+                                doctorName = doctorName,
+                                amount = consultationFee,
+                                paymentMethod = paymentMethod,
+                                status = "completed"
+                            )
+                            val saved = createPayment(payment)
+                            if (saved != null) {
+                                Log.d("PAYMENT", "✅ Payment saved! ID=${saved.id}")
+                            } else {
+                                Log.e("PAYMENT", "❌ Failed to save payment")
+                            }
+
                             navController.navigate(
                                 "chat_with_expiry/${conversation.id}/${conversation.doctorId}/${conversation.patientId}/$chatExpiryTime"
                             )
@@ -593,116 +611,19 @@ fun AppNavGraph(
             val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
             val expiryTime = backStackEntry.arguments?.getLong("expiryTime") ?: 0L
 
-            var patientName by remember { mutableStateOf("Patient") }
-            var doctorName by remember { mutableStateOf("Doctor") }
+            var displayName by remember { mutableStateOf("Loading...") }
 
-            LaunchedEffect(doctorId, patientId) {
+            LaunchedEffect(doctorId, patientId, currentUserRole) {
                 coroutineScope.launch {
-                    val doctor = getDoctorById(doctorId)
-                    val patient = getPatientById(patientId)
-                    doctorName = doctor?.name ?: "Doctor"
-                    patientName = patient?.name ?: "Patient"
-                }
-            }
-
-            val chatName = if (currentUserRole == "doctor") patientName else doctorName
-
-            var initialMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
-            var isLoading by remember { mutableStateOf(true) }
-            var selectedPatientId by remember { mutableStateOf<Int?>(null) }
-
-            fun handleNewMessage(message: Message, convId: Int, currentUserId: Int) {
-                val isFromOther = message.senderId != currentUserId
-                val isMuted = convId.toString() in mutedConversations
-                if (isFromOther && !isMuted) {
-                    Notification.showSafely(
-                        context = context,
-                        title = "New message from ${message.senderName}",
-                        message = message.content.take(40)
-                    )
-                }
-            }
-
-            var lastLoadedMessageId by remember { mutableStateOf<Int?>(null) }
-
-            LaunchedEffect(convId) {
-                try {
-                    initialMessages = getMessagesByConversation(convId)
-                    val latestMessage = initialMessages.lastOrNull()
-                    if (latestMessage != null) {
-                        if (latestMessage.id != lastLoadedMessageId) {
-                            handleNewMessage(latestMessage, convId, currentUserId)
-                        }
-                        lastLoadedMessageId = latestMessage.id
+                    if (currentUserRole == "doctor") {
+                        val patient = getPatientById(patientId)
+                        displayName = patient?.name ?: "Patient"
+                    } else {
+                        val doctor = getDoctorById(doctorId)
+                        displayName = doctor?.name ?: "Doctor"
                     }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                } finally {
-                    isLoading = false
                 }
             }
-
-            if (isLoading) {
-                Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                ChatScreen(
-                    chatName = chatName,
-                    userId = currentUserId,
-                    userRole = currentUserRole,
-                    conversationId = convId,
-                    doctorId = doctorId,
-                    patientId = patientId,
-                    chatExpiryTime = expiryTime,
-                    initialMessages = initialMessages,
-                    onBack = { navController.popBackStack() },
-                    onSendMessage = { message ->
-                        coroutineScope.launch { sendMessage(message) }
-                    },
-                    onDeleteMessage = { message ->
-                        GlobalScope.launch { deleteMessage(message.id) }
-                    },
-                    onAvatarClick = { pid -> selectedPatientId = pid },
-                    isMuted = convId.toString() in mutedConversations,
-                    onMuteChanged = { newState ->
-                        if (newState) mutedConversations.add(convId.toString())
-                        else mutedConversations.remove(convId.toString())
-                    },
-                    onClearAllMessages = {
-                        GlobalScope.launch { clearMessagesByConversation(convId) }
-                    }
-                )
-            }
-        }
-
-        // ✅ ORIGINAL CHAT ROUTE — FIXED: added chatExpiryTime parameter
-        composable(
-            route = "chat/{convId}/{doctorId}/{patientId}",
-            arguments = listOf(
-                navArgument("convId") { type = NavType.IntType },
-                navArgument("doctorId") { type = NavType.IntType },
-                navArgument("patientId") { type = NavType.IntType }
-            )
-        ) { backStackEntry ->
-            val convId = backStackEntry.arguments?.getInt("convId") ?: 0
-            val doctorId = backStackEntry.arguments?.getInt("doctorId") ?: 0
-            val patientId = backStackEntry.arguments?.getInt("patientId") ?: 0
-            val expiryTime = 0L
-
-            var patientName by remember { mutableStateOf("Patient") }
-            var doctorName by remember { mutableStateOf("Doctor") }
-
-            LaunchedEffect(doctorId, patientId) {
-                coroutineScope.launch {
-                    val doctor = getDoctorById(doctorId)
-                    val patient = getPatientById(patientId)
-                    doctorName = doctor?.name ?: "Doctor"
-                    patientName = patient?.name ?: "Patient"
-                }
-            }
-
-            val chatName = if (currentUserRole == "doctor") patientName else doctorName
 
             var initialMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
             var isLoading by remember { mutableStateOf(true) }
@@ -740,7 +661,7 @@ fun AppNavGraph(
                 }
             } else {
                 ChatScreen(
-                    chatName = chatName,
+                    chatName = displayName,
                     userId = currentUserId,
                     userRole = currentUserRole,
                     conversationId = convId,
@@ -780,12 +701,17 @@ fun AppNavGraph(
                     navController.navigate("chat_list")
                 },
                 onStatisticClick = {
-                    navController.navigate("adherence_statistics/$currentUserId")
+                    navController.navigate("revenue_statistic/$currentUserId")
                 },
                 onSettingClick = {},
                 onScanClick = {},
                 onProfileClick = {}
             )
+        }
+
+        composable("revenue_statistic/{doctorId}") {
+            val doctorId = it.arguments?.getString("doctorId") ?: ""
+            RevenueStatisticScreen(doctorId = doctorId, onBack = { navController.popBackStack() })
         }
 
         composable("admin") {

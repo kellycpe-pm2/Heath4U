@@ -69,7 +69,7 @@ fun PaymentScreen(
     doctorName: String,
     consultationFee: Double,
     patientId: Int,
-    onPaymentSuccess: (Long) -> Unit,
+    onPaymentSuccess: (time: Long, method: String) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -84,7 +84,7 @@ fun PaymentScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Pay to Dr. $doctorName", color = White, fontWeight = FontWeight.Bold) },
+                title = { Text("Pay to $doctorName", color = White, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = White)
@@ -214,7 +214,7 @@ fun PaymentScreen(
                         val successMsg = "Payment Successful!\nChat access: 24h\nExpires: $expireStr"
                         Toast.makeText(context, successMsg, Toast.LENGTH_LONG).show()
 
-                        onPaymentSuccess(chatExpiryTime)
+                        onPaymentSuccess(chatExpiryTime, latest.paymentMethod)
                     } else {
                         Toast.makeText(context, "No pending payment found", Toast.LENGTH_SHORT).show()
                     }

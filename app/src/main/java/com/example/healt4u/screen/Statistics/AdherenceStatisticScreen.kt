@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.Adherence
+package com.example.healt4u.screen.Statistics
 
 import android.os.Build
 import androidx.annotation.RequiresApi

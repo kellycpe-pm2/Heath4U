@@ -318,11 +318,12 @@ fun ConversationItem(
 
 @RequiresApi(Build.VERSION_CODES.O)
 private fun parseTimestampSafe(timestampStr: String): Long {
+    val cleaned = timestampStr.replace(" ", "T")
     return try {
-        OffsetDateTime.parse(timestampStr).toInstant().toEpochMilli()
+        OffsetDateTime.parse(cleaned).toInstant().toEpochMilli()
     } catch (e: Exception) {
         try {
-            Instant.parse(timestampStr).toEpochMilli()
+            Instant.parse(cleaned).toEpochMilli()
         } catch (e2: Exception) {
             Log.w("DateParse", "Failed to parse time: $timestampStr", e2)
             System.currentTimeMillis()

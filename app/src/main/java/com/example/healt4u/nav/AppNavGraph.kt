@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -587,7 +588,7 @@ fun AppNavGraph(
                     CircularProgressIndicator()
                 }
             } else {
-                var reloadKey by remember { mutableStateOf(0) }
+                var reloadKey by remember { mutableIntStateOf(0) }
 
                 ChatScreen(
                     chatName = chatName,
@@ -644,8 +645,8 @@ fun AppNavGraph(
         composable("doctor") {
             currentUserRole = "doctor"
             DoctorDashboardScreen(
-                onPatientClick = { patient ->
-                    navController.navigate("adherence_statistics/${patient.id}")
+                onPatientClick = { patientId, conversation ->
+                    navController.navigate("adherence_statistics/${patientId}")
                 },
                 onListClick = { navController.navigate("patient_list") },
                 onChatClick = {

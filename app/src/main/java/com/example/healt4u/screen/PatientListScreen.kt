@@ -44,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -75,7 +76,7 @@ fun PatientListScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    var reloadKey by remember { mutableStateOf(0) }
+    var reloadKey by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(doctorId, reloadKey) {
         try {
@@ -92,8 +93,7 @@ fun PatientListScreen(
     val filteredPatients = remember(searchQuery, patients) {
         if (searchQuery.isBlank()) patients
         else patients.filter {
-            it.patientName?.contains(searchQuery, ignoreCase = true) == true ||
-                    it.patientId.toString().contains(searchQuery, ignoreCase = true)
+            it.patientName.contains(searchQuery, ignoreCase = true) || it.patientId.toString().contains(searchQuery, ignoreCase = true)
         }
     }
 

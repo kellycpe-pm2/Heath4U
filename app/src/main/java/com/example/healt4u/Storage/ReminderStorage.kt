@@ -57,9 +57,6 @@ suspend fun upsertReminderLogs(logs: List<ReminderLog>): Boolean {
 }
 
 /*
-Run once in the Supabase SQL editor for this project before the Schedule
-screen can sync to the cloud (local device storage works either way):
-
 create table if not exists reminder_logs (
     id text primary key,
     medicine_id int not null,

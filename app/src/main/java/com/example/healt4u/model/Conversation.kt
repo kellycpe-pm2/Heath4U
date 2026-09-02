@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Conversation(
-    val id: Int,
+    val id: Int? =null,
 
     @SerialName("doctor_id")
     val doctorId: Int,

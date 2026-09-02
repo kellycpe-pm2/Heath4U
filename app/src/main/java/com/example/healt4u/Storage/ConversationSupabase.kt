@@ -5,15 +5,14 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.model.Message
-import com.example.healt4u.model.PatientUser
 import com.example.healt4u.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
-import io.github.jan.supabase.postgrest.from
 import java.time.Instant
 
 private const val TAG = "SupabaseStorage"
@@ -51,17 +50,17 @@ suspend fun getConversationsByPatient(patientId: Int): List<Conversation> {
 
         val conversations = rawList.map { map ->
             Conversation(
-                id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-                doctorId = map["doctor_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                id = map["id"]?.jsonPrimitive?.int,
+                doctorId = map["doctor_id"]?.jsonPrimitive?.int ?: 0,
                 doctorName = map["doctor_name"]?.jsonPrimitive?.content ?: "",
-                patientId = map["patient_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                patientId = map["patient_id"]?.jsonPrimitive?.int ?: 0,
                 patientName = map["patient_name"]?.jsonPrimitive?.content ?: "",
-                hospitalId = map["hospital_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-                hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "",
+                hospitalId = map["hospital_id"]?.jsonPrimitive?.int ?: 0,
+                hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "General Hospital",
                 lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
                 lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
                     ?: Instant.now().toString(),
-                unreadCount = map["unread_count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
                 isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
             )
         }
@@ -69,7 +68,7 @@ suspend fun getConversationsByPatient(patientId: Int): List<Conversation> {
         Log.d("SupabaseStorage", "Returning ${conversations.size} conversations")
 
         val syncedConversations = conversations.map { conv ->
-            val latestMsg = getLastMessage(conv.id)
+            val latestMsg = getLastMessage(conv.id ?: 0)
             if (latestMsg != null) {
                 conv.copy(lastMessage = latestMsg.content)
             } else {
@@ -99,25 +98,24 @@ suspend fun getConversationsByDoctor(doctorId: Int): List<Conversation> {
 
         val conversations = rawList.map { map ->
             Conversation(
-                id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-                doctorId = map["doctor_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                id = map["id"]?.jsonPrimitive?.int,
+                doctorId = map["doctor_id"]?.jsonPrimitive?.int ?: 0,
                 doctorName = map["doctor_name"]?.jsonPrimitive?.content ?: "",
-                patientId = map["patient_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                patientId = map["patient_id"]?.jsonPrimitive?.int ?: 0,
                 patientName = map["patient_name"]?.jsonPrimitive?.content ?: "",
-                hospitalId = map["hospital_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-                hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "",
+                hospitalId = map["hospital_id"]?.jsonPrimitive?.int ?: 0,
+                hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "General Hospital",
                 lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
                 lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
                     ?: Instant.now().toString(),
-                unreadCount = map["unread_count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
                 isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
             )
         }
 
         Log.d(TAG, "Loaded ${conversations.size} conversations")
-
         val syncedConversations = conversations.map { conv ->
-            val latestMsg = getLastMessage(conv.id)
+            val latestMsg = getLastMessage(conv.id ?: 0)
             if (latestMsg != null) {
                 conv.copy(lastMessage = latestMsg.content)
             } else {
@@ -148,17 +146,17 @@ suspend fun getConversationById(conversationId: Int): Conversation? {
 
         val map = rawList.first()
         Conversation(
-            id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-            doctorId = map["doctor_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+            id = map["id"]?.jsonPrimitive?.int,
+            doctorId = map["doctor_id"]?.jsonPrimitive?.int ?: 0,
             doctorName = map["doctor_name"]?.jsonPrimitive?.content ?: "",
-            patientId = map["patient_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+            patientId = map["patient_id"]?.jsonPrimitive?.int ?: 0,
             patientName = map["patient_name"]?.jsonPrimitive?.content ?: "",
-            hospitalId = map["hospital_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-            hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "",
+            hospitalId = map["hospital_id"]?.jsonPrimitive?.int ?: 0,
+            hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "General Hospital",
             lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
             lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
                 ?: Instant.now().toString(),
-            unreadCount = map["unread_count"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+            unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
             isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
         )
     } catch (e: Exception) {
@@ -167,16 +165,44 @@ suspend fun getConversationById(conversationId: Int): Conversation? {
     }
 }
 
-suspend fun upsertConversation(conversation: Conversation): Boolean {
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun upsertConversation(conversation: Conversation): Conversation? {
     return try {
-        SupabaseClient.supabase
+        val savedList = SupabaseClient.supabase
             .from("conversation")
-            .upsert(conversation)
-        Log.d(TAG, "Conversation upserted: id=${conversation.id}")
-        true
+            .upsert(conversation) {
+                select()
+            }
+            .decodeList<Map<String, JsonElement>>()
+
+        if (savedList.isEmpty()) {
+            Log.e(TAG, "No row returned from upsert!")
+            return null
+        }
+
+        val row = savedList.first()
+        val realId = row["id"]?.jsonPrimitive?.int
+
+        Log.d(TAG, "✅ UPSERT RETURNED ID=$realId")
+
+        if (realId == null || realId == 0) {
+            Log.w(TAG, "ID still null/0 → re-querying by doctor+patient...")
+            val found = getConversationByDoctorPatient(conversation.doctorId, conversation.patientId)
+            if (found != null && found.id != null && found.id != 0) {
+                Log.d(TAG, "✅ FOUND REAL ID: ${found.id}")
+                return found
+            }
+        }
+
+        return conversation.copy(
+            id = realId,
+            doctorName = row["doctor_name"]?.jsonPrimitive?.content ?: conversation.doctorName,
+            patientName = row["patient_name"]?.jsonPrimitive?.content ?: conversation.patientName,
+            hospitalName = row["hospital_name"]?.jsonPrimitive?.content ?: conversation.hospitalName
+        )
     } catch (e: Exception) {
         Log.e(TAG, "Error upserting conversation: ${e.message}", e)
-        false
+        null
     }
 }
 
@@ -194,15 +220,15 @@ suspend fun updateConversationLastMessage(
             return false
         }
 
+        val updateData = mapOf(
+            "last_message" to lastMessage,
+            "last_message_time" to lastMessageTime,
+            "unread_count" to (conversation.unreadCount + incrementUnread)
+        )
+
         SupabaseClient.supabase
             .from("conversation")
-            .update(
-                mapOf(
-                    "last_message" to lastMessage,
-                    "last_message_time" to lastMessageTime,
-                    "unread_count" to (conversation.unreadCount + incrementUnread)
-                )
-            ) {
+            .update(updateData) {
                 filter { eq("id", conversationId) }
             }
 
@@ -252,40 +278,141 @@ suspend fun deleteConversation(conversationId: Int): Boolean {
 suspend fun createConversation(
     doctorId: Int,
     patientId: Int,
-    doctorName: String,
-    patientName: String,
+    doctorName: String?,
+    patientName: String?,
     hospitalId: Int,
     hospitalName: String
 ): Conversation? {
     return try {
-        val existing = getConversationById(doctorId)
+        val convResponse = SupabaseClient.supabase
+            .from("conversation")
+            .select {
+                filter {
+                    eq("doctor_id", doctorId)
+                    eq("patient_id", patientId)
+                }
+            }
+
+        val rawList = Json.decodeFromString<List<Map<String, JsonElement>>>(convResponse.data)
+        val existing = rawList.firstOrNull()
+
         if (existing != null) {
-            Log.d(TAG, "Conversation already exists: id=${existing.id}")
-            return existing
+            val existingId = existing["id"]?.jsonPrimitive?.int
+            val existingDocName = existing["doctor_name"]?.jsonPrimitive?.content ?: "Dr. Unknown"
+            val existingPatName = existing["patient_name"]?.jsonPrimitive?.content ?: "Patient"
+            val existingHospName = existing["hospital_name"]?.jsonPrimitive?.content ?: "General Hospital"
+
+            Log.d(TAG, "✅ EXISTS: ID=$existingId, Dr=$existingDocName, Patient=$existingPatName, Hosp=$existingHospName")
+
+            return Conversation(
+                id = existingId,
+                doctorId = doctorId,
+                doctorName = existingDocName,
+                patientId = patientId,
+                patientName = existingPatName,
+                hospitalId = hospitalId,
+                hospitalName = existingHospName,
+                lastMessage = existing["last_message"]?.jsonPrimitive?.content ?: "",
+                lastMessageTime = existing["last_message_time"]?.jsonPrimitive?.content ?: Instant.now().toString(),
+                unreadCount = existing["unread_count"]?.jsonPrimitive?.int ?: 0,
+                isActive = existing["is_active"]?.jsonPrimitive?.boolean ?: true
+            )
         }
 
-        val nowIso = Instant.now().toString()
-        val conversation = Conversation(
-            id = 0,
+        val realDoctorName = doctorName ?: run {
+            try {
+                val docList = SupabaseClient.supabase
+                    .from("doctor")
+                    .select { filter { eq("id", doctorId) } }
+                    .decodeList<Map<String, JsonElement>>()
+                docList.firstOrNull()?.get("name")?.jsonPrimitive?.content ?: "Dr. Unknown"
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get doctor name: ${e.message}")
+                "Dr. Unknown"
+            }
+        }
+
+        val realPatientName = patientName ?: run {
+            try {
+                val patList = SupabaseClient.supabase
+                    .from("patient_user")
+                    .select { filter { eq("id", patientId) } }
+                    .decodeList<Map<String, JsonElement>>()
+                patList.firstOrNull()?.get("name")?.jsonPrimitive?.content ?: "Patient"
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get patient name: ${e.message}")
+                "Patient"
+            }
+        }
+
+        val safeHospitalName = hospitalName.takeIf { it.isNotEmpty() } ?: "General Hospital"
+
+        Log.d(TAG, "✅ NEW: Dr=$realDoctorName, Patient=$realPatientName, Hosp=$safeHospitalName")
+
+        val newConversation = Conversation(
+            id = null,
             doctorId = doctorId,
-            doctorName = doctorName,
+            doctorName = realDoctorName,
             patientId = patientId,
-            patientName = patientName,
+            patientName = realPatientName,
             hospitalId = hospitalId,
-            hospitalName = hospitalName,
+            hospitalName = safeHospitalName,
             lastMessage = "Start your conversation!",
-            lastMessageTime = nowIso,
+            lastMessageTime = Instant.now().toString(),
             unreadCount = 0,
             isActive = true
         )
 
-        val success = upsertConversation(conversation)
-        if (success) {
-            Log.d(TAG, "Conversation created")
+        val savedConversation = upsertConversation(newConversation)
+
+        if (savedConversation?.id == null || savedConversation.id == 0) {
+            Log.w(TAG, "Upsert returned ID=null/0 → re-querying for real ID...")
+            val found = getConversationByDoctorPatient(doctorId, patientId)
+            if (found != null) {
+                Log.d(TAG, "✅ FOUND REAL ID: ${found.id}")
+                return found
+            }
         }
-        conversation
+
+        Log.d(TAG, "✅ SAVED: ID=${savedConversation?.id}")
+        return savedConversation
+
     } catch (e: Exception) {
         Log.e(TAG, "Error creating conversation: ${e.message}", e)
+        null
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun getConversationByDoctorPatient(doctorId: Int, patientId: Int): Conversation? {
+    return try {
+        val response = SupabaseClient.supabase
+            .from("conversation")
+            .select {
+                filter {
+                    eq("doctor_id", doctorId)
+                    eq("patient_id", patientId)
+                }
+            }
+
+        val rawList = Json.decodeFromString<List<Map<String, JsonElement>>>(response.data)
+        val map = rawList.firstOrNull() ?: return null
+
+        Conversation(
+            id = map["id"]?.jsonPrimitive?.int,
+            doctorId = map["doctor_id"]?.jsonPrimitive?.int ?: 0,
+            doctorName = map["doctor_name"]?.jsonPrimitive?.content ?: "",
+            patientId = map["patient_id"]?.jsonPrimitive?.int ?: 0,
+            patientName = map["patient_name"]?.jsonPrimitive?.content ?: "",
+            hospitalId = map["hospital_id"]?.jsonPrimitive?.int ?: 0,
+            hospitalName = map["hospital_name"]?.jsonPrimitive?.content ?: "General Hospital",
+            lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
+            lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content ?: Instant.now().toString(),
+            unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
+            isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
+        )
+    } catch (e: Exception) {
+        Log.e(TAG, "Error finding conversation: ${e.message}", e)
         null
     }
 }
@@ -334,10 +461,10 @@ suspend fun getMessagesByConversation(conversationId: Int): List<Message> {
             val timestampStr = map["timestamp"]?.jsonPrimitive?.content ?: ""
 
             Message(
-                id = map["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-                conversationId = map["conversation_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                id = map["id"]?.jsonPrimitive?.int ?: 0,
+                conversationId = map["conversation_id"]?.jsonPrimitive?.int ?: 0,
                 content = map["content"]?.jsonPrimitive?.content ?: "",
-                senderId = map["sender_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+                senderId = map["sender_id"]?.jsonPrimitive?.int ?: 0,
                 senderName = map["sender_name"]?.jsonPrimitive?.content ?: "",
                 timestamp = timestampStr,
                 type = map["type"]?.jsonPrimitive?.content ?: "text"
@@ -388,10 +515,10 @@ suspend fun getLastMessage(conversationId: Int): Message? {
             ?: Instant.now().toString()
 
         val message = Message(
-            id = newestMap["id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
-            conversationId = newestMap["conversation_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+            id = newestMap["id"]?.jsonPrimitive?.int ?: 0,
+            conversationId = newestMap["conversation_id"]?.jsonPrimitive?.int ?: 0,
             content = newestMap["content"]?.jsonPrimitive?.content ?: "",
-            senderId = newestMap["sender_id"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0,
+            senderId = newestMap["sender_id"]?.jsonPrimitive?.int ?: 0,
             senderName = newestMap["sender_name"]?.jsonPrimitive?.content ?: "",
             timestamp = timestampStr,
             type = newestMap["type"]?.jsonPrimitive?.content ?: "text"

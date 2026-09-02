@@ -176,7 +176,7 @@ fun PatientListScreen(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(filteredPatients, key = { it.id }) { conversation ->
+                        items(filteredPatients, key = { it.id?:0 }) { conversation ->
                             PatientItem(
                                 conversation = conversation,
                                 onClick = {

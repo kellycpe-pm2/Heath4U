@@ -73,6 +73,7 @@ fun ChatScreen(
     doctorId: Int,
     patientId: Int,
     initialMessages: List<Message>,
+    chatExpiryTime: Long = 0L,
     onBack: () -> Unit,
     onSendMessage: (Message) -> Unit,
     onDeleteMessage: (Message) -> Unit,

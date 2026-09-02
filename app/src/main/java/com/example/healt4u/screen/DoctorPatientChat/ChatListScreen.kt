@@ -174,7 +174,7 @@ fun ChatListScreen(
                     ) {
                         items(
                             items = conversations,
-                            key = { it.id }
+                            key = { it.id?:0 }
                         ) { conversation ->
                             ConversationItem(
                                 userId = userId,

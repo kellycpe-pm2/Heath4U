@@ -2,7 +2,6 @@ package com.example.healt4u.screen.Dashboard
 
 import android.annotation.SuppressLint
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -30,17 +29,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.healt4u.Storage.getConversationsByDoctor
-import com.example.healt4u.Storage.getPatientById
-import com.example.healt4u.model.Conversation
+import com.example.healt4u.model.PatientUser
+import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
 @SuppressLint("ConfigurationScreenWidthHeight")
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DoctorDashboardScreen(
-    currentDoctorId: Int = 2,
-    onPatientClick: (patientId: Int, conversation: Conversation) -> Unit = { _, _ -> },
+    patientList: List<PatientUser> = emptyList(),
+    onPatientClick: (PatientUser) -> Unit = {},
     onMedicineClick: () -> Unit = {},
     onListClick: () -> Unit = {},
     onChatClick: () -> Unit = {},
@@ -53,22 +50,8 @@ fun DoctorDashboardScreen(
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val scheduleCardMinHeight = (screenHeightDp * 0.45f).dp
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     var selectedStatus by remember { mutableStateOf("AVAILABLE") }
-
-    var patients by remember { mutableStateOf<List<Conversation>>(emptyList()) }
-    var isLoadingPatients by remember { mutableStateOf(true) }
-    var reloadKey by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(currentDoctorId, reloadKey) {
-        try {
-            isLoadingPatients = true
-            patients = getConversationsByDoctor(currentDoctorId)
-        } catch (e: Exception) {
-            Log.e("Dashboard", "Load patients failed", e)
-        } finally {
-            isLoadingPatients = false
-        }
-    }
 
     colorTheme {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -78,6 +61,7 @@ fun DoctorDashboardScreen(
                     .verticalScroll(rememberScrollState())
                     .background(MaterialTheme.colorScheme.background)
             ) {
+                // ===== Top Bar =====
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -103,6 +87,7 @@ fun DoctorDashboardScreen(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
+                    // ===== Patient List Card =====
                     Card(
                         modifier = Modifier
                             .padding(10.dp)
@@ -141,43 +126,38 @@ fun DoctorDashboardScreen(
                             }
                             Spacer(Modifier.height(12.dp))
 
-                            when {
-                                isLoadingPatients -> {
-                                    Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), Alignment.Center) {
-                                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
+                            if (patientList.isEmpty()) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 40.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            text = "No patients assigned yet",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
-                                patients.isEmpty() -> {
-                                    Box(Modifier.fillMaxWidth().padding(vertical = 40.dp), Alignment.Center) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text(
-                                                text = "No patients yet",
-                                                fontSize = 18.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                }
-                                else -> {
-                                    LazyColumn(
-                                        modifier = Modifier.heightIn(max = 280.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        items(patients, key = { it.id }) { conversation ->
-                                            DashboardPatientItem(
-                                                conversation = conversation,
-                                                onClick = {
-                                                    onPatientClick(conversation.patientId, conversation)
-                                                }
-                                            )
-                                        }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.heightIn(max = 280.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(patientList) { patient ->
+                                        PatientListItem(
+                                            patient = patient,
+                                            onClick = { onPatientClick(patient) }
+                                        )
                                     }
                                 }
                             }
                         }
                     }
 
+                    // ===== Availability Status Card =====
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -222,13 +202,18 @@ fun DoctorDashboardScreen(
                                                 unselectedColor = statusColor
                                             )
                                         )
-                                        Text(text = status, color = statusColor, fontSize = 14.sp)
+                                        Text(
+                                            text = status,
+                                            color = statusColor,
+                                            fontSize = 14.sp
+                                        )
                                     }
                                 }
                             }
                         }
                     }
 
+                    // ===== Quick Access Tiles =====
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -253,6 +238,7 @@ fun DoctorDashboardScreen(
                 }
             }
 
+            // ===== Bottom Navigation =====
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -268,6 +254,7 @@ fun DoctorDashboardScreen(
                 BottomNavItem("Settings", Icons.Filled.Settings, false, onSettingClick)
             }
 
+            // ===== Scan Button (Center Floating) =====
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.secondary,
@@ -287,7 +274,7 @@ fun DoctorDashboardScreen(
                 }
             }
 
-            SnackbarHost(
+            AppSnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -297,70 +284,6 @@ fun DoctorDashboardScreen(
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-private fun DashboardPatientItem(
-    conversation: Conversation,
-    onClick: () -> Unit
-) {
-    val patientId = conversation.patientId
-    var realPatientName by remember { mutableStateOf(conversation.patientName ?: "") }
-
-    LaunchedEffect(patientId) {
-        getPatientById(patientId)?.name?.let { realPatientName = it }
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = realPatientName
-                        .split(" ")
-                        .mapNotNull { it.firstOrNull()?.uppercaseChar() }
-                        .take(2)
-                        .joinToString(""),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-            }
-
-            Spacer(Modifier.width(14.dp))
-
-            Text(
-                text = realPatientName,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f)
-            )
-
-            Icon(
-                Icons.Filled.ChevronRight,
-                "Open",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
 
 @Composable
 private fun DashboardTile(
@@ -372,28 +295,120 @@ private fun DashboardTile(
     Card(
         modifier = modifier.clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(30.dp))
+            Icon(
+                icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(30.dp)
+            )
             Spacer(Modifier.height(6.dp))
-            Text(text = label, style = MaterialTheme.typography.labelMedium, fontSize = 14.sp)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontSize = 14.sp
+            )
         }
     }
 }
 
 @Composable
-private fun BottomNavItem(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick() }) {
-        Icon(icon, contentDescription = label, tint = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-        Text(text = label, fontSize = 10.sp, color = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
+private fun BottomNavItem(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (selected)
+                MaterialTheme.colorScheme.secondary
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = if (selected)
+                MaterialTheme.colorScheme.secondary
+            else
+                MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+private fun PatientListItem(
+    patient: PatientUser,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = patient.name.firstOrNull()?.uppercase() ?: "P",
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = patient.name,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = "Tap to view stats or chat",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = "Open",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+// ===== Preview =====
 @Preview(showBackground = true)
 @Composable
 fun PreviewDoctorDashboard() {

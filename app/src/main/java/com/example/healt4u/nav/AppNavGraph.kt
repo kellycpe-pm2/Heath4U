@@ -668,8 +668,8 @@ fun AppNavGraph(
         composable("doctor") {
             currentUserRole = "doctor"
             DoctorDashboardScreen(
-                onPatientClick = { patientId, conversation ->
-                    navController.navigate("adherence_statistics/${patientId}")
+                onPatientClick = { patient ->
+                    navController.navigate("adherence_statistics/${patient.id}")
                 },
                 onListClick = { navController.navigate("patient_list") },
                 onChatClick = {

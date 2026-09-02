@@ -33,6 +33,7 @@ import com.example.healt4u.Storage.adminUpdateEmail
 import com.example.healt4u.Storage.adminUpdatePhone
 import com.example.healt4u.Storage.adminUpdateUsername
 import com.example.healt4u.model.AdminUser
+import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import kotlinx.coroutines.launch
 
 private val AppBlue = Color(0xFF3779EE)
@@ -319,7 +320,7 @@ private fun AdminProfileScreen(
             Spacer(Modifier.height(32.dp))
         }
 
-        SnackbarHost(
+        AppSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
         )

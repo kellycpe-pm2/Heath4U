@@ -38,11 +38,11 @@ class ReminderViewModel(
     // in the background, so "today's schedule" is identical whether or not the
     // user has opened the app today.
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun loadTodaySchedule(context: Context) {
+    fun loadTodaySchedule(context: Context, patientId: Int = 0, date: String? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val result = ReminderEngine.refresh(context)
+                val result = ReminderEngine.refresh(context, date, patientId)
                 _todaySchedule.value = result.schedule
                 _medicineAlerts.value = result.alerts
             } catch (e: Exception) {

@@ -46,12 +46,12 @@ object ReminderEngine {
     fun todayDate(): String = dateFormat.format(Calendar.getInstance().time)
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    suspend fun refresh(context: Context): RefreshResult {
+    suspend fun refresh(context: Context, targetDate: String? = null, patientId: Int = 0): RefreshResult {
         NotificationHelper.createChannels(context)
 
-        val date = todayDate()
+        val date = targetDate ?: todayDate()
         val medicines = load_Medicines(context)
-        val generated = generateSlotsFor(medicines, date)
+        val generated = generateSlotsFor(medicines, date, patientId)
 
         val savedLocal = loadReminderLogsForDate(context, date)
         val appointments = savedLocal.filter { it.medicineId == -1 }
@@ -145,7 +145,7 @@ object ReminderEngine {
         return alerts
     }
 
-    private fun generateSlotsFor(medicines: List<Medicine>, date: String): List<ReminderLog> {
+    private fun generateSlotsFor(medicines: List<Medicine>, date: String, patientId: Int = 0): List<ReminderLog> {
         val slots = mutableListOf<ReminderLog>()
         for (med in medicines) {
             val timesPerDay = (med.timesPerDay ?: 1).coerceIn(1, 6)
@@ -161,7 +161,7 @@ object ReminderEngine {
                 slots.add(
                     ReminderLog(
                         id = "${med.id}_${date}_$slot",
-                        patientId = 0,
+                        patientId = patientId,
                         medicineId = med.id,
                         medicineName = med.name_medicine,
                         date = date,

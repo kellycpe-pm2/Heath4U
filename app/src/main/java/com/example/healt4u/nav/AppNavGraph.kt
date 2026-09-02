@@ -53,7 +53,6 @@ import com.example.healt4u.screen.DoctorPatientChat.ChatScreen
 import com.example.healt4u.screen.DoctorPatientChat.DoctorListScreen
 import com.example.healt4u.screen.DoctorPatientChat.HospitalListScreen
 import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
-import com.example.healt4u.screen.FamilyMode.CaregiverAlertScreen
 import com.example.healt4u.screen.FamilyMode.FamilyModeScreen
 import com.example.healt4u.screen.FamilyMode.SetPatientPhoneScreen
 import com.example.healt4u.screen.Patient.PatientLoginScreen
@@ -210,6 +209,7 @@ fun AppNavGraph(
         composable("dashboard") {
             HomeDashboardScreen(
                 vm = vm_reminder,
+                vmFamily = vm_family,
                 patientId = currentUserId,
                 onMedicineClick = { navController.navigate("list") },
                 onScheduleClick = { navController.navigate("schedule") },
@@ -738,8 +738,7 @@ fun AppNavGraph(
                 currentUserPhone = currentUserPhone,
                 onBack = { navController.popBackStack() },
                 onAddCaregiverClick = { navController.navigate("add_caregiver") },
-                onSetPhoneClick = { navController.navigate("set_patient_phone") },
-                onCaregiverAlertsClick = { navController.navigate("caregiver_alerts") }
+                onSetPhoneClick = { navController.navigate("set_patient_phone") }
             )
         }
 
@@ -759,14 +758,6 @@ fun AppNavGraph(
                 vm = vm_family,
                 onBack = { navController.popBackStack() },
                 onSaved = { navController.popBackStack() }
-            )
-        }
-
-        composable("caregiver_alerts") {
-            CaregiverAlertScreen(
-                vm = vm_family,
-                currentUserId = currentUserId,
-                onBack = { navController.popBackStack() }
             )
         }
     }

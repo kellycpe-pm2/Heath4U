@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -29,8 +30,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
 import com.example.healt4u.data.HospitalData
+import com.example.healt4u.data.local.upsertReminderLogLocal
 import com.example.healt4u.model.Doctor
 import com.example.healt4u.model.Hospital
+import com.example.healt4u.model.ReminderLog
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.DatePickerPopupOnClick
 import com.example.healt4u.screen.componentUI.TimePickerPopupOnClick
@@ -43,11 +46,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppointmentScreen(
+    patientId: Int,
     onBack: () -> Unit,
-    onConfirm: (String, String, String, String) -> Unit, // hospitalName, doctorName, date, time
+    onConfirm: (String, String, String, String) -> Unit,
     viewModel: HospitalViewModel = viewModel()
 ) {
-    // ========== States ==========
+    val context = LocalContext.current
+
     var selectedHospital by remember { mutableStateOf<Hospital?>(null) }
     var selectedDoctor by remember { mutableStateOf<Doctor?>(null) }
     var selectedDate by remember { mutableStateOf<String?>(null) }
@@ -60,10 +65,9 @@ fun AppointmentScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
-    // ========== Formatters ==========
     val dateFormat = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
+    val storageDateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
 
-    // ========== Validation ==========
     val isFormValid = selectedHospital != null &&
             selectedDoctor != null &&
             selectedDate != null &&
@@ -109,7 +113,6 @@ fun AppointmentScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ========== Hospital Selection ==========
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -127,10 +130,7 @@ fun AppointmentScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Avatar
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
@@ -138,10 +138,7 @@ fun AppointmentScreen(
                                     .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "🏥",
-                                    fontSize = 18.sp
-                                )
+                                Text(text = "🏥", fontSize = 18.sp)
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
@@ -172,7 +169,6 @@ fun AppointmentScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // ========== Doctor Selection ==========
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -196,10 +192,7 @@ fun AppointmentScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Avatar
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
@@ -207,10 +200,7 @@ fun AppointmentScreen(
                                     .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "👨‍⚕️",
-                                    fontSize = 18.sp
-                                )
+                                Text(text = "👨‍⚕️", fontSize = 18.sp)
                             }
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
@@ -405,17 +395,40 @@ fun AppointmentScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // ========== Confirm Button ==========
                 Button(
                     onClick = {
                         if (isFormValid) {
                             isLoading = true
+
+                            try {
+                                val displayDate = selectedDate!!
+                                val parsedDateObj = dateFormat.parse(displayDate)
+                                val storageDateStr = storageDateFormat.format(parsedDateObj!!)
+
+                                val appointmentLog = ReminderLog(
+                                    id = "appt_${patientId}_${storageDateStr}_${selectedTime!!}",
+                                    patientId = patientId,
+                                    medicineId = -1,
+                                    medicineName = "Appointment: ${selectedDoctor!!.name}",
+                                    time = selectedTime!!,
+                                    date = storageDateStr,
+                                    status = "PENDING",
+                                    type = "APPOINTMENT"
+                                )
+
+                                val saved = upsertReminderLogLocal(context, appointmentLog)
+                                Log.d("Appointment", "Saved: $saved | patientId=$patientId | date=$storageDateStr")
+                            } catch (e: Exception) {
+                                Log.e("Appointment", "Save failed", e)
+                            }
+
                             onConfirm(
                                 selectedHospital!!.name,
                                 selectedDoctor!!.name,
                                 selectedDate!!,
                                 selectedTime!!
                             )
+
                             coroutineScope.launch {
                                 delay(1500)
                                 isLoading = false
@@ -474,7 +487,6 @@ fun AppointmentScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ========== Cancel Button ==========
                 OutlinedButton(
                     onClick = onBack,
                     modifier = Modifier
@@ -491,7 +503,6 @@ fun AppointmentScreen(
                         contentDescription = "Cancel",
                         modifier = Modifier.size(20.dp)
                     )
-
                     Text(
                         text = "Cancel",
                         fontSize = 15.sp,
@@ -503,7 +514,6 @@ fun AppointmentScreen(
         }
     }
 
-    // ========== Hospital Dropdown Dialog ==========
     if (showHospitalDropdown) {
         HospitalDropdownDialog(
             onDismiss = { showHospitalDropdown = false },
@@ -515,7 +525,6 @@ fun AppointmentScreen(
         )
     }
 
-    // ========== Doctor Dropdown Dialog ==========
     if (showDoctorDropdown && selectedHospital != null) {
         DoctorDropdownDialog(
             hospitalId = selectedHospital!!.id,
@@ -528,27 +537,21 @@ fun AppointmentScreen(
     }
 }
 
-// ========== Hospital Dropdown Dialog ==========
 @Composable
 fun HospitalDropdownDialog(
     onDismiss: () -> Unit,
     onSelect: (Hospital) -> Unit
 ) {
     val hospitals = HospitalData.hospitals
-
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp)
                 .clip(RoundedCornerShape(16.dp)),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "Select Hospital",
                     fontSize = 18.sp,
@@ -556,18 +559,13 @@ fun HospitalDropdownDialog(
                     color = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-
                 Divider(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-
                 LazyColumn {
                     items(hospitals) { hospital ->
-                        HospitalItem(
-                            hospital = hospital,
-                            onClick = { onSelect(hospital) }
-                        )
+                        HospitalItem(hospital = hospital, onClick = { onSelect(hospital) })
                     }
                 }
             }
@@ -576,18 +574,13 @@ fun HospitalDropdownDialog(
 }
 
 @Composable
-fun HospitalItem(
-    hospital: Hospital,
-    onClick: () -> Unit
-) {
+fun HospitalItem(hospital: Hospital, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
@@ -595,10 +588,7 @@ fun HospitalItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "🏥",
-                fontSize = 24.sp
-            )
+            Text(text = "🏥", fontSize = 24.sp)
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
@@ -616,7 +606,6 @@ fun HospitalItem(
     }
 }
 
-// ========== Doctor Dropdown Dialog ==========
 @Composable
 fun DoctorDropdownDialog(
     hospitalId: Int,
@@ -624,20 +613,15 @@ fun DoctorDropdownDialog(
     onSelect: (Doctor) -> Unit
 ) {
     val doctors = HospitalData.getDoctorsByHospital(hospitalId)
-
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(max = 400.dp)
                 .clip(RoundedCornerShape(16.dp)),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White
-            )
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "Select Doctor",
                     fontSize = 18.sp,
@@ -645,12 +629,10 @@ fun DoctorDropdownDialog(
                     color = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-
                 Divider(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-
                 if (doctors.isEmpty()) {
                     Text(
                         text = "No doctors available at this hospital",
@@ -660,10 +642,7 @@ fun DoctorDropdownDialog(
                 } else {
                     LazyColumn {
                         items(doctors) { doctor ->
-                            DoctorItem(
-                                doctor = doctor,
-                                onClick = { onSelect(doctor) }
-                            )
+                            DoctorItem(doctor = doctor, onClick = { onSelect(doctor) })
                         }
                     }
                 }
@@ -673,18 +652,13 @@ fun DoctorDropdownDialog(
 }
 
 @Composable
-fun DoctorItem(
-    doctor: Doctor,
-    onClick: () -> Unit
-) {
+fun DoctorItem(doctor: Doctor, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
@@ -692,10 +666,7 @@ fun DoctorItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "👨‍⚕️",
-                fontSize = 24.sp
-            )
+            Text(text = "👨‍⚕️", fontSize = 24.sp)
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(
@@ -713,16 +684,16 @@ fun DoctorItem(
     }
 }
 
-// ========== Preview ==========
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 private fun PreviewAppointmentScreen() {
     colorTheme {
         AppointmentScreen(
+            patientId = 1,
             onBack = {},
             onConfirm = { hospital, doctor, date, time ->
-                println("Appointment booked: $hospital, $doctor, $date, $time")
+                println("Booked: $hospital, $doctor, $date, $time")
             }
         )
     }

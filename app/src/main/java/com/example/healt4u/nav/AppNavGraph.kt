@@ -214,7 +214,7 @@ fun AppNavGraph(
                 onScheduleClick = { navController.navigate("schedule") },
                 onChatClick = { navController.navigate("chat_list") },
                 onFamilyModeClick = { navController.navigate("family_mode") },
-                onAppointmentClick = { navController.navigate("appointment") },
+                onAppointmentClick = { navController.navigate("appointment_screen/$currentUserId") },
                 onAdherenceClick = { navController.navigate("adherence_statistics/$currentUserId") },
                 onScanClick = { navController.navigate("scan") }
             )
@@ -222,9 +222,34 @@ fun AppNavGraph(
 
         composable("schedule") {
             val context = LocalContext.current
+            val reloadKey = remember { mutableIntStateOf(0) }
 
-            LaunchedEffect(Unit) {
+            //Reloads EVERY TIME screen appears
+            LaunchedEffect(Unit, reloadKey.intValue) {
+                // ✅ Directly use YOUR load function
+                val allLogs = com.example.healt4u.data.local.loadReminderLogs(context)
+                Log.d("SCHEDULE", "Total logs found: ${allLogs.size}")
+                allLogs.forEach {
+                    Log.d("SCHEDULE", "→ ${it.date} | ${it.medicineName}")
+                }
+
+                //Tell ViewModel to reload
                 vm_reminder.loadTodaySchedule(context)
+            }
+
+            // Listen for refresh signal from Appointment
+            LaunchedEffect(Unit) {
+                navController.currentBackStackEntry
+                    ?.savedStateHandle
+                    ?.getStateFlow("refresh_schedule", false)
+                    ?.collect { shouldRefresh ->
+                        if (shouldRefresh) {
+                            reloadKey.intValue += 1
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("refresh_schedule", false)
+                        }
+                    }
             }
 
             ScheduleListScreen(
@@ -408,23 +433,19 @@ fun AppNavGraph(
         }
 
 
-        composable("appointment") {
+        composable(
+            route = "appointment_screen/{patientId}",
+            arguments = listOf(navArgument("patientId") { type = NavType.IntType })
+        ) { backStack ->
+            val patientId = backStack.arguments?.getInt("patientId") ?: 0
             AppointmentScreen(
+                patientId = patientId,
                 onBack = { navController.popBackStack() },
-                onConfirm = { hospitalName, doctorName, displayDate, time ->
-                    coroutineScope.launch {
-                        val inputFormat = java.text.SimpleDateFormat("dd MMM yyyy", Locale.ENGLISH)
-                        val outputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
-                        val parsedDate = inputFormat.parse(displayDate)
-                        val standardDate = outputFormat.format(parsedDate!!)
-
-                        vm_reminder.addAppointmentReminder(
-                            hospitalName = hospitalName,
-                            doctorName = doctorName,
-                            date = standardDate,
-                            time = time
-                        )
-                    }
+                onConfirm = { _, _, _, _ ->
+                    // Tell schedule to refresh
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle
+                        ?.set("refresh_schedule", true)
                     navController.popBackStack()
                 }
             )

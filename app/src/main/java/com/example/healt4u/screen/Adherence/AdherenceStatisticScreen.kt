@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -30,7 +31,6 @@ import com.example.healt4u.model.ReminderLog
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.ui.platform.LocalLocale
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,7 +52,13 @@ fun AdherenceStatisticScreen(
         vm.loadTodaySchedule(context)
     }
 
-    val patientLogs = fullSchedule.filter { it.patientId == patientId }
+    val patientLogs = remember(fullSchedule, patientId, selectedDate) {
+        fullSchedule.filter {
+            it.patientId == patientId &&
+                    it.date == selectedDate
+        }
+    }
+
     val medicineLogs = patientLogs.filter { it.type != "APPOINTMENT" }
     val stats = calculateStats(medicineLogs)
     val dateFormat = SimpleDateFormat("dd MMM yyyy", LocalLocale.current.platformLocale)
@@ -103,12 +109,12 @@ fun AdherenceStatisticScreen(
                         fontWeight = FontWeight.Medium
                     )
                     Row {
-                        IconButton(
-                            onClick = { selectedDate = adjustDate(selectedDate, -1) }
-                        ) { Text("◀", fontSize = 20.sp) }
-                        IconButton(
-                            onClick = { selectedDate = adjustDate(selectedDate, 1) }
-                        ) { Text("▶", fontSize = 20.sp) }
+                        IconButton(onClick = { selectedDate = adjustDate(selectedDate, -1) }) {
+                            Text("◀", fontSize = 20.sp)
+                        }
+                        IconButton(onClick = { selectedDate = adjustDate(selectedDate, 1) }) {
+                            Text("▶", fontSize = 20.sp)
+                        }
                     }
                 }
 
@@ -192,7 +198,7 @@ fun AdherenceStatsCard(stats: AdherenceStats) {
                 }
                 Spacer(Modifier.height(4.dp))
                 LinearProgressIndicator(
-                    progress = rate / 100f,
+                    progress = { rate / 100f },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(8.dp)
@@ -247,7 +253,7 @@ fun ReminderLogItem(log: ReminderLog) {
             )
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(log.medicineName, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                Text(log.medicineName?:"", fontSize = 15.sp, fontWeight = FontWeight.Medium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("🕐 ${log.time}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(

@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
@@ -51,7 +52,7 @@ import com.example.healt4u.data.MedicineData
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 @Composable
-fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) -> Unit, onEdit: (Medicine) -> Unit) {
+fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) -> Unit, onEdit: (Medicine) -> Unit,onChangeStock :(Int)-> Unit={}) {
     var expand by remember{ mutableStateOf(false) }
     colorTheme {
         val progress = if (med.quantity > 0) {
@@ -131,6 +132,17 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                     Divider()
 
                     DropdownMenuItem(
+                        text = { Text("Update The Stack",color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)  },
+                        leadingIcon = {Icon(Icons.Filled.Inventory,"stock",tint= MaterialTheme.colorScheme.secondary) },
+                        modifier= Modifier.padding(15.dp),
+                        onClick = {
+                            onChangeStock(med.quantityLeft!!)
+                            expand = false }
+                    )
+
+                    Divider()
+
+                    DropdownMenuItem(
                         text = { Text("View More",color = MaterialTheme.colorScheme.onBackground, style = MaterialTheme.typography.labelMedium)  },
                         leadingIcon = {Icon(Icons.Filled.List,"list",tint= MaterialTheme.colorScheme.secondary) },
                         modifier= Modifier.padding(15.dp),
@@ -138,6 +150,9 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                             onClick(med)
                             expand = false }
                     )
+
+
+
 
 
                 }

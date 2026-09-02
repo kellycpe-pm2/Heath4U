@@ -374,6 +374,8 @@ class ViewModelMedicine(
             name.isBlank() -> errors["name"] = "Medicine name is required"
             name.length < 2 -> errors["name"] = "Name must be at least 2 characters"
             name.length > 100 -> errors["name"] = "Name must be less than 100 characters"
+            //repeat name x
+
         }
 
         when {
@@ -395,6 +397,7 @@ class ViewModelMedicine(
             expiredDate == null -> errors["expiredDate"] = "Expired date is required"
             expiredDate < System.currentTimeMillis() -> errors["expiredDate"] = "Medicine has already expired"
             expiredDate < System.currentTimeMillis() + 7L * 24 * 60 * 60 * 1000 -> errors["expiredDate"] = "Medicine will expire within 7 days"
+            //expired cannot update the med stock
         }
 
         _validationErrors.value = errors

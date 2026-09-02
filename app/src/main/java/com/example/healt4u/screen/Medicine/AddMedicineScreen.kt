@@ -101,7 +101,7 @@ fun AddMedicineScreen(
                     Modifier.fillMaxSize(),
                     medCategory,
                     MedicineData.categories.map { it.second },
-                    "Category *",
+                    "Category ",
                     vm::on_Category_Change
                 )
                 validationErrors["category"]?.let {
@@ -154,7 +154,7 @@ fun AddMedicineScreen(
             Column {
                 DatePickerPopupOnClick(
                     modifier = Modifier.fillMaxWidth(),
-                    "Expired Date *",
+                    "Expired Date ",
                     value = medExpiredDate,
                     vm::on_ExpiredDate_Change
                 )

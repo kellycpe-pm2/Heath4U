@@ -32,7 +32,6 @@ fun ScannerOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // CRITICAL FIX: Forces an offscreen layer so BlendMode.Clear doesn't punch down to the black background
             .graphicsLayer { alpha = 0.99f }
             .drawWithContent {
                 drawContent()

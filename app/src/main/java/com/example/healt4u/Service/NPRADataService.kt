@@ -3,6 +3,9 @@ package com.example.healt4u.Service
 import android.content.Context
 import android.util.Log
 import com.example.healt4u.model.NPRAMedicine
+import dagger.hilt.android.qualifiers.ApplicationContext
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -10,176 +13,465 @@ import okhttp3.Request
 import java.io.StringReader
 import java.util.concurrent.TimeUnit
 
-class NPRADataService(private val context: Context) {
+@Singleton
+class NPRADataService @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private val csvUrl = "https://storage.data.gov.my/healthcare/pharmaceutical_products.csv"
+    private val csvUrl =
+        "https://storage.data.gov.my/healthcare/pharmaceutical_products.csv"
+
     private var cachedMedicines: List<NPRAMedicine>? = null
 
-    // ============ 获取数据 ============
+    /**
+     * Load NPRA medicines.
+     *
+     * First tries the official online CSV.
+     * If downloading fails, falls back to the local CSV
+     * stored in app/src/main/assets/.
+     */
+    suspend fun fetchAllMedicines(): List<NPRAMedicine> {
 
-    suspend fun fetchAllMedicines(forceRefresh: Boolean = false): List<NPRAMedicine> {
         return withContext(Dispatchers.IO) {
+
+            cachedMedicines?.let {
+                return@withContext it
+            }
+
             try {
-                if (!forceRefresh && cachedMedicines != null) {
-                    return@withContext cachedMedicines!!
-                }
+
+                Log.d(
+                    TAG,
+                    "Downloading NPRA pharmaceutical CSV..."
+                )
 
                 val request = Request.Builder()
                     .url(csvUrl)
-                    .header("User-Agent", "Health4U-App")
+                    .header(
+                        "User-Agent",
+                        "Health4U-App"
+                    )
                     .build()
 
-                val response = client.newCall(request).execute()
+                client.newCall(request).execute().use { response ->
 
-                if (!response.isSuccessful) {
-                    Log.e("NPRADataService", "HTTP Error: ${response.code}")
-                    return@withContext loadFromAssets()
-                }
+                    if (!response.isSuccessful) {
 
-                val csvContent = response.body?.string()
-                if (csvContent.isNullOrEmpty()) {
-                    return@withContext loadFromAssets()
-                }
+                        Log.w(
+                            TAG,
+                            "NPRA download failed: ${response.code}"
+                        )
 
-                val medicines = parseCSV(csvContent)
-                if (medicines.isNotEmpty()) {
+                        return@withContext loadFromAssets()
+                    }
+
+                    val csvContent =
+                        response.body?.string()
+
+                    if (csvContent.isNullOrBlank()) {
+
+                        return@withContext loadFromAssets()
+                    }
+
+                    val medicines =
+                        parseCSV(csvContent)
+
                     cachedMedicines = medicines
-                    Log.d("NPRADataService", "✅ 加载了 ${medicines.size} 条药品数据")
+
+                    Log.d(
+                        TAG,
+                        "Loaded ${medicines.size} NPRA medicines"
+                    )
+
+                    medicines
                 }
-                medicines
+
             } catch (e: Exception) {
-                Log.e("NPRADataService", "❌ 网络错误: ${e.message}")
+
+                Log.e(
+                    TAG,
+                    "NPRA download error",
+                    e
+                )
+
                 loadFromAssets()
             }
         }
     }
 
-    fun loadFromAssets(fileName: String = "npra_data.csv"): List<NPRAMedicine> {
-        return try {
-            val inputStream = context.assets.open(fileName)
-            val csvContent = inputStream.bufferedReader().use { it.readText() }
-            val medicines = parseCSV(csvContent)
-            if (medicines.isNotEmpty()) {
-                cachedMedicines = medicines
+    /**
+     * Load the NPRA CSV bundled inside:
+     *
+     * app/src/main/assets/pharmaceutical_products (4).csv
+     */
+    suspend fun loadFromAssets(
+        fileName: String = "pharmaceutical_products (4).csv"
+    ): List<NPRAMedicine> {
+
+        return withContext(Dispatchers.IO) {
+
+            try {
+
+                cachedMedicines?.let {
+                    return@withContext it
+                }
+
+                context.assets.open(fileName).use { inputStream ->
+
+                    val csvContent =
+                        inputStream
+                            .bufferedReader(Charsets.UTF_8)
+                            .use { it.readText() }
+
+                    val medicines =
+                        parseCSV(csvContent)
+
+                    cachedMedicines = medicines
+
+                    Log.d(
+                        TAG,
+                        "Loaded ${medicines.size} NPRA medicines from assets"
+                    )
+
+                    medicines
+                }
+
+            } catch (e: Exception) {
+
+                Log.e(
+                    TAG,
+                    "Unable to load NPRA CSV from assets",
+                    e
+                )
+
+                emptyList()
             }
-            medicines
-        } catch (e: Exception) {
-            Log.e("NPRADataService", "❌ 本地加载失败: ${e.message}")
-            emptyList()
         }
     }
 
-    // ============ CSV 解析 ============
+    /**
+     * Find medicine by NPRA MAL registration number.
+     *
+     * Example:
+     *
+     * MAL12035013X
+     */
+    suspend fun searchByRegNo(
+        regNo: String
+    ): NPRAMedicine? {
 
-    private fun parseCSV(csvContent: String): List<NPRAMedicine> {
-        val medicines = mutableListOf<NPRAMedicine>()
-        val lines = csvContent.split("\n")
-        if (lines.isEmpty()) return emptyList()
+        val medicines =
+            getLoadedMedicines()
 
-        val header = parseCSVLine(lines[0])
-        val columnMap = header.mapIndexed { index, name -> name.trim() to index }.toMap()
+        val target =
+            normalizeRegNo(regNo)
 
-        for (i in 1 until lines.size) {
-            val line = lines[i].trim()
-            if (line.isEmpty()) continue
+        if (target.isBlank()) {
+            return null
+        }
 
-            try {
-                val columns = parseCSVLine(line)
+        return medicines.firstOrNull {
 
-                fun List<String>.getColumn(name: String): String {
-                    val index = columnMap[name] ?: return ""
-                    return if (index < this.size) this[index].trim() else ""
+            normalizeRegNo(it.regNo) == target
+        }
+    }
+
+    /**
+     * Search medicines by product name,
+     * generic name or active ingredient.
+     */
+    suspend fun searchByProductName(
+        query: String
+    ): List<NPRAMedicine> {
+
+        val medicines =
+            getLoadedMedicines()
+
+        val cleanQuery =
+            query.trim().lowercase()
+
+        if (cleanQuery.isBlank()) {
+            return emptyList()
+        }
+
+        return medicines
+            .asSequence()
+            .filter {
+
+                it.product
+                    .lowercase()
+                    .contains(cleanQuery) ||
+
+                        it.genericName
+                            ?.lowercase()
+                            ?.contains(cleanQuery) == true ||
+
+                        it.activeIngredient
+                            ?.lowercase()
+                            ?.contains(cleanQuery) == true
+            }
+            .take(50)
+            .toList()
+    }
+
+    /**
+     * Get all loaded NPRA medicines.
+     */
+    suspend fun getAllMedicines(): List<NPRAMedicine> {
+        return getLoadedMedicines()
+    }
+
+    /**
+     * Number of NPRA records currently loaded.
+     */
+    suspend fun getProductCount(): Int {
+        return getLoadedMedicines().size
+    }
+
+    /**
+     * Makes sure the CSV has been loaded.
+     */
+    private suspend fun getLoadedMedicines():
+            List<NPRAMedicine> {
+
+        cachedMedicines?.let {
+            return it
+        }
+
+        return fetchAllMedicines()
+    }
+
+    private fun normalizeRegNo(
+        value: String
+    ): String {
+
+        return value
+            .trim()
+            .uppercase()
+            .replace("\\s+".toRegex(), "")
+    }
+
+    /**
+     * Parse the NPRA CSV.
+     *
+     * Column names are read from the CSV header,
+     * so the order of columns does not have to be hard-coded.
+     */
+    private fun parseCSV(
+        csvContent: String
+    ): List<NPRAMedicine> {
+
+        val medicines =
+            mutableListOf<NPRAMedicine>()
+
+        val lines =
+            csvContent
+                .replace("\r\n", "\n")
+                .replace("\r", "\n")
+                .split("\n")
+
+        if (lines.isEmpty()) {
+            return emptyList()
+        }
+
+        val header =
+            parseCSVLine(lines[0])
+
+        val columnMap =
+            header
+                .mapIndexed { index, name ->
+                    name
+                        .trim()
+                        .removePrefix("\uFEFF") to index
                 }
+                .toMap()
 
-                val medicine = NPRAMedicine(
-                    regNo = columns.getColumn("reg_no"),
-                    refNo = columns.getColumn("ref_no"),
-                    product = columns.getColumn("product"),
-                    status = columns.getColumn("status"),
-                    description = columns.getColumn("description"),
-                    holder = columns.getColumn("holder"),
-                    holderOsa = columns.getColumn("holder_osa"),
-                    manufacturer = columns.getColumn("manufacturer"),
-                    manufacturerOsa = columns.getColumn("manufacturer_osa"),
-                    importer = columns.getColumn("importer"),
-                    importerOsa = columns.getColumn("importer_osa"),
-                    dateReg = columns.getColumn("date_reg"),
-                    dateEnd = columns.getColumn("date_end"),
-                    activeIngredient = columns.getColumn("active_ingredient"),
-                    mdcCode = columns.getColumn("mdc_code"),
-                    genericName = columns.getColumn("generic_name")
-                )
+        fun List<String>.getColumn(
+            name: String
+        ): String {
 
-                if (medicine.regNo.isNotEmpty() || medicine.product.isNotEmpty()) {
-                    medicines.add(medicine)
-                }
-            } catch (e: Exception) {
-                continue
+            val index =
+                columnMap[name]
+                    ?: return ""
+
+            return if (
+                index >= 0 &&
+                index < size
+            ) {
+                this[index].trim()
+            } else {
+                ""
             }
         }
+
+        for (i in 1 until lines.size) {
+
+            val line =
+                lines[i]
+
+            if (line.isBlank()) {
+                continue
+            }
+
+            try {
+
+                val columns =
+                    parseCSVLine(line)
+
+                val medicine =
+                    NPRAMedicine(
+
+                        regNo =
+                            columns.getColumn("reg_no"),
+
+                        refNo =
+                            columns.getColumn("ref_no"),
+
+                        product =
+                            columns.getColumn("product"),
+
+                        status =
+                            columns.getColumn("status"),
+
+                        description =
+                            columns.getColumn("description"),
+
+                        holder =
+                            columns.getColumn("holder"),
+
+                        holderOsa =
+                            columns.getColumn("holder_osa"),
+
+                        manufacturer =
+                            columns.getColumn("manufacturer"),
+
+                        manufacturerOsa =
+                            columns.getColumn("manufacturer_osa"),
+
+                        importer =
+                            columns.getColumn("importer"),
+
+                        importerOsa =
+                            columns.getColumn("importer_osa"),
+
+                        dateReg =
+                            columns.getColumn("date_reg"),
+
+                        dateEnd =
+                            columns.getColumn("date_end"),
+
+                        activeIngredient =
+                            columns.getColumn("active_ingredient"),
+
+                        mdcCode =
+                            columns.getColumn("mdc_code"),
+
+                        genericName =
+                            columns.getColumn("generic_name")
+                    )
+
+                if (
+                    medicine.regNo.isNotBlank() ||
+                    medicine.product.isNotBlank()
+                ) {
+
+                    medicines.add(medicine)
+                }
+
+            } catch (e: Exception) {
+
+                Log.w(
+                    TAG,
+                    "Skipping malformed CSV row $i"
+                )
+            }
+        }
+
         return medicines
     }
 
-    private fun parseCSVLine(line: String): List<String> {
-        val result = mutableListOf<String>()
-        val reader = StringReader(line)
-        var current = StringBuilder()
-        var inQuotes = false
+    /**
+     * CSV parser supporting quoted commas.
+     *
+     * Example:
+     *
+     * "Panadol Extra, Caplet",ABC
+     */
+    private fun parseCSVLine(
+        line: String
+    ): List<String> {
 
-        while (true) {
-            val char = reader.read()
-            if (char == -1) break
-            val c = char.toChar()
+        val result =
+            mutableListOf<String>()
+
+        val current =
+            StringBuilder()
+
+        var insideQuotes =
+            false
+
+        var index =
+            0
+
+        while (index < line.length) {
+
+            val c =
+                line[index]
+
             when {
-                c == '"' -> inQuotes = !inQuotes
-                c == ',' && !inQuotes -> {
-                    result.add(current.toString().trim())
-                    current = StringBuilder()
+
+                c == '"' -> {
+
+                    // Escaped quote: ""
+                    if (
+                        insideQuotes &&
+                        index + 1 < line.length &&
+                        line[index + 1] == '"'
+                    ) {
+
+                        current.append('"')
+                        index++
+
+                    } else {
+
+                        insideQuotes =
+                            !insideQuotes
+                    }
                 }
-                else -> current.append(c)
+
+                c == ',' && !insideQuotes -> {
+
+                    result.add(
+                        current.toString().trim()
+                    )
+
+                    current.clear()
+                }
+
+                else -> {
+
+                    current.append(c)
+                }
             }
+
+            index++
         }
-        result.add(current.toString().trim())
+
+        result.add(
+            current.toString().trim()
+        )
+
         return result
     }
 
+    companion object {
 
-    fun searchByRegNo(regNo: String): NPRAMedicine? {
-        val all = cachedMedicines ?: return null
-        return all.find { it.regNo.uppercase() == regNo.trim().uppercase() }
-    }
-
-    fun searchByProductName(query: String): List<NPRAMedicine> {
-        val all = cachedMedicines ?: return emptyList()
-        val cleanQuery = query.trim().lowercase()
-        return all.filter {
-            it.product.lowercase().contains(cleanQuery) ||
-                    it.genericName?.lowercase()?.contains(cleanQuery) == true ||
-                    it.activeIngredient?.lowercase()?.contains(cleanQuery) == true
-        }
-    }
-
-    fun searchByBarcode(barcode: String): NPRAMedicine? {
-        val all = cachedMedicines ?: return null
-        return all.find { it.barcode == barcode } ?: searchByRegNo(barcode)
-    }
-
-    fun searchByRegNoContains(query: String): List<NPRAMedicine> {
-        val all = cachedMedicines ?: return emptyList()
-        return all.filter { it.regNo.uppercase().contains(query.trim().uppercase()) }
-    }
-
-    fun getAllMedicines(): List<NPRAMedicine> {
-        return cachedMedicines ?: emptyList()
-    }
-
-    fun getProductCount(): Int {
-        return cachedMedicines?.size ?: 0
+        private const val TAG =
+            "NPRADataService"
     }
 }

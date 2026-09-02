@@ -2,7 +2,6 @@ package com.example.healt4u.Service
 
 import android.content.Context
 import androidx.room.Room
-import com.example.healt4u.Service.NPRADataService
 import com.example.healt4u.database.MedicineDao
 import com.example.healt4u.database.MedicineDatabase
 import dagger.Module
@@ -15,14 +14,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-
-    @Provides
-    @Singleton
-    fun provideNPRADataService(
-        @ApplicationContext context: Context
-    ): NPRADataService {
-        return NPRADataService(context)
-    }
 
     @Provides
     @Singleton

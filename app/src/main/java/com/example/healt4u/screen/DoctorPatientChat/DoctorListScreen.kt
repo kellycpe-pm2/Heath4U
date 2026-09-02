@@ -10,8 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -145,6 +145,7 @@ fun DoctorListScreen(
                         CircularProgressIndicator()
                     }
                 }
+
                 errorMessage != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -162,6 +163,7 @@ fun DoctorListScreen(
                         }
                     }
                 }
+
                 filteredDoctors.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -183,6 +185,7 @@ fun DoctorListScreen(
                         }
                     }
                 }
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -266,6 +269,12 @@ fun DoctorCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     maxLines = 1
                 )
+                Text(
+                    text = "RM %.2f".format(doctor.consultationFee),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
             }
 
             Icon(
@@ -276,7 +285,6 @@ fun DoctorCard(
         }
     }
 }
-
 
 @Composable
 fun StatusBadge(status: String) {

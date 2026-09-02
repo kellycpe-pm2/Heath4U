@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AlertDialog
@@ -45,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,15 +52,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getPatientById
-import com.example.healt4u.data.HospitalData.getDoctorById
 import com.example.healt4u.model.Message
 import com.example.healt4u.screen.componentUI.DateHeader
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.time.format.DateTimeParseException
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,10 +83,18 @@ fun ChatScreen(
 ) {
     var doctorName by remember { mutableStateOf("Doctor") }
     var patientName by remember { mutableStateOf("Patient") }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(doctorId, patientId) {
-        doctorName = getDoctorById(doctorId)?.name ?: "Doctor"
-        patientName = getPatientById(patientId)?.name ?: "Patient"
+        coroutineScope.launch {
+            try {
+                getDoctorById(doctorId)?.let { doctorName = it.name }
+                getPatientById(patientId)?.let { patientName = it.name }
+                Log.d("ChatNames", "Loaded: doctor=$doctorName, patient=$patientName")
+            } catch (e: Exception) {
+                Log.e("ChatNames", "Failed to load names", e)
+            }
+        }
     }
 
     val effectiveRole = when {
@@ -99,6 +107,10 @@ fun ChatScreen(
         if (effectiveRole == "doctor") doctorName else patientName
     }
 
+    val displayName = remember(effectiveRole, doctorName, patientName) {
+        if (effectiveRole == "doctor") patientName else doctorName
+    }
+
     var messages by remember { mutableStateOf(initialMessages) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -107,14 +119,6 @@ fun ChatScreen(
     var showClearAllDialog by remember { mutableStateOf(false) }
     var messageToDelete by remember { mutableStateOf<Message?>(null) }
     var mutedState by remember { mutableStateOf(isMuted) }
-
-    val displayName = remember(effectiveRole, doctorName, patientName) {
-        if (effectiveRole == "doctor") patientName else doctorName
-    }
-
-    val groupedMessages = remember(messages) {
-        groupMessagesByDate(messages)
-    }
 
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -176,7 +180,7 @@ fun ChatScreen(
                 title = {
                     Column {
                         Text(
-                            text = chatName,
+                            text = displayName,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondary
@@ -334,6 +338,7 @@ fun ChatScreen(
                     contentPadding = PaddingValues(vertical = 8.dp),
                     reverseLayout = false
                 ) {
+                    val groupedMessages = groupMessagesByDate(messages)
                     groupedMessages.forEach { group ->
                         item {
                             DateHeader(date = group.dateMillis)

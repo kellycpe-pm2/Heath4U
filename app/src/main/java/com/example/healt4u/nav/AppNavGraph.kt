@@ -33,6 +33,7 @@ import androidx.navigation.navArgument
 import com.example.healt4u.Storage.clearMessagesByConversation
 import com.example.healt4u.Storage.createConversation
 import com.example.healt4u.Storage.deleteMessage
+import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
@@ -62,13 +63,13 @@ import com.example.healt4u.screen.Medicine.MedicineDetailScreen
 import com.example.healt4u.screen.Medicine.MedicineListScreen
 import com.example.healt4u.screen.ScanScreen.ManualInputDialog
 import com.example.healt4u.screen.ScanScreen.ScannerScreen
-import com.example.healt4u.data.HospitalData.getDoctorById
 import com.example.healt4u.model.Message
 import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
 import com.example.healt4u.ViewModel.NPRAMedicineViewModel
+import com.example.healt4u.model.Hospital
 import com.example.healt4u.model.PatientUser
 import com.example.healt4u.screen.Adherence.AdherenceStatisticScreen
 import com.example.healt4u.screen.AppointmentScreen
@@ -209,7 +210,6 @@ fun AppNavGraph(
         composable("dashboard") {
             HomeDashboardScreen(
                 vm = vm_reminder,
-                vmFamily = vm_family,
                 patientId = currentUserId,
                 onMedicineClick = { navController.navigate("list") },
                 onScheduleClick = { navController.navigate("schedule") },
@@ -509,11 +509,24 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val hospitalId = backStackEntry.arguments?.getInt("hospitalId") ?: 0
-            val hospital = com.example.healt4u.data.HospitalData.getHospitalById(hospitalId)
 
-            if (hospital != null) {
+            LaunchedEffect(hospitalId) {
+                vm_hospital.selectHospital(
+                    Hospital(
+                        id = hospitalId,
+                        name = "",
+                        address = "",
+                        phone = ""
+                    )
+                )
+            }
+
+            val selectedHospital by vm_hospital.selectedHospital.collectAsState()
+            val doctors by vm_hospital.doctors.collectAsState()
+
+            if (selectedHospital?.id == hospitalId) {
                 DoctorListScreen(
-                    hospital = hospital,
+                    hospital = selectedHospital!!,
                     onDoctorSelected = { doctor ->
                         coroutineScope.launch {
                             val conversation = createConversation(
@@ -521,8 +534,8 @@ fun AppNavGraph(
                                 patientId = currentUserId,
                                 doctorName = doctor.name,
                                 patientName = "Patient",
-                                hospitalId = hospital.id,
-                                hospitalName = hospital.name
+                                hospitalId = hospitalId,
+                                hospitalName = selectedHospital!!.name
                             )
                             if (conversation != null) {
                                 navController.navigate(
@@ -534,7 +547,9 @@ fun AppNavGraph(
                     onBack = { navController.popBackStack() }
                 )
             } else {
-                navController.popBackStack()
+                Box(Modifier.fillMaxSize(), Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             }
         }
 
@@ -738,7 +753,7 @@ fun AppNavGraph(
                 currentUserPhone = currentUserPhone,
                 onBack = { navController.popBackStack() },
                 onAddCaregiverClick = { navController.navigate("add_caregiver") },
-                onSetPhoneClick = { navController.navigate("set_patient_phone") }
+                onSetPhoneClick = { navController.navigate("set_patient_phone") },
             )
         }
 
@@ -760,6 +775,7 @@ fun AppNavGraph(
                 onSaved = { navController.popBackStack() }
             )
         }
+
     }
 }
 

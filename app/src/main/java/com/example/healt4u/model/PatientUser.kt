@@ -1,6 +1,5 @@
 package com.example.healt4u.model
 
-import com.example.healt4u.data.HospitalData.doctors
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 

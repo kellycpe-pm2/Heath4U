@@ -27,11 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.healt4u.ViewModel.ConversationViewModel
+import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getPatientById
-import com.example.healt4u.data.HospitalData.getDoctorById
+import com.example.healt4u.ViewModel.ConversationViewModel
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.*
@@ -117,6 +118,7 @@ fun ChatListScreen(
                         )
                     }
                 }
+
                 errorMessage != null -> {
                     Column(
                         modifier = Modifier.fillMaxSize(),
@@ -141,6 +143,7 @@ fun ChatListScreen(
                         }
                     }
                 }
+
                 conversations.isEmpty() -> {
                     Column(
                         modifier = Modifier
@@ -162,6 +165,7 @@ fun ChatListScreen(
                         )
                     }
                 }
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -194,26 +198,56 @@ fun ConversationItem(
     conversation: Conversation,
     onClick: () -> Unit
 ) {
-
     val doctorId = conversation.doctorId
     val patientId = conversation.patientId
 
-    var doctorName by remember { mutableStateOf("Doctor") }
-    var patientName by remember { mutableStateOf("Patient") }
+    var displayName by remember { mutableStateOf("Loading...") }
+    val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(doctorId, patientId) {
-        doctorName = getDoctorById(doctorId)?.name ?: "Doctor"
-        patientName = getPatientById(patientId)?.name ?: "Patient"
-    }
+    LaunchedEffect(doctorId, patientId, userId) {
+        coroutineScope.launch {
+            try {
+                // ✅ Determine WHO is the OTHER person (not current user)
+                val otherPersonId: Int
+                val isOtherPersonDoctor: Boolean
 
-    val effectiveRole = when {
-        userRole == "doctor" || userId == doctorId -> "doctor"
-        userRole == "patient" || userId == patientId -> "patient"
-        else -> "patient"
-    }
+                when {
+                    userId == doctorId -> {
+                        // Current user = Doctor → show PATIENT name
+                        otherPersonId = patientId
+                        isOtherPersonDoctor = false
+                    }
+                    userId == patientId -> {
+                        // Current user = Patient → show DOCTOR name
+                        otherPersonId = doctorId
+                        isOtherPersonDoctor = true
+                    }
+                    userRole == "doctor" -> {
+                        // Fallback: role=doctor → show patient
+                        otherPersonId = patientId
+                        isOtherPersonDoctor = false
+                    }
+                    else -> {
+                        // Fallback: role=patient → show doctor
+                        otherPersonId = doctorId
+                        isOtherPersonDoctor = true
+                    }
+                }
 
-    val displayName = remember(effectiveRole, doctorName, patientName) {
-        if (effectiveRole == "doctor") patientName else doctorName
+                // ✅ Load ONLY the OTHER person's name
+                displayName = if (isOtherPersonDoctor) {
+                    getDoctorById(otherPersonId)?.name ?: "Dr. Unknown"
+                } else {
+                    getPatientById(otherPersonId)?.name ?: "Patient Unknown"
+                }
+
+                Log.d("ChatName", "userId=$userId → loading other=$otherPersonId (doctor=$isOtherPersonDoctor) → name=$displayName")
+
+            } catch (e: Exception) {
+                Log.e("ChatName", "Failed to load name", e)
+                displayName = if (userId == doctorId) "Patient" else "Doctor"
+            }
+        }
     }
 
     val timestampMillis = remember(conversation.lastMessageTime) {
@@ -305,6 +339,7 @@ fun ConversationItem(
                         color = Color.White
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             Icon(

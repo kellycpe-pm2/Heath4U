@@ -9,7 +9,7 @@ data class Hospital(
     val name: String,
     val address: String,
     val phone: String,
-    @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
+    @SerialName("created_at") val createdAt: String? = null
 )
 
 @Serializable
@@ -19,10 +19,11 @@ data class Doctor(
     val ic: String,
     val phone: String,
     val email: String,
+    @SerialName("consultation_fee") val consultationFee: Double,
     val specialization: String,
     @SerialName("hospital_id") val hospitalId: Int?,
     @SerialName("qualification_doc_url") val qualificationDocUrl: String? = null,
     @SerialName("verification_status") val verificationStatus: String = "pending",
-    @SerialName("created_at") val createdAt: Long = System.currentTimeMillis()
+    @SerialName("created_at") val createdAt: String?= null
 )
 

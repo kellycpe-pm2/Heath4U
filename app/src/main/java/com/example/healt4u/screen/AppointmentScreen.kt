@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
-import com.example.healt4u.data.HospitalData
 import com.example.healt4u.data.local.upsertReminderLogLocal
 import com.example.healt4u.model.Doctor
 import com.example.healt4u.model.Hospital
@@ -37,10 +36,10 @@ import com.example.healt4u.model.ReminderLog
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.DatePickerPopupOnClick
 import com.example.healt4u.screen.componentUI.TimePickerPopupOnClick
-import java.text.SimpleDateFormat
-import java.util.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +52,11 @@ fun AppointmentScreen(
 ) {
     val context = LocalContext.current
 
+    val hospitals by viewModel.hospitals.collectAsState()
+    val doctors by viewModel.doctors.collectAsState()
+    val isLoadingData by viewModel.isLoading.collectAsState()
+    val errorLoading by viewModel.errorMessage.collectAsState()
+
     var selectedHospital by remember { mutableStateOf<Hospital?>(null) }
     var selectedDoctor by remember { mutableStateOf<Doctor?>(null) }
     var selectedDate by remember { mutableStateOf<String?>(null) }
@@ -61,7 +65,7 @@ fun AppointmentScreen(
     var showHospitalDropdown by remember { mutableStateOf(false) }
     var showDoctorDropdown by remember { mutableStateOf(false) }
 
-    var isLoading by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -72,6 +76,17 @@ fun AppointmentScreen(
             selectedDoctor != null &&
             selectedDate != null &&
             selectedTime != null
+
+    LaunchedEffect(Unit) {
+        viewModel.loadHospitals()
+    }
+
+    LaunchedEffect(selectedHospital) {
+        selectedHospital?.let {
+            viewModel.selectHospital(it)
+            selectedDoctor = null
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -398,8 +413,7 @@ fun AppointmentScreen(
                 Button(
                     onClick = {
                         if (isFormValid) {
-                            isLoading = true
-
+                            isSaving = true
                             try {
                                 val displayDate = selectedDate!!
                                 val parsedDateObj = dateFormat.parse(displayDate)
@@ -431,7 +445,7 @@ fun AppointmentScreen(
 
                             coroutineScope.launch {
                                 delay(1500)
-                                isLoading = false
+                                isSaving = false
                             }
                         } else {
                             errorMessage = "Please fill in all fields"
@@ -440,7 +454,7 @@ fun AppointmentScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = !isLoading,
+                    enabled = !isSaving,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (isFormValid)
                             MaterialTheme.colorScheme.secondary
@@ -450,7 +464,7 @@ fun AppointmentScreen(
                     ),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    if (isLoading) {
+                    if (isSaving) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -516,6 +530,8 @@ fun AppointmentScreen(
 
     if (showHospitalDropdown) {
         HospitalDropdownDialog(
+            hospitals = hospitals,
+            isLoading = isLoadingData,
             onDismiss = { showHospitalDropdown = false },
             onSelect = { hospital ->
                 selectedHospital = hospital
@@ -527,7 +543,9 @@ fun AppointmentScreen(
 
     if (showDoctorDropdown && selectedHospital != null) {
         DoctorDropdownDialog(
+            doctors = doctors,
             hospitalId = selectedHospital!!.id,
+            isLoading = isLoadingData,
             onDismiss = { showDoctorDropdown = false },
             onSelect = { doctor ->
                 selectedDoctor = doctor
@@ -539,10 +557,11 @@ fun AppointmentScreen(
 
 @Composable
 fun HospitalDropdownDialog(
+    hospitals: List<Hospital>,
+    isLoading: Boolean,
     onDismiss: () -> Unit,
     onSelect: (Hospital) -> Unit
 ) {
-    val hospitals = HospitalData.hospitals
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -563,9 +582,30 @@ fun HospitalDropdownDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                LazyColumn {
-                    items(hospitals) { hospital ->
-                        HospitalItem(hospital = hospital, onClick = { onSelect(hospital) })
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    hospitals.isEmpty() -> {
+                        Text(
+                            text = "No hospitals available",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                    else -> {
+                        LazyColumn {
+                            items(hospitals) { hospital ->
+                                HospitalItem(hospital = hospital, onClick = { onSelect(hospital) })
+                            }
+                        }
                     }
                 }
             }
@@ -597,7 +637,7 @@ fun HospitalItem(hospital: Hospital, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.secondary
                 )
                 Text(
-                    text = hospital.address,
+                    text = hospital.address ?: "",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -608,11 +648,12 @@ fun HospitalItem(hospital: Hospital, onClick: () -> Unit) {
 
 @Composable
 fun DoctorDropdownDialog(
+    doctors: List<Doctor>,
     hospitalId: Int,
+    isLoading: Boolean,
     onDismiss: () -> Unit,
     onSelect: (Doctor) -> Unit
 ) {
-    val doctors = HospitalData.getDoctorsByHospital(hospitalId)
     Dialog(onDismissRequest = onDismiss) {
         Card(
             modifier = Modifier
@@ -633,16 +674,29 @@ fun DoctorDropdownDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f),
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                if (doctors.isEmpty()) {
-                    Text(
-                        text = "No doctors available at this hospital",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                } else {
-                    LazyColumn {
-                        items(doctors) { doctor ->
-                            DoctorItem(doctor = doctor, onClick = { onSelect(doctor) })
+                when {
+                    isLoading -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    doctors.isEmpty() -> {
+                        Text(
+                            text = "No doctors available at this hospital",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                    else -> {
+                        LazyColumn {
+                            items(doctors) { doctor ->
+                                DoctorItem(doctor = doctor, onClick = { onSelect(doctor) })
+                            }
                         }
                     }
                 }
@@ -675,7 +729,7 @@ fun DoctorItem(doctor: Doctor, onClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.secondary
                 )
                 Text(
-                    text = doctor.specialization,
+                    text = doctor.specialization ?: "",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

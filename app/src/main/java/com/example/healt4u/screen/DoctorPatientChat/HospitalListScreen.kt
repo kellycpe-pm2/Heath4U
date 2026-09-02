@@ -10,8 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
 import com.example.healt4u.model.Hospital
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
@@ -31,17 +32,17 @@ import com.example.healt4u.screen.componentUI.Theme.colorTheme
 fun HospitalListScreen(
     onHospitalSelected: (Hospital) -> Unit,
     onBack: () -> Unit,
-    viewModel: HospitalViewModel = viewModel()
+    viewModel: AdminManagementViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
-        viewModel.loadHospitals()
+        viewModel.loadAll()
     }
 
     val hospitals by viewModel.hospitals.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val errorMessage by viewModel.errorMessage.collectAsState()
+    val errorMessage by viewModel.error.collectAsState()
 
     val filteredHospitals = remember(searchQuery, hospitals) {
         if (searchQuery.isBlank()) {
@@ -49,7 +50,7 @@ fun HospitalListScreen(
         } else {
             hospitals.filter {
                 it.name.contains(searchQuery, ignoreCase = true) ||
-                        it.address.contains(searchQuery, ignoreCase = true)
+                        (it.address?.contains(searchQuery, ignoreCase = true) == true)
             }
         }
     }
@@ -135,6 +136,7 @@ fun HospitalListScreen(
                         CircularProgressIndicator()
                     }
                 }
+
                 errorMessage != null -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -146,12 +148,13 @@ fun HospitalListScreen(
                                 color = MaterialTheme.colorScheme.error
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.loadHospitals() }) {
+                            Button(onClick = { viewModel.loadAll() }) {
                                 Text("Retry")
                             }
                         }
                     }
                 }
+
                 filteredHospitals.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -173,6 +176,7 @@ fun HospitalListScreen(
                         }
                     }
                 }
+
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -195,8 +199,6 @@ fun HospitalListScreen(
     }
 }
 
-// ========== Hospital Card ==========
-
 @Composable
 fun HospitalCard(
     hospital: Hospital,
@@ -218,7 +220,6 @@ fun HospitalCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Hospital Icon
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -226,15 +227,11 @@ fun HospitalCard(
                     .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "🏥",
-                    fontSize = 24.sp
-                )
+                Text(text = "🏥", fontSize = 24.sp)
             }
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Hospital Info
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = hospital.name,
@@ -242,20 +239,16 @@ fun HospitalCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = hospital.address,
+                    text = hospital.address ?: "",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1
                 )
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = hospital.phone,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = hospital.phone ?: "",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
             Icon(

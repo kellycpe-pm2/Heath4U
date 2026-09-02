@@ -2,17 +2,17 @@ package com.example.healt4u.ViewModel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.healt4u.Storage.getAllDoctors
+import com.example.healt4u.Storage.getAllHospitals
+import com.example.healt4u.Storage.getDoctorsByHospital
 import com.example.healt4u.model.Doctor
 import com.example.healt4u.model.Hospital
-import com.example.healt4u.repository.HospitalRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class HospitalViewModel(
-    private val repository: HospitalRepository = HospitalRepository()
-) : ViewModel() {
+class HospitalViewModel : ViewModel() {
 
     private val _hospitals = MutableStateFlow<List<Hospital>>(emptyList())
     val hospitals: StateFlow<List<Hospital>> = _hospitals.asStateFlow()
@@ -32,12 +32,15 @@ class HospitalViewModel(
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _allDoctors = MutableStateFlow<List<Doctor>>(emptyList())
+    val allDoctors: StateFlow<List<Doctor>> = _allDoctors.asStateFlow()
+
     fun loadHospitals() {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val result = repository.getHospitals()
+                val result = getAllHospitals()
                 _hospitals.value = result
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Failed to load hospitals"
@@ -47,22 +50,12 @@ class HospitalViewModel(
         }
     }
 
-    fun searchHospitals(query: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            try {
-                val result = if (query.isBlank()) {
-                    repository.getHospitals()
-                } else {
-                    repository.searchHospitals(query)
-                }
-                _hospitals.value = result
-            } catch (e: Exception) {
-                _errorMessage.value = e.message ?: "Search failed"
-            } finally {
-                _isLoading.value = false
-            }
-        }
+    fun loadAllHospitals(): List<Hospital> {
+        return _hospitals.value
+    }
+
+    fun getHospitalById(id: Int): Hospital? {
+        return _hospitals.value.find { it.id == id }
     }
 
     fun selectHospital(hospital: Hospital) {
@@ -70,11 +63,13 @@ class HospitalViewModel(
         loadDoctorsForHospital(hospital.id)
     }
 
-    fun loadDoctorsForHospital(hospitalId: Int) {
+    fun loadAllDoctors() {
         viewModelScope.launch {
             _isLoading.value = true
+            _errorMessage.value = null
             try {
-                val result = repository.getDoctorsByHospital(hospitalId)
+                val result = getAllDoctors()
+                _allDoctors.value = result
                 _doctors.value = result
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Failed to load doctors"
@@ -84,38 +79,95 @@ class HospitalViewModel(
         }
     }
 
-    fun searchDoctors(query: String) {
+    fun loadDoctorsForHospital(hospitalId: Int) {
         viewModelScope.launch {
-            val allDoctors = _doctors.value
-            _doctors.value = if (query.isBlank()) {
-                _selectedHospital.value?.let { loadDoctorsForHospital(it.id) }
-                emptyList()
-            } else {
-                allDoctors.filter {
-                    it.name.contains(query, ignoreCase = true) ||
-                            it.specialization.contains(query, ignoreCase = true)
-                }
+            _isLoading.value = true
+            _errorMessage.value = null
+            try {
+                val result = getDoctorsByHospital(hospitalId)
+                _doctors.value = result
+            } catch (e: Exception) {
+                _errorMessage.value = e.message ?: "Failed to load doctors for hospital"
+            } finally {
+                _isLoading.value = false
             }
         }
-    }
-
-    fun selectDoctor(doctor: Doctor) {
-        _selectedDoctor.value = doctor
-    }
-
-    fun clearError() {
-        _errorMessage.value = null
     }
 
     fun getDoctorById(id: Int): Doctor? {
         return _doctors.value.find { it.id == id }
     }
 
-    fun getHospitalById(id: Int): Hospital? {
-        return _hospitals.value.find { it.id == id }
+    fun selectDoctor(doctor: Doctor) {
+        _selectedDoctor.value = doctor
+    }
+
+    fun searchDoctors(query: String) {
+        val allDoctors = _allDoctors.value
+        _doctors.value = if (query.isBlank()) {
+            _selectedHospital.value?.let { loadDoctorsForHospital(it.id) }
+            emptyList()
+        } else {
+            allDoctors.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                        it.specialization.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
+    fun searchHospitals(query: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                val allHospitals = getAllHospitals()
+                _hospitals.value = if (query.isBlank()) {
+                    allHospitals
+                } else {
+                    allHospitals.filter {
+                        it.name.contains(query, ignoreCase = true) ||
+                                it.address?.contains(query, ignoreCase = true) == true
+                    }
+                }
+            } catch (e: Exception) {
+                _errorMessage.value = e.message ?: "Search failed"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     fun getAvailableDoctors(): List<Doctor> {
-        return _doctors.value.filter { it.verificationStatus == "verified" }
+        return _doctors.value.filter {
+            it.verificationStatus == "verified" || it.verificationStatus == "VERIFIED"
+        }
+    }
+
+    fun getDoctorsBySpecialty(specialty: String): List<Doctor> {
+        return _doctors.value.filter {
+            it.specialization.equals(specialty, ignoreCase = true)
+        }
+    }
+
+    fun getTotalDoctors(): Int {
+        return _doctors.value.size
+    }
+
+    fun getTotalHospitals(): Int {
+        return _hospitals.value.size
+    }
+
+    fun clearError() {
+        _errorMessage.value = null
+    }
+
+    fun clearSelection() {
+        _selectedHospital.value = null
+        _selectedDoctor.value = null
+        _doctors.value = emptyList()
+    }
+
+    fun refresh() {
+        loadHospitals()
+        loadAllDoctors()
     }
 }

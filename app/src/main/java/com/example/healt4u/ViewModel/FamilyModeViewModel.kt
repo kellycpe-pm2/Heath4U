@@ -16,8 +16,10 @@ import com.example.healt4u.Storage.getFamilyAlertsForCaregiver
 import com.example.healt4u.data.local.loadFamilyAlerts
 import com.example.healt4u.data.local.loadReminderLogsForDate
 import com.example.healt4u.data.local.saveFamilyAlerts
+import com.example.healt4u.data.local.upsertReminderLogLocal
 import com.example.healt4u.model.CaregiverLink
 import com.example.healt4u.model.FamilyAlert
+import com.example.healt4u.Storage.upsertReminderLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -183,13 +185,19 @@ class FamilyModeViewModel(
                 val date = todayDate()
                 val now = Calendar.getInstance()
                 val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-                val graceMinutes = 15
+                val graceMinutes = 5
 
                 val logs = loadReminderLogsForDate(context, date)
                 val existingAlerts = loadFamilyAlerts(context).filter { it.date == date }
                 val existingAlertKeys = existingAlerts.map { "${it.medicineName}_${it.scheduledTime}" }.toSet()
 
-                val caregivers = _caregivers.value
+                var caregivers = _caregivers.value
+                if (caregivers.isEmpty()) {
+                    try {
+                        caregivers = getCaregiversForPatient(patientUserId)
+                        _caregivers.value = caregivers
+                    } catch (_: Exception) {}
+                }
                 if (caregivers.isEmpty()) {
                     _isLoading.value = false
                     return@launch
@@ -197,10 +205,10 @@ class FamilyModeViewModel(
 
                 val newAlerts = mutableListOf<FamilyAlert>()
                 for (log in logs) {
-                    if (log.status != "PENDING") continue
+                    if (log.status != "PENDING" && log.status != "MISSED") continue
                     val parts = log.time.split(":")
                     val slotMinutes = (parts.getOrNull(0)?.toIntOrNull() ?: 8) * 60 + (parts.getOrNull(1)?.toIntOrNull() ?: 0)
-                    if (nowMinutes - slotMinutes <= graceMinutes) continue
+                    if (log.status == "PENDING" && nowMinutes - slotMinutes <= graceMinutes) continue
 
                     val key = "${log.medicineName}_${log.time}"
                     if (key in existingAlertKeys) continue
@@ -248,7 +256,7 @@ class FamilyModeViewModel(
         }
     }
 
-    fun resolveAlert(alert: FamilyAlert) {
+    fun resolveAlert(context: Context, alert: FamilyAlert) {
         viewModelScope.launch(Dispatchers.IO) {
             val updated = alert.copy(
                 status = "RESOLVED",
@@ -256,11 +264,22 @@ class FamilyModeViewModel(
             )
             val allAlerts = _alerts.value.map { if (it.id == updated.id) updated else it }
             _alerts.value = allAlerts
+            saveFamilyAlerts(context, allAlerts)
 
             val allCaregiverAlerts = _caregiverAlerts.value.map { if (it.id == updated.id) updated else it }
             _caregiverAlerts.value = allCaregiverAlerts
 
             upsertFamilyAlertCloud(updated)
+
+            val logs = loadReminderLogsForDate(context, alert.date)
+            val matchingLog = logs.find {
+                it.medicineName == alert.medicineName && it.time == alert.scheduledTime
+            }
+            if (matchingLog != null && matchingLog.status == "MISSED") {
+                val takenLog = matchingLog.copy(status = "TAKEN")
+                upsertReminderLogLocal(context, takenLog)
+                upsertReminderLog(takenLog)
+            }
         }
     }
 }

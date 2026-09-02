@@ -64,8 +64,7 @@ fun FamilyModeScreen(
     currentUserPhone: String,
     onBack: () -> Unit = {},
     onAddCaregiverClick: () -> Unit = {},
-    onSetPhoneClick: () -> Unit = {},
-    onCaregiverAlertsClick: () -> Unit = {}
+    onSetPhoneClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val caregivers by vm.caregivers.collectAsStateWithLifecycle()
@@ -193,14 +192,14 @@ fun FamilyModeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("My Missed Dose Alerts", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
+                        Text("Patient's Missed Dose Alerts", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
                         Text("${pendingAlerts.size} pending", fontSize = 12.sp, color = AlertOrange, fontWeight = FontWeight.SemiBold)
                     }
                 }
                 items(pendingAlerts, key = { it.id }) { alert ->
                     AlertCard(
                         alert = alert,
-                        onResolve = { vm.resolveAlert(alert) }
+                        onResolve = { vm.resolveAlert(context, alert) }
                     )
                 }
             }
@@ -233,8 +232,7 @@ fun FamilyModeScreen(
                                 "${pendingCaregiverAlerts.size} pending",
                                 fontSize = 12.sp,
                                 color = AlertRed,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.clickable { onCaregiverAlertsClick() }
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                     }
@@ -243,7 +241,7 @@ fun FamilyModeScreen(
                     PatientCard(
                         patient = patient,
                         pendingCount = pendingCaregiverAlerts.filter { it.patientUserId == patient.patientUserId }.size,
-                        onClick = { onCaregiverAlertsClick() }
+                        onClick = {}
                     )
                 }
             }

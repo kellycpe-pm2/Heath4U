@@ -1,5 +1,10 @@
 package com.example.healt4u.nav
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.OptIn
@@ -22,6 +27,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.app.ActivityCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -70,7 +77,8 @@ import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
-import com.example.healt4u.ViewModel.NPRAMedicineViewModel
+import com.example.healt4u.ViewModel.FindMedicineViewModel
+import com.example.healt4u.data.local.loadReminderLogs
 import com.example.healt4u.model.Hospital
 import com.example.healt4u.model.PatientUser
 import com.example.healt4u.model.Payment
@@ -87,6 +95,7 @@ import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
+@SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.O)
 @androidx.camera.core.ExperimentalGetImage
 @OptIn(ExperimentalGetImage::class, DelicateCoroutinesApi::class)
@@ -98,7 +107,7 @@ fun AppNavGraph(
     vm_admin: AdminManagementViewModel = viewModel(),
     vm_hospital: HospitalViewModel = viewModel(),
     vm_family: FamilyModeViewModel = viewModel(),
-    viewModel: NPRAMedicineViewModel = viewModel()
+    viewModel: FindMedicineViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -229,13 +238,14 @@ fun AppNavGraph(
             val context = LocalContext.current
             val reloadKey = remember { mutableIntStateOf(0) }
 
-            LaunchedEffect(Unit, reloadKey.intValue) {
-                val allLogs = com.example.healt4u.data.local.loadReminderLogs(context)
+            LaunchedEffect(Unit, reloadKey.intValue) @androidx.annotation.RequiresPermission(android.Manifest.permission.POST_NOTIFICATIONS) {
+                val allLogs = loadReminderLogs(context)
                 Log.d("SCHEDULE", "Total logs found: ${allLogs.size}")
                 allLogs.forEach {
                     Log.d("SCHEDULE", "→ ${it.date} | ${it.medicineName}")
                 }
-                vm_reminder.loadTodaySchedule(context, currentUserId)
+
+               // vm_reminder.loadTodaySchedule(context = context, currentUserId)
             }
 
             LaunchedEffect(Unit) {
@@ -358,76 +368,186 @@ fun AppNavGraph(
         }
 
         composable("scan") {
+
             ScannerScreen(
+
                 onBarcodeScanned = { scannedData ->
-                    viewModel.searchMedicine(scannedData)
-                    navController.navigate("detail/$scannedData")
+
+                    val cleanData =
+                        scannedData.trim()
+
+                    if (cleanData.isBlank()) {
+                        Log.d(
+                            "SCAN_NAV",
+                            "Empty scan result"
+                        )
+                        return@ScannerScreen
+                    }
+
+                    Log.d(
+                        "SCAN_NAV",
+                        "Final scan = $cleanData"
+                    )
+
+                    /*
+                     * Start NPRA search.
+                     */
+                    viewModel.searchUnified(
+                        cleanData
+                    )
+
+                    /*
+                     * Encode safely for Navigation.
+                     */
+                    val encodedData =
+                        Uri.encode(
+                            cleanData
+                        )
+
+                    navController.navigate(
+                        "detail/$encodedData"
+                    )
                 },
+
                 onManualInput = {
                     showManualDialog = true
                 },
-                onFlashToggle = {},
-                onGalleryPick = {},
-                onBackClick = { navController.popBackStack() }
+
+                onFlashToggle = { enabled ->
+
+                    Log.d(
+                        "SCAN_NAV",
+                        "Flashlight = $enabled"
+                    )
+                },
+
+                onGalleryPick = {
+
+                    /*
+                     * Gallery picker is handled inside
+                     * ScannerContent.
+                     *
+                     * Nothing else needs to happen here.
+                     */
+                    Log.d(
+                        "SCAN_NAV",
+                        "Gallery opened"
+                    )
+                }
             )
 
             if (showManualDialog) {
+
                 ManualInputDialog(
-                    onDismiss = { showManualDialog = false },
-                    onSearch = { query ->
+
+                    onDismiss = {
                         showManualDialog = false
-                        viewModel.searchMedicine(query)
-                        navController.navigate("detail/$query")
+                    },
+
+                    onSearch = { query ->
+
+                        val cleanQuery =
+                            query.trim()
+
+                        if (cleanQuery.isBlank()) {
+                            return@ManualInputDialog
+                        }
+
+                        showManualDialog = false
+
+                        Log.d(
+                            "SCAN_NAV",
+                            "Manual search = $cleanQuery"
+                        )
+
+                        viewModel.searchUnified(
+                            cleanQuery
+                        )
+
+                        val encodedQuery =
+                            Uri.encode(
+                                cleanQuery
+                            )
+
+                        navController.navigate(
+                            "detail/$encodedQuery"
+                        )
                     }
                 )
             }
         }
 
-        composable("history") {
-            HistoryScreen(
-                medicines = viewModel.medicines.collectAsState().value,
-                onItemClick = { regNo ->
-                    navController.navigate("detail/$regNo")
-                },
-                onClearHistory = { }
-            )
-        }
-
         composable(
             route = "detail/{barcode}",
-            arguments = listOf(navArgument("barcode") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("barcode") {
+                    type = NavType.StringType
+                }
+            )
         ) { backStackEntry ->
-            val barcode = backStackEntry.arguments?.getString("barcode") ?: ""
-            val searchResult by viewModel.searchResult.collectAsState()
-            val isLoading by viewModel.isLoading.collectAsState()
-            val errorMessage by viewModel.errorMessage.collectAsState()
+
+            val encodedBarcode =
+                backStackEntry
+                    .arguments
+                    ?.getString("barcode")
+                    ?: ""
+
+            val barcode =
+                Uri.decode(encodedBarcode)
+
+            Log.d(
+                "DETAIL_SCREEN",
+                "Showing result for = $barcode"
+            )
+
+            val result by
+            viewModel.searchResult
+                .collectAsState()
+
+            val isLoading by
+            viewModel.isLoading
+                .collectAsState()
+
+            val errorMessage by
+            viewModel.errorMessage
+                .collectAsState()
 
             ScanResult(
-                barcode = barcode,
-                medicine = searchResult,
+
+                result = result,
+
                 isLoading = isLoading,
+
                 errorMessage = errorMessage,
+
                 onBack = {
+
+                    viewModel.clearResult()
+
                     navController.popBackStack()
-                    viewModel.resetSearch()
                 },
-                onAddToReminder = { }
+
+                onAddToReminder = { _ ->
+
+                    val medicineCode =
+                        barcode.trim()
+
+                    if (medicineCode.isBlank()) {
+                        return@ScanResult
+                    }
+
+                    val encodedMedicineCode =
+                        Uri.encode(
+                            medicineCode
+                        )
+
+                    navController.navigate(
+                        "add_reminder/$encodedMedicineCode"
+                    )
+                }
             )
         }
 
-        composable(
-            route = "add_reminder/{regNo}",
-            arguments = listOf(navArgument("regNo") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val regNo = backStackEntry.arguments?.getString("regNo") ?: ""
-            val medicine = viewModel.medicines.value.find { it.regNo == regNo }
-                ?: viewModel.searchResult.collectAsState().value
-
-            AddReminderScreen(
-                onBack = { navController.popBackStack() },
-                onSave = { }
-            )
-        }
 
         composable(
             route = "appointment_screen/{patientId}",

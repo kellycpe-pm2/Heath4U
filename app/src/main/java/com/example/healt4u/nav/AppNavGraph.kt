@@ -210,6 +210,7 @@ fun AppNavGraph(
         composable("dashboard") {
             HomeDashboardScreen(
                 vm = vm_reminder,
+                patientId = currentUserId,
                 onMedicineClick = { navController.navigate("list") },
                 onScheduleClick = { navController.navigate("schedule") },
                 onChatClick = { navController.navigate("chat_list") },
@@ -234,7 +235,7 @@ fun AppNavGraph(
                 }
 
                 //Tell ViewModel to reload
-                vm_reminder.loadTodaySchedule(context)
+                vm_reminder.loadTodaySchedule(context,currentUserId)
             }
 
             // Listen for refresh signal from Appointment
@@ -254,6 +255,7 @@ fun AppNavGraph(
 
             ScheduleListScreen(
                 vm = vm_reminder,
+                patientId = currentUserId,
                 onBack = { navController.popBackStack() }
             )
         }

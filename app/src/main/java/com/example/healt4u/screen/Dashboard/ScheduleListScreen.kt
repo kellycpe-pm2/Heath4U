@@ -29,6 +29,7 @@ import com.example.healt4u.screen.componentUI.Theme.colorTheme
 @Composable
 fun ScheduleListScreen(
     vm: ReminderViewModel = viewModel(),
+    patientId: Int,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -37,7 +38,7 @@ fun ScheduleListScreen(
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        vm.loadTodaySchedule(context)
+        vm.loadTodaySchedule(context, patientId)
     }
 
     val (taken, total) = vm.adherenceCount()

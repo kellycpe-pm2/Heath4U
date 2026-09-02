@@ -59,40 +59,42 @@ class ReminderViewModel(
 
     // Builds today's schedule from every saved medicine (reminder_time + times_per_day),
     // then overlays any status already recorded for today so marks survive app restarts.
-    fun loadTodaySchedule(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) @androidx.annotation.RequiresPermission(android.Manifest.permission.POST_NOTIFICATIONS) {
+    // In ReminderViewModel.kt
+    fun loadTodaySchedule(
+        context: Context,
+        patientId: Int = 0,
+        selectedDate: String = todayDate()  // Default = today, but OVERRIDE-able
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
                 NotificationHelper.createChannels(context)
 
-                val date = todayDate()
+                // USE THE PASSED DATE, NOT FORCE TODAY
+                val date = selectedDate  // ← CHANGED
 
                 val medicines = load_Medicines(context)
-                val generated = generateSlotsFor(medicines, date)
+                val generated = generateSlotsFor(medicines, date, patientId)
 
                 val savedLocal = loadReminderLogsForDate(context, date)
-
-                // Merge medicine reminders + appointments
-                val appointments = savedLocal.filter { it.medicineId == -1 }
+                val appointments = savedLocal.filter { it.medicineId == -1 || it.medicineId == null }
                 var merged = mergeGeneratedWithSaved(generated, savedLocal)
                 var allItems = (merged + appointments).distinctBy { it.id }
 
-                allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
+                allItems = flagOverdueAsMissed(allItems.sortedBy { it.time },date)
                 _todaySchedule.value = allItems
 
                 // Cloud sync
                 val savedCloud = getReminderLogsForDate(date)
                 if (savedCloud.isNotEmpty()) {
                     merged = mergeGeneratedWithSaved(generated, savedCloud)
-                    val cloudAppointments = savedCloud.filter { it.medicineId == -1 }
+                    val cloudAppointments = savedCloud.filter { it.medicineId == -1 || it.medicineId == null }
                     allItems = (merged + cloudAppointments).distinctBy { it.id }
-                    allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
+                    allItems = flagOverdueAsMissed(allItems.sortedBy { it.time },date)
                     _todaySchedule.value = allItems
                     upsertReminderLogsLocal(context, allItems)
                 }
 
-                // Only real medicine doses get a "time to take" alarm — appointments
-                // belong to a different module and will get their own reminders later.
                 scheduleAlarmsForPendingDoses(context, allItems.filter { it.medicineId != -1 })
                 checkMedicineAlerts(context, medicines)
             } catch (e: Exception) {
@@ -176,7 +178,7 @@ class ReminderViewModel(
         }
     }
 
-    private fun generateSlotsFor(medicines: List<Medicine>, date: String): List<ReminderLog> {
+    private fun generateSlotsFor(medicines: List<Medicine>, date: String, patientId: Int): List<ReminderLog> {
         val slots = mutableListOf<ReminderLog>()
         for (med in medicines) {
             val timesPerDay = (med.timesPerDay ?: 1).coerceIn(1, 6)
@@ -201,7 +203,7 @@ class ReminderViewModel(
                         time = timeLabel,
                         status = "PENDING",
                         type = "MEDICINE",
-                        patientId = 0
+                        patientId = patientId
                     )
                 )
             }
@@ -219,17 +221,29 @@ class ReminderViewModel(
 
     // Anything still PENDING more than 30 minutes past its slot time is auto-flagged
     // MISSED — this is what drives the family "missed-dose alert" on the dashboard.
-    private fun flagOverdueAsMissed(logs: List<ReminderLog>): List<ReminderLog> {
+    private fun flagOverdueAsMissed(logs: List<ReminderLog>, scheduleDate: String): List<ReminderLog> {
+        val todayDate = todayDate()
         val now = Calendar.getInstance()
         val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
         val graceMinutes = 30
 
         return logs.map { log ->
             if (log.status == "PENDING") {
-                val slotMinutes = timeStringToMinutes(log.time)
-                if (nowMinutes - slotMinutes > graceMinutes) {
-                    log.copy(status = "MISSED")
-                } else log
+                // ONLY check time if viewing TODAY
+                if (scheduleDate != todayDate) {
+                    // PAST date → MISSED, FUTURE date → STAY PENDING
+                    if (scheduleDate < todayDate) {
+                        log.copy(status = "MISSED")
+                    } else {
+                        log // FUTURE → keep PENDING
+                    }
+                } else {
+                    // SAME DAY → check if time passed
+                    val slotMinutes = timeStringToMinutes(log.time)
+                    if (nowMinutes - slotMinutes > graceMinutes) {
+                        log.copy(status = "MISSED")
+                    } else log
+                }
             } else log
         }
     }

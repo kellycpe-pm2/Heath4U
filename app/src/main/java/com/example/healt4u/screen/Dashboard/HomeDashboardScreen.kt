@@ -42,6 +42,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeDashboardScreen(
     vm: ReminderViewModel = viewModel(),
+    patientId: Int,
     onMedicineClick: () -> Unit,
     onScheduleClick: () -> Unit,
     onFamilyModeClick: () -> Unit = {},
@@ -61,7 +62,7 @@ fun HomeDashboardScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        vm.loadTodaySchedule(context)
+        vm.loadTodaySchedule(context, patientId)
     }
 
     val (taken, total) = vm.adherenceCount()

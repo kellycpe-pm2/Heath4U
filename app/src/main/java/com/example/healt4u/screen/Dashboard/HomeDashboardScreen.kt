@@ -329,7 +329,7 @@ fun HomeDashboardScreen(
                     onClick = {}
                 )
                 BottomNavItem(
-                    label = "Community",
+                    label = "Family Mode",
                     icon = Icons.Filled.Groups,
                     selected = false,
                     onClick = onFamilyModeClick

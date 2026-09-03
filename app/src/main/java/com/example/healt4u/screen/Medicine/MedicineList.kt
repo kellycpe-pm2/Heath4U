@@ -8,10 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
@@ -25,11 +22,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.ViewModelMedicine
+import com.example.healt4u.data.local.getMedicines_ByPatientId
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.button
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MedicineListScreen(
     vm: ViewModelMedicine = viewModel(),
@@ -37,10 +36,11 @@ fun MedicineListScreen(
     onDel: (Medicine) -> Unit,
     onEdit: (Medicine) -> Unit,
     onClickRow: (Medicine) -> Unit,
-    onCloudSync : () -> Unit,
-    onUploadToCloud : () -> Unit,
+    onCloudSync: () -> Unit,
+    onUploadToCloud: () -> Unit,
     onBack: (() -> Unit)? = null
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val medicines by vm.medicines.collectAsStateWithLifecycle()
     val isPendingDel = remember { mutableStateListOf<Medicine>() }
     var searchQuery by remember { mutableStateOf("") }
@@ -48,6 +48,28 @@ fun MedicineListScreen(
     val isLoading by vm.isLoading.collectAsStateWithLifecycle()
     val error by vm.error.collectAsStateWithLifecycle()
     val successMessage by vm.successMessage.collectAsStateWithLifecycle()
+
+    // ===== STOCK DIALOG STATE =====
+    var showStockDialog by remember { mutableStateOf(false) }
+    var selectedMedicine by remember { mutableStateOf<Medicine?>(null) }
+    var isUpdatingStock by remember { mutableStateOf(false) }
+
+    // ===== HANDLE STOCK UPDATE =====
+    fun handleStockUpdate(newQuantity: Int) {
+        selectedMedicine?.let { medicine ->
+            isUpdatingStock = true
+            vm.updateStock(
+                medicine = medicine,
+                newQuantityLeft = newQuantity,
+                context = context,
+                onSuccess = {
+                    isUpdatingStock = false
+                    showStockDialog = false
+                    selectedMedicine = null
+                }
+            )
+        }
+    }
 
     LaunchedEffect(error) {
         if (error != null) {
@@ -78,111 +100,104 @@ fun MedicineListScreen(
     }
 
     colorTheme {
-        Box(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        onBack?.let {
-                            IconButton(onClick = it) {
-                                Icon(
-                                    androidx.compose.material.icons.Icons.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = MaterialTheme.colorScheme.secondary
-                                )
-                            }
-                        }
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
                         Text(
-                            text = "All Medicines",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1A1A2E)
+                            text = "Medicine Management",
+                            style = MaterialTheme.typography.headlineMedium,
+                            fontSize = 10.sp,
+                            color = Color.White,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                                .padding(end=48.dp)
                         )
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { onBack?.invoke() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        // Sync button
                         IconButton(
                             onClick = onCloudSync,
-                            modifier = Modifier.size(48.dp),
                             enabled = !isLoading
                         ) {
-                            if (isLoading) {
-
-                            } else {
-                                Icon(
-                                    Icons.Default.Cloud,
-                                    contentDescription = "Sync",
-                                    modifier = Modifier.size(30.dp),
-                                    tint = MaterialTheme.colorScheme.secondary
-                                )
-                            }
-                            Text(
-                                if (isLoading) "Syncing..." else "Sync",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontSize = 8.sp,
-                                modifier = Modifier.padding(top = 30.dp)
+                            Icon(
+                                Icons.Default.Cloud,
+                                contentDescription = "Sync",
+                                tint = Color.White
                             )
                         }
+                        // Upload button
                         IconButton(
                             onClick = onUploadToCloud,
-                            modifier = Modifier.size(48.dp),
                             enabled = !isLoading
                         ) {
-                            if (isLoading) {
-                            } else {
-                                Icon(
-                                    Icons.Default.CloudUpload,
-                                    contentDescription = "Upload",
-                                    modifier = Modifier.size(30.dp),
-                                    tint = MaterialTheme.colorScheme.secondary
-                                )
-                            }
-                            Text(
-                                if (isLoading) "Uploading..." else "Upload",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontSize = 8.sp,
-                                modifier = Modifier.padding(top = 30.dp)
+                            Icon(
+                                Icons.Default.CloudUpload,
+                                contentDescription = "Upload",
+                                tint = Color.White
                             )
                         }
-
-
+                        // Count badge
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier
+                            color = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(end = 8.dp)
                         ) {
                             Text(
                                 text = "${medicines.size}",
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 color = Color.White,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = onAddClick,
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = Color.White,
+                    modifier = Modifier.size(60.dp),
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Medicine",
+                        modifier = Modifier.size(32.dp)
+                    )
                 }
-
+            }
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(paddingValues)
+            ) {
+                // Search bar
                 SearchMedicineScreen(
                     searchQuery = searchQuery,
                     onSearchChange = { searchQuery = it }
                 )
 
-                Spacer(Modifier.height(0.5f.dp))
+                Spacer(Modifier.height(4.dp))
 
+                // Content
                 if (isLoading && medicines.isEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -193,7 +208,7 @@ fun MedicineListScreen(
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(48.dp),
-                                color = MaterialTheme.colorScheme.onBackground,
+                                color = MaterialTheme.colorScheme.secondary,
                                 strokeWidth = 4.dp
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -212,6 +227,13 @@ fun MedicineListScreen(
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "No results found",
                                 fontSize = 18.sp,
@@ -230,15 +252,19 @@ fun MedicineListScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(filteredMedicines) { medicine ->
                             MedicineRow(
-                                medicine,
+                                med = medicine,
                                 onDel = { med -> isPendingDel.add(med) },
                                 onClick = { med -> onClickRow(med) },
-                                onEdit = { med -> onEdit(med) }
+                                onEdit = { med -> onEdit(med) },
+                                onChangeStock = { med ->
+                                    selectedMedicine = med
+                                    showStockDialog = true
+                                }
                             )
                         }
 
@@ -258,6 +284,7 @@ fun MedicineListScreen(
                 }
             }
 
+            // ===== ERROR MESSAGE =====
             error?.let {
                 Column(
                     modifier = Modifier
@@ -289,9 +316,7 @@ fun MedicineListScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(
-                                onClick = {
-                                    vm.clearError()
-                                },
+                                onClick = { vm.clearError() },
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
@@ -306,6 +331,7 @@ fun MedicineListScreen(
                 }
             }
 
+            // ===== SUCCESS MESSAGE =====
             successMessage?.let {
                 Column(
                     modifier = Modifier
@@ -319,7 +345,7 @@ fun MedicineListScreen(
                             .fillMaxWidth()
                             .padding(bottom = 80.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
                         ),
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                     ) {
@@ -332,20 +358,18 @@ fun MedicineListScreen(
                         ) {
                             Text(
                                 text = successMessage!!,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(
-                                onClick = {
-                                    vm.clearSuccess()
-                                },
+                                onClick = { vm.clearSuccess() },
                                 modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
                                     Icons.Default.Close,
                                     contentDescription = "Dismiss",
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -353,24 +377,9 @@ fun MedicineListScreen(
                     }
                 }
             }
-
-
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(40.dp),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.End
-            ) {
-                button(
-                    text = "+",
-                    onClick = { onAddClick() },
-                    modifier = Modifier.size(56.dp),
-                    enabled = !isLoading
-                )
-            }
         }
 
+        // ===== DELETE CONFIRMATION DIALOG =====
         isPendingDel.firstOrNull()?.let { med ->
             AlertDialog(
                 onDismissRequest = { isPendingDel.clear() },
@@ -381,34 +390,36 @@ fun MedicineListScreen(
                             isPendingDel.clear()
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onError,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = Color.White
                         )
                     ) {
-                        Text("DELETE", color = MaterialTheme.colorScheme.onPrimary)
+                        Text("DELETE")
                     }
                 },
                 dismissButton = {
-                    Button(
-                        onClick = {
-                            isPendingDel.clear()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.onPrimary,
-                            contentColor = MaterialTheme.colorScheme.onBackground
-                        )
+                    TextButton(
+                        onClick = { isPendingDel.clear() }
                     ) {
-                        Text("CANCEL", color = MaterialTheme.colorScheme.onBackground)
+                        Text("CANCEL")
                     }
                 },
-                title = { Text("Delete Medicine") },
-                text = { Text("Do you want to delete ${med.name_medicine}?") }
+                title = {
+                    Text(
+                        "Delete Medicine",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                text = {
+                    Text("Do you want to delete ${med.name_medicine}?")
+                }
             )
         }
 
+        // ===== LOADING DIALOG =====
         if (isLoading) {
             AlertDialog(
-                onDismissRequest = {  },
+                onDismissRequest = { },
                 confirmButton = {},
                 dismissButton = {},
                 title = {
@@ -440,7 +451,6 @@ fun MedicineListScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        // Animated dots
                         var dotCount by remember { mutableStateOf(0) }
 
                         LaunchedEffect(Unit) {
@@ -458,8 +468,24 @@ fun MedicineListScreen(
                     }
                 },
                 containerColor = MaterialTheme.colorScheme.surface,
-                shape = MaterialTheme.shapes.medium,
-                modifier = Modifier
+                shape = MaterialTheme.shapes.medium
+            )
+        }
+
+        // ===== STOCK UPDATE DIALOG =====
+        if (showStockDialog && selectedMedicine != null) {
+            StockUpdateDialog(
+                medicine = selectedMedicine!!,
+                onDismiss = {
+                    if (!isUpdatingStock) {
+                        showStockDialog = false
+                        selectedMedicine = null
+                    }
+                },
+                onUpdate = { newQuantity ->
+                    handleStockUpdate(newQuantity)
+                },
+                isLoading = isUpdatingStock
             )
         }
     }
@@ -467,30 +493,31 @@ fun MedicineListScreen(
 
 @Composable
 fun EmptyStateView() {
-    colorTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "No Medicines Found",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Tap the + button to add your first medicine",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-        }
-
-
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            Icons.Default.Medication,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No Medicines Found",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Tap the + button to add your first medicine",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+        )
     }
 }
-

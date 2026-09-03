@@ -133,10 +133,10 @@ fun searchMedicines(context: Context, query: String): List<Medicine> {
     }
 }
 
-fun getMedicinesByIc(context: Context, ic: String): List<Medicine> {
+fun getMedicines_ByPatientId(context: Context, patientId: Int): List<Medicine> {
     return try {
         val medicines = load_Medicines(context)
-        medicines.filter { it.ic == ic }
+        medicines.filter { it.patientId == patientId }
     } catch (e: Exception) {
         e.printStackTrace()
         emptyList()

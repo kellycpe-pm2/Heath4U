@@ -48,7 +48,6 @@ fun DoctorDashboardScreen(
     onChangeStatus: (String) -> Unit = {},
     onStatisticClick: () -> Unit = {},
     onSettingClick: () -> Unit = {},
-    onScanClick: () -> Unit = {},
     onProfileClick: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
@@ -168,7 +167,7 @@ fun DoctorDashboardScreen(
                                         verticalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         items(patients, key = { it.patientId }) { conversation ->
-                                            DashboardPatientItem(
+                                            DashboardDoctorItem(
                                                 conversation = conversation,
                                                 onClick = {
                                                     onPatientClick(conversation.patientId, conversation)
@@ -283,25 +282,6 @@ fun DoctorDashboardScreen(
                 BottomNavItem("Settings", Icons.Filled.Settings, false, onSettingClick)
             }
 
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 38.dp)
-                    .size(56.dp)
-                    .clickable { onScanClick() }
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Filled.QrCodeScanner,
-                        contentDescription = "Scan",
-                        tint = Color.White,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-            }
-
             AppSnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier
@@ -314,7 +294,7 @@ fun DoctorDashboardScreen(
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun DashboardPatientItem(
+private fun DashboardDoctorItem(
     conversation: Conversation,
     onClick: () -> Unit
 ) {

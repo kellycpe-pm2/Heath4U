@@ -31,8 +31,6 @@ data class Medicine(
 
     val priority: Float? = 0f,
 
-    val ic: String? = "1",
-
     // First dose time of the day, e.g. "08:00". Later doses are spaced evenly
     // across the day based on timesPerDay. Used by the Smart Reminder / Schedule module.
     @SerialName("reminder_time")
@@ -46,5 +44,5 @@ data class Medicine(
     // rows without the column still decode fine; used to scope cloud fetches
     // per-account instead of pulling every patient's medicines.
     @SerialName("patient_id")
-    val patientId: Int? = null
+    val patientId: Int?
 )

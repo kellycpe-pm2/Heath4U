@@ -93,6 +93,7 @@ import java.util.concurrent.Executors
 import java.util.regex.Pattern
 import kotlin.coroutines.resume
 
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 @OptIn(ExperimentalGetImage::class)
 @Composable
 fun ScannerContent(
@@ -1106,6 +1107,8 @@ private fun calculateInSampleSize(
 // CAMERA BARCODE + OCR
 // =================================================================
 
+@ExperimentalGetImage
+@androidx.annotation.OptIn(ExperimentalGetImage::class)
 @OptIn(ExperimentalGetImage::class)
 private fun processCameraImage(
     imageProxy: ImageProxy,

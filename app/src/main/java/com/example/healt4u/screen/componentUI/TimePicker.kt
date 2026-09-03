@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -59,7 +61,7 @@ fun TimePickerPopupOnClick(
 
         OutlinedTextField(
             value = value,
-            onValueChange = { /* Read-only */ },
+            onValueChange = {  },
             label = { Text(label) },
             placeholder = { Text("HH:mm") },
             readOnly = true,
@@ -79,11 +81,10 @@ fun TimePickerPopupOnClick(
             ),
             trailingIcon = {
                 Icon(
-                    painter = painterResource(
-                        if (showPopup) R.drawable.calendar_focus else R.drawable.calendar_unfocus
-                    ),
-                    contentDescription = "Select time"
-                )
+                imageVector = Icons.Filled.Timer,
+                contentDescription = "Select date",
+                tint = MaterialTheme.colorScheme.onBackground)
+
             },
             modifier = modifier
                 .fillMaxWidth()
@@ -107,7 +108,7 @@ fun TimePickerPopupOnClick(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(20.dp)
-                        .shadow(elevation = 4.dp)
+                        .shadow(elevation = 2.dp)
                         .padding(16.dp)
                 ) {
                     Column(

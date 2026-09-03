@@ -36,8 +36,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
-
 fun convertMillisToDate(millis: Long): String {
     val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
     return formatter.format(Date(millis))
@@ -45,18 +43,19 @@ fun convertMillisToDate(millis: Long): String {
 
 @Composable
 fun DatePickerPopupOnClick(
-    modifier: Modifier = Modifier, label: String, value: Long?, onDateChange: (Long) -> Unit = {}
+    modifier: Modifier = Modifier,
+    label: String,
+    value: Long?,
+    onDateChange: (Long) -> Unit = {}
 ) {
     colorTheme({
         var showPopup by remember { mutableStateOf(false) }
 
-
         val popupState = rememberDatePickerState(initialSelectedDateMillis = value)
 
-        // Auto-close when date is selected
+        // Auto-close when date selected
         LaunchedEffect(popupState.selectedDateMillis) {
             popupState.selectedDateMillis?.let {
-                convertMillisToDate(it)
                 onDateChange(it)
                 showPopup = false
             }
@@ -65,49 +64,30 @@ fun DatePickerPopupOnClick(
         OutlinedTextField(
             value = value?.let { convertMillisToDate(it) } ?: "",
             onValueChange = { /* Read-only */ },
-            label =  { Text("$label") },
+            label = { Text("$label") },
             placeholder = { Text("MM/DD/YYYY") },
             readOnly = true,
             shape = RoundedCornerShape(20.dp),
             colors = TextFieldDefaults.colors(
-                // Container colors - From theme onSurface
                 focusedContainerColor = MaterialTheme.colorScheme.onPrimary,
                 unfocusedContainerColor = MaterialTheme.colorScheme.onPrimary,
                 disabledContainerColor = MaterialTheme.colorScheme.onPrimary,
-
-                // Indicator colors - From theme
                 focusedIndicatorColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedIndicatorColor = MaterialTheme.colorScheme.secondary,
                 disabledIndicatorColor = MaterialTheme.colorScheme.secondary,
-
-                // Text colors - From theme
                 focusedTextColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedTextColor = MaterialTheme.colorScheme.secondary,
-
-                // Label colors - From theme
                 focusedLabelColor = MaterialTheme.colorScheme.onBackground,
                 unfocusedLabelColor = MaterialTheme.colorScheme.secondary,
-
-                // Placeholder colors - From theme
                 focusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
                 unfocusedPlaceholderColor = MaterialTheme.colorScheme.secondary,
-
-                // Cursor color - From theme
                 cursorColor = MaterialTheme.colorScheme.onBackground
             ),
             trailingIcon = {
-                if (!showPopup) {
-                    Icon(
-                        painter = painterResource(R.drawable.calendar_unfocus),
-                        contentDescription = "Select date"
-                    )
-                } else {
-                    Icon(
-                        painter = painterResource(R.drawable.calendar_focus),
-                        contentDescription = "Select date"
-                    )
-                }
-
+                Icon(
+                    painter = painterResource(if (showPopup) R.drawable.calendar_focus else R.drawable.calendar_unfocus),
+                    contentDescription = "Select date"
+                )
             },
             modifier = modifier
                 .fillMaxWidth()
@@ -115,9 +95,7 @@ fun DatePickerPopupOnClick(
                     awaitEachGesture {
                         awaitFirstDown(pass = PointerEventPass.Initial)
                         val upEvent = waitForUpOrCancellation(pass = PointerEventPass.Initial)
-                        if (upEvent != null) {
-                            showPopup = true
-                        }
+                        if (upEvent != null) showPopup = true
                     }
                 }
         )
@@ -130,23 +108,19 @@ fun DatePickerPopupOnClick(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(20.dp)
-                        .shadow(elevation = 4.dp)
-                        .padding(16.dp)
+                        .shadow(elevation = 2.dp).padding(16.dp)
                 ) {
                     DatePicker(
                         state = popupState,
+                        showModeToggle = false,
                         colors = DatePickerDefaults.colors(
                             containerColor = MaterialTheme.colorScheme.surface,
-
                             titleContentColor = MaterialTheme.colorScheme.onBackground,
                             headlineContentColor = MaterialTheme.colorScheme.onBackground,
                             subheadContentColor = MaterialTheme.colorScheme.onBackground,
 
                             navigationContentColor = MaterialTheme.colorScheme.onBackground,
-
                             weekdayContentColor = MaterialTheme.colorScheme.onBackground,
-
                             yearContentColor = MaterialTheme.colorScheme.onBackground,
                             disabledYearContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
                             currentYearContentColor = MaterialTheme.colorScheme.secondary,
@@ -164,26 +138,21 @@ fun DatePickerPopupOnClick(
 
                             todayContentColor = MaterialTheme.colorScheme.secondary,
                             todayDateBorderColor = MaterialTheme.colorScheme.secondary,
-
-                            dayInSelectionRangeContentColor = MaterialTheme.colorScheme.onSecondary,
-                            dayInSelectionRangeContainerColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f),
-
-                            dividerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)),
-                        showModeToggle = false
+                            dividerColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.2f)
+                        )
                     )
                 }
             }
         }
-    }
-    )
-
+    })
 }
 
-@Preview(showBackground = true, name = "Docked Popup")
+@Preview(showBackground = true, name = "Small Popup")
 @Composable
 fun sds() {
-
-    DatePickerPopupOnClick(label ="", value = System.currentTimeMillis(), onDateChange = {})
-
+    DatePickerPopupOnClick(
+        label = "Expiry Date",
+        value = System.currentTimeMillis(),
+        onDateChange = { }
+    )
 }
-

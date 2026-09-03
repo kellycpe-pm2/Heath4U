@@ -148,6 +148,8 @@ fun AppNavGraph(
 
     LaunchedEffect(Unit) {
         vm_med.loadFromLocal(context)
+        vm_med.cleanUpOrphanedMedicines(context)
+
     }
 
     LaunchedEffect(Unit) {
@@ -162,11 +164,13 @@ fun AppNavGraph(
     val success by vm_med.success.collectAsStateWithLifecycle()
     var showManualDialog by remember { mutableStateOf(false) }
     val mutedConversations = remember { mutableStateListOf<String>() }
+    LaunchedEffect(Unit) {
 
-    vm_med.clearSuccessState()
-    vm_med.clearError()
-    vm_med.clearValidationErrors()
-    vm_med.clearSuccess()
+        vm_med.clearSuccessState()
+        vm_med.clearError()
+        vm_med.clearValidationErrors()
+        vm_med.clearSuccess()
+    }
 
     NavHost(
         navController = navController,
@@ -356,6 +360,17 @@ fun AppNavGraph(
         }
 
         composable("list") {
+
+            LaunchedEffect(Unit) {
+                // Make sure patientId is set
+                val patientId = CurrentSession.patientId
+
+                if (patientId != null && patientId > 0) {
+                    vm_med.loadFromLocal(context)
+                } else {
+                }
+            }
+
             MedicineListScreen(
                 vm = vm_med,
                 onAddClick = { navController.navigate("add") },
@@ -491,18 +506,6 @@ fun AppNavGraph(
             }
         }
 
-        /*composable("history") {
-            HistoryScreen(
-                medicines = viewModel.medicines.collectAsState().value,
-                onItemClick = { regNo ->
-                    navController.navigate("detail/$regNo")
-                },
-                onClearHistory = {
-                    // 清空历史逻辑
-                }
-            )
-        }*/
-
         composable(
             route = "detail/{barcode}",
             arguments = listOf(
@@ -535,21 +538,6 @@ fun AppNavGraph(
                 }
             )
         }
-
-        /*composable(
-            route = "add_reminder/{regNo}",
-            arguments = listOf(navArgument("regNo") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val regNo = backStackEntry.arguments?.getString("regNo") ?: ""
-            val medicine = viewModel.medicines.value.find { it.regNo == regNo }
-                ?: viewModel.searchResult.collectAsState().value
-
-            AddReminderScreen(
-                onBack = { navController.popBackStack() },
-                onSave = {
-                }
-            )
-        }*/
 
 
         composable(
@@ -828,8 +816,6 @@ fun AppNavGraph(
 
         composable("doctor") {
             currentUserRole = "doctor"
-            // ⚠️ SET THIS FROM DOCTOR LOGIN — NOT HARDCODED!
-            // currentUserId = 2  // ❌ REMOVED — should come from login!
             DoctorDashboardScreen(
                 onPatientClick = { pId, conv ->
                     navController.navigate("adherence_statistics/$pId")
@@ -845,7 +831,6 @@ fun AppNavGraph(
                 onSettingClick = {
                     navController.navigate("doctor_settings")
                 },
-                onScanClick = {},
                 onProfileClick = {
                     navController.navigate("doctor_settings")
                 }

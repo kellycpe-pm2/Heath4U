@@ -52,7 +52,7 @@ import com.example.healt4u.data.MedicineData
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 @Composable
-fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) -> Unit, onEdit: (Medicine) -> Unit,onChangeStock :(Int)-> Unit={}) {
+fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) -> Unit, onEdit: (Medicine) -> Unit,onChangeStock :(Medicine)-> Unit={}) {
     var expand by remember{ mutableStateOf(false) }
     colorTheme {
         val progress = if (med.quantity > 0) {
@@ -136,7 +136,7 @@ fun MedicineRow(med: Medicine, onClick: (Medicine) -> Unit, onDel: (Medicine) ->
                         leadingIcon = {Icon(Icons.Filled.Inventory,"stock",tint= MaterialTheme.colorScheme.secondary) },
                         modifier= Modifier.padding(15.dp),
                         onClick = {
-                            onChangeStock(med.quantityLeft!!)
+                            onChangeStock(med)
                             expand = false }
                     )
 

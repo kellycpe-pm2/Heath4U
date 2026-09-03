@@ -6,7 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,12 +15,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-
 @Composable
 fun TimingButton(
     text: String,
     isSelected: Boolean,
-    id : Int,
+    id: Int,
     onClick: () -> Unit
 ) {
     val selectedColor = Color(0xFF70BCFD)
@@ -33,14 +32,14 @@ fun TimingButton(
         ),
         border = if (isSelected) BorderStroke(2.dp, selectedColor) else BorderStroke(1.dp, unselectedColor),
         modifier = Modifier
-            .width(140.dp)
-            .height(90.dp) // Height to fit the icon + text
+            .width(150.dp)
+            .height(90.dp)
             .clickable { onClick() }
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(8.dp),
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -48,8 +47,8 @@ fun TimingButton(
                 painter = painterResource(id = id),
                 contentDescription = "Medication timing icon",
                 modifier = Modifier
-                    .size(width = 56.dp, height = 17.dp)
-                    .padding(bottom = 8.dp),
+                    .size(40.dp)
+                    .padding(bottom = 6.dp),
                 contentScale = ContentScale.Fit
             )
 

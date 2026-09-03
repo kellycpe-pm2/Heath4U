@@ -20,6 +20,27 @@ fun getCategoryColor(category: String): Color {
     }
 }
 
+fun getQuantityLeftColor(quantity: Int): Color {
+    return when {
+        quantity <= 0 -> Color(0xFFE53935)
+        quantity <= 5 -> Color(0xFFFF5722)
+        quantity <= 10 -> Color(0xFFFF9800)
+        quantity <= 25 -> Color(0xFFFFC107)
+        else -> Color(0xFF4CAF50)
+    }
+}
+
+fun getQuantityLeftEmoji(quantity: Int): String {
+    return when {
+        quantity <= 0 -> "📦"
+        quantity <= 5 -> "⚠️"
+        quantity <= 10 -> "⚡"
+        quantity <= 25 -> "📊"
+        else -> "✅"
+    }
+}
+
+
 fun formatDate(timestamp: Long?): String {
     if (timestamp == null) return "N/A"
     val date = Date(timestamp)

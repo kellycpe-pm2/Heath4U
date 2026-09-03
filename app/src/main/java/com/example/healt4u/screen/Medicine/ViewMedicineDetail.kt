@@ -1,257 +1,588 @@
 package com.example.healt4u.screen.Medicine
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.LocalOffer
-import androidx.compose.material.icons.filled.Medication
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Restaurant
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.data.MedicineData
 import com.example.healt4u.model.Medicine
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import com.example.healt4u.screen.componentUI.button
+import java.text.SimpleDateFormat
+import java.util.*
 
+
+
+
+fun getExpiryStatus(expiredDate: Long?): String {
+    if (expiredDate == null) return "No expiry date"
+    val daysLeft = (expiredDate - System.currentTimeMillis()) / (1000 * 60 * 60 * 24)
+    return when {
+        daysLeft < 0 -> "Expired! 🚫"
+        daysLeft < 7 -> "Expires in ${daysLeft}d ⚠️"
+        daysLeft < 30 -> "Expires in ${daysLeft}d"
+        else -> "Valid ✅"
+    }
+}
+
+
+// ===================== MAIN SCREEN =====================
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MedicineDetailScreen(
     medicine: Medicine?,
     onBackClick: () -> Unit,
     onEditClick: () -> Unit
 ) {
+    val stock = medicine?.quantityLeft ?: 0
+    val total = medicine?.quantity ?: 0
+    val stockPercentage = if (total > 0) (stock.toFloat() / total) * 100 else 0f
+
     colorTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Medicine Details",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = " ",
-                        fontSize = 48.sp
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "Medicine Details",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Color.White,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                                .padding(end=48.dp)
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBackClick) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
                     )
-                    Text(
-                        text = medicine?.name_medicine?:"",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                )
             }
+        ) { innerPadding ->
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFF5F7FA),
+                                Color(0xFFFFFFFF)
+                            )
+                        )
+                    )
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
-                Column(
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ===================== HEADER CARD =====================
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            clip = false
+                        ),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
                 ) {
-                    DetailRow(
-                        icon = Icons.Filled.Category,
-                        label = "Category",
-                        value = medicine?.category?: "${MedicineData.categories.first()}"
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.secondary,
+                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.8f)
+                                    )
+                                )
+                            )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                        ) {
+                            // Medicine icon + name
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "💊",
+                                            fontSize = 28.sp
+                                        )
+                                    }
+                                }
+
+                                Column(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = medicine?.name_medicine ?: "—",
+                                        color = Color.White,
+                                        fontSize = 24.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ===================== STOCK PROGRESS CARD =====================
+                AnimatedContent(
+                    targetState = medicine,
+                    transitionSpec = {
+                        fadeIn() + slideInVertically() togetherWith
+                                fadeOut() + slideOutVertically()
+                    }
+                ) { med ->
+                    if (med != null) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(
+                                    elevation = 4.dp,
+                                    shape = RoundedCornerShape(16.dp),
+                                    clip = false
+                                ),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color.White
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = getQuantityLeftEmoji(stock),
+                                            fontSize = 20.sp
+                                        )
+                                        Text(
+                                            text = "Stock Status",
+                                            fontSize = 16.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFF333333)
+                                        )
+                                    }
+
+                                    Text(
+                                        text = "$stock / $total",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = getQuantityLeftColor(stock)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Progress bar
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(Color(0xFFE8E8E8))
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(stockPercentage / 100f)
+                                            .fillMaxHeight()
+                                            .background(
+                                                brush = Brush.horizontalGradient(
+                                                    colors = listOf(
+                                                        getQuantityLeftColor(stock),
+                                                        getQuantityLeftColor(stock).copy(alpha = 0.7f)
+                                                    )
+                                                )
+                                            )
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(
+                                        text = when {
+                                            stock <= 0 -> "Out of Stock"
+                                            stock <= 5 -> "Critical - Reorder Now!"
+                                            stock <= 10 -> "Low Stock"
+                                            stock <= 25 -> "Medium Stock"
+                                            else -> "In Stock"
+                                        },
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = getQuantityLeftColor(stock)
+                                    )
+
+                                    Text(
+                                        text = "${String.format("%.0f", stockPercentage)}%",
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF757575)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // ===================== DETAILS GRID =====================
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 4.dp,
+                            shape = RoundedCornerShape(16.dp),
+                            clip = false
+                        ),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
                     )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp)
+                    ) {
+                        // Section title
+                        Text(
+                            text = "📋 Information",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1A1A2E),
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        // Info items in 2 columns
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            InfoItem(
+                                icon = Icons.Default.Category,
+                                label = "Category",
+                                value = medicine?.category ?: "—",
+                                iconColor = Color(0xFF1976D2)
+                            )
 
-                    DetailRow(
-                        icon = Icons.Filled.Medication,
-                        label = "Dosage",
-                        value = "${medicine?.dosage} mg"
-                    )
+                            Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            InfoItem(
+                                icon = Icons.Default.Medication,
+                                label = "Dosage",
+                                value = "${medicine?.dosage ?: 0} mg",
+                                iconColor = Color(0xFF7B1FA2)
+                            )
 
-                    DetailRow(
-                        icon = Icons.Filled.Inventory,
-                        label = "Quantity",
-                        value = "${medicine?.quantity}"
-                    )
+                            Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
 
-                    medicine?.quantityLeft?.let { left ->
-                        if (left > 0) {
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            DetailRow(
-                                icon = Icons.Filled.LocalOffer,
-                                label = "Quantity Left",
-                                value = "${left}",
-                                valueColor = if (left < 10) Color.Red else MaterialTheme.colorScheme.onSurface
+                            InfoItem(
+                                icon = Icons.Default.Inventory,
+                                label = "Total Quantity",
+                                value = "${medicine?.quantity ?: 0}",
+                                iconColor = Color(0xFF00695C)
+                            )
+
+                            Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+
+                            InfoItem(
+                                icon = Icons.Default.CalendarToday,
+                                label = "Expiry Date",
+                                value = formatDate(medicine?.expiredDate),
+                                valueColor = getExpiryColor(medicine?.expiredDate),
+                                iconColor = getExpiryColor(medicine?.expiredDate),
+                                subtitle = getExpiryStatus(medicine?.expiredDate)
+                            )
+
+                            Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+
+                            InfoItem(
+                                icon = Icons.Default.Restaurant,
+                                label = "When to Take",
+                                value = if (medicine?.afterEat == true) "After Eating 🍽️" else "Before Eating ⏰",
+                                valueColor = if (medicine?.afterEat == true) Color(0xFF4CAF50) else Color(0xFFFF9800),
+                                iconColor = if (medicine?.afterEat == true) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                            )
+
+                            Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+
+                            InfoItem(
+                                icon = Icons.Default.Star,
+                                label = "Priority",
+                                value = "${(medicine?.priority ?: 0f).toInt()} / 5 ⭐",
+                                valueColor = getPriorityColor(medicine?.priority ?: 0f),
+                                iconColor = getPriorityColor(medicine?.priority ?: 0f)
                             )
                         }
                     }
+                }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                    DetailRow(
-                        icon = Icons.Filled.CalendarToday,
-                        label = "Expired Date",
-                        value = formatDate(medicine?.expiredDate),
-                        valueColor = getExpiryColor(medicine?.expiredDate)
-                    )
+                // ===================== REMINDER & CREATED =====================
+                if (medicine?.remark?.isNotEmpty() == true ||
+                    medicine?.reminderTime?.isNotEmpty() == true ||
+                    medicine?.timesPerDay != null) {
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 4.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                clip = false
+                            ),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color.White
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp)
+                        ) {
+                            Text(
+                                text = "⏰ Reminder Settings",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF1A1A2E),
+                                modifier = Modifier.padding(bottom = 12.dp)
+                            )
 
-                    DetailRow(
-                        icon = Icons.Filled.Restaurant,
-                        label = "When to Take",
-                        value = if (medicine?.afterEat == true) "After Eating" else "Before Eating",
-                        valueColor = if (medicine?.afterEat == true) Color(0xFF4CAF50) else Color(0xFFFF9800)
-                    )
+                            medicine?.reminderTime?.takeIf { it.isNotEmpty() }?.let { time ->
+                                InfoItem(
+                                    icon = Icons.Default.Alarm,
+                                    label = "First Reminder",
+                                    value = time,
+                                    iconColor = Color(0xFFE65100)
+                                )
+                            }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                            medicine?.timesPerDay?.let { times ->
+                                if (medicine.reminderTime?.isNotEmpty() == true) {
+                                    Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                                }
+                                InfoItem(
+                                    icon = Icons.Default.Repeat,
+                                    label = "Times Per Day",
+                                    value = "$times time(s)",
+                                    iconColor = Color(0xFF1565C0)
+                                )
+                            }
 
-                    DetailRow(
-                        icon = Icons.Filled.Flag,
-                        label = "Priority",
-                        value = "${(medicine?.priority ?: 0f).toInt()} / 10",
-                        valueColor = getPriorityColor(medicine?.priority ?: 0f)
-                    )
+                            medicine?.remark?.takeIf { it.isNotEmpty() }?.let { remark ->
+                                if (medicine.reminderTime?.isNotEmpty() == true || medicine.timesPerDay != null) {
+                                    Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+                                }
+                                InfoItem(
+                                    icon = Icons.Default.Note,
+                                    label = "Remark",
+                                    value = remark,
+                                    iconColor = Color(0xFF4E342E),
+                                    multiline = true
+                                )
+                            }
 
-                    medicine?.remark?.takeIf { it.isNotEmpty() }?.let { remark ->
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        DetailRow(
-                            icon = Icons.Filled.Description,
-                            label = "Remark",
-                            value = remark,
-                            isMultiline = true
+                            Divider(color = Color(0xFFF0F0F0), thickness = 1.dp)
+
+                            InfoItem(
+                                icon = Icons.Default.DateRange,
+                                label = "Created Date",
+                                value = formatDate(medicine?.createDate),
+                                iconColor = Color(0xFF455A64)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ===================== BUTTONS =====================
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = onEditClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Edit",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
 
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    DetailRow(
-                        icon = Icons.Filled.Create,
-                        label = "Created Date",
-                        value = formatDate(medicine?.createDate)
-                    )
-
+                    Button(
+                        onClick = onBackClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF696969),
+                            contentColor = Color(0xFFFFFFFF)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Back",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(16.dp))
+// ===================== INFO ITEM COMPONENT =====================
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                button(
-                    modifier = Modifier.weight(1f),
-                    text = " Edit",
-                    onClick = onEditClick
+@Composable
+fun InfoItem(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    valueColor: Color = Color(0xFF1A1A2E),
+    iconColor: Color = Color(0xFF1976D2),
+    subtitle: String? = null,
+    multiline: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = iconColor.copy(alpha = 0.12f),
+            modifier = Modifier.size(36.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = label,
+                    tint = iconColor,
+                    modifier = Modifier.size(18.dp)
                 )
+            }
+        }
 
-                button(
-                    modifier = Modifier.weight(1f),
-                    text = " Back",
-                    onClick = onBackClick
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color = Color(0xFF757575),
+                fontWeight = FontWeight.Medium
+            )
+
+            Text(
+                text = value,
+                fontSize = if (multiline) 14.sp else 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = valueColor,
+                maxLines = if (multiline) Int.MAX_VALUE else 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            subtitle?.let {
+                Text(
+                    text = it,
+                    fontSize = 11.sp,
+                    color = valueColor,
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
     }
 }
-
-@Composable
-fun DetailRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String,
-    valueColor: Color = MaterialTheme.colorScheme.secondary,
-    isMultiline: Boolean = false
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.secondary
-            )
-        }
-
-        if (isMultiline) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = valueColor,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 16.dp)
-            )
-        } else {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = valueColor,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-

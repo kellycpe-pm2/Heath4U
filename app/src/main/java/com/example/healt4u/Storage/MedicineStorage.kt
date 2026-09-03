@@ -161,35 +161,6 @@ suspend fun getMedicinesByPatientId(
 }
 
 
-suspend fun getMedicinesByIC(
-    icValue: String = "1"
-): List<Medicine> {
-
-    return try {
-
-        withContext(Dispatchers.IO) {
-
-            val result = supabase
-                .from("medicine")
-                .select {
-                    filter {
-                        eq(
-                            column = "ic",
-                            value = icValue
-                        )
-                    }
-                }
-
-            result.decodeList<Medicine>()
-        }
-
-    } catch (e: Exception) {
-
-
-        emptyList()
-    }
-}
-
 
 
 suspend fun update_Medicine(

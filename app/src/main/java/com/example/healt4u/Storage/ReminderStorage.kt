@@ -6,7 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Objects.isNull
 
-suspend fun getReminderLogsForDate(date: String): List<ReminderLog> {
+suspend fun getReminderLogsForDate(date: String, patientId: Int): List<ReminderLog> {
     return try {
         withContext(Dispatchers.IO) {
             supabase
@@ -14,6 +14,7 @@ suspend fun getReminderLogsForDate(date: String): List<ReminderLog> {
                 .select {
                     filter {
                         eq("date", date)
+                        eq("patient_id", patientId)
                     }
                 }
                 .decodeList<ReminderLog>()
@@ -59,6 +60,7 @@ suspend fun upsertReminderLogs(logs: List<ReminderLog>): Boolean {
 /*
 create table if not exists reminder_logs (
     id text primary key,
+    patient_id int not null default 0,
     medicine_id int not null,
     medicine_name text not null,
     date text not null,
@@ -68,4 +70,5 @@ create table if not exists reminder_logs (
 
 alter table medicine add column if not exists reminder_time text default '08:00';
 alter table medicine add column if not exists times_per_day int default 1;
+alter table medicine add column if not exists patient_id int;
 */

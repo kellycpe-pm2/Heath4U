@@ -7,6 +7,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healt4u.Storage.delete_Medicine
 import com.example.healt4u.Storage.getAllMedicines
+import com.example.healt4u.Storage.getMedicinesByPatientId
+import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.Storage.insertSingleMedicine
 import com.example.healt4u.Storage.update_Medicine
 import com.example.healt4u.data.MedicineData
@@ -374,8 +376,7 @@ class ViewModelMedicine(
             name.isBlank() -> errors["name"] = "Medicine name is required"
             name.length < 2 -> errors["name"] = "Name must be at least 2 characters"
             name.length > 100 -> errors["name"] = "Name must be less than 100 characters"
-            //repeat name x
-
+            // repeat name x
         }
 
         when {
@@ -514,7 +515,8 @@ class ViewModelMedicine(
                     priority = priority,
                     ic = "1",
                     reminderTime = _input_reminderTime.value,
-                    timesPerDay = _input_timesPerDay.value
+                    timesPerDay = _input_timesPerDay.value,
+                    patientId = com.example.healt4u.Session.CurrentSession.patientId
                 )
 
                 val success = insertMedicine(context, medicine)
@@ -569,7 +571,8 @@ class ViewModelMedicine(
                 priority = priority,
                 ic = "1",
                 reminderTime = _input_reminderTime.value,
-                timesPerDay = _input_timesPerDay.value
+                timesPerDay = _input_timesPerDay.value,
+                patientId = com.example.healt4u.Session.CurrentSession.patientId
             )
 
             addMedicineBoth(medicine, context)
@@ -607,7 +610,7 @@ class ViewModelMedicine(
     fun syncWithServer(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val serverMedicines = getAllMedicines()
+                val serverMedicines = getMedicinesByPatientId(CurrentSession.patientId)
                 if (serverMedicines.isNotEmpty()) {
                     saveMedicines(context, serverMedicines)
                     _medicines.value = serverMedicines
@@ -655,7 +658,7 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                val cloudMedicines = getAllMedicines()
+                val cloudMedicines = getMedicinesByPatientId(CurrentSession.patientId)
                 if (cloudMedicines.isEmpty()) {
                     _error.value = "No medicines in cloud to update"
                     _isLoading.value = false
@@ -788,7 +791,7 @@ class ViewModelMedicine(
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val serverMedicines = getAllMedicines()
+                val serverMedicines = getMedicinesByPatientId(CurrentSession.patientId)
                 _medicines.value = serverMedicines
                 _successMessage.value = "Loaded from cloud!"
             } catch (e: Exception) {

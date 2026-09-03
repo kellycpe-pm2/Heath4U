@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,7 +35,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
+import com.example.healt4u.model.MedicineAlert
 import com.example.healt4u.model.ReminderLog
+import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import kotlinx.coroutines.launch
 
@@ -50,7 +53,9 @@ fun HomeDashboardScreen(
     onChatClick:()-> Unit,
     onAppointmentClick:()-> Unit,
     onAdherenceClick:()-> Unit,
-    onScanClick :()-> Unit
+    onScanClick :()-> Unit,
+    onProfileClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
@@ -65,8 +70,8 @@ fun HomeDashboardScreen(
         vm.loadTodaySchedule(context, patientId)
     }
 
-    LaunchedEffect(schedule) {
-        if (schedule.isNotEmpty()) {
+    LaunchedEffect(schedule){
+        if(schedule.isNotEmpty()){
             vmFamily?.checkOverdueAndCreateAlerts(context, patientId)
         }
     }
@@ -100,7 +105,7 @@ fun HomeDashboardScreen(
                         text = "HEALTH4U",
                         style = MaterialTheme.typography.headlineSmall
                     )
-                    IconButton(onClick = { notImplemented("Profile") }) {
+                    IconButton(onClick = onProfileClick) {
                         Icon(
                             Icons.Filled.Person,
                             contentDescription = "Profile",
@@ -340,7 +345,7 @@ fun HomeDashboardScreen(
                     label = "Settings",
                     icon = Icons.Filled.Settings,
                     selected = false,
-                    onClick = { notImplemented("Settings") }
+                    onClick = onSettingsClick
                 )
             }
 
@@ -363,7 +368,7 @@ fun HomeDashboardScreen(
                 }
             }
 
-            SnackbarHost(
+            AppSnackbarHost(
                 hostState = snackbarHostState,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 100.dp)
             )

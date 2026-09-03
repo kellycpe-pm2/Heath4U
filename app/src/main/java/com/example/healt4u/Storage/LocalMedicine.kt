@@ -2,12 +2,16 @@
 package com.example.healt4u.data.local
 
 import android.content.Context
+import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.model.Medicine
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
-private const val FILE_NAME = "medicines.json"
+// One file PER PATIENT (was a single shared "medicines.json" for the whole
+// device before — meaning every account saw whichever patient's data was
+// cached last). CurrentSession.patientId is set at login/switch-account.
+private fun fileName(): String = "medicines_${CurrentSession.patientId}.json"
 
 // Create Json instance with proper configuration
 private val json = Json {
@@ -19,7 +23,7 @@ private val json = Json {
 fun saveMedicines(context: Context, medicines: List<Medicine>) {
     try {
         val jsonString = json.encodeToString(medicines)
-        context.openFileOutput(FILE_NAME, Context.MODE_PRIVATE).use {
+        context.openFileOutput(fileName(), Context.MODE_PRIVATE).use {
             it.write(jsonString.toByteArray())
         }
     } catch (e: Exception) {
@@ -28,7 +32,7 @@ fun saveMedicines(context: Context, medicines: List<Medicine>) {
 }
 
 fun load_Medicines(context: Context): List<Medicine> {
-    val file = File(context.filesDir, FILE_NAME)
+    val file = File(context.filesDir, fileName())
     if (!file.exists()) return emptyList() // first run — file not created yet
     return try {
         Json.decodeFromString(file.readText())
@@ -96,7 +100,7 @@ fun deleteMedicine(context: Context, medicineId: Int): Boolean {
 
 fun deleteAllMedicines(context: Context): Boolean {
     return try {
-        val file = File(context.filesDir, FILE_NAME)
+        val file = File(context.filesDir, fileName())
         file.delete()
         true
     } catch (e: Exception) {

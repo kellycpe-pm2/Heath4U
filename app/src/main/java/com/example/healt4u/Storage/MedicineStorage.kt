@@ -128,6 +128,39 @@ suspend fun getAllMedicines(): List<Medicine> {
 }
 
 
+suspend fun getMedicinesByPatientId(
+    patientId: Int
+): List<Medicine> {
+
+    return try {
+
+        withContext(Dispatchers.IO) {
+
+            val result = supabase
+                .from("medicine")
+                .select {
+                    filter {
+                        eq(
+                            column = "patient_id",
+                            value = patientId
+                        )
+                    }
+                    order(
+                        column = "id",
+                        order = Order.ASCENDING
+                    )
+                }
+
+            result.decodeList<Medicine>()
+        }
+
+    } catch (e: Exception) {
+
+        emptyList()
+    }
+}
+
+
 suspend fun getMedicinesByIC(
     icValue: String = "1"
 ): List<Medicine> {

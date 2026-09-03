@@ -14,9 +14,9 @@ import androidx.compose.ui.unit.dp
 
 // The app's custom color theme doesn't define inverseSurface/inverseOnSurface,
 // so the default Material3 SnackbarHost falls back to low-contrast colors
-// (blue-ish text on a dark background — hard to read, especially for elderly
-// users). This forces an explicit, always-legible dark-navy/white style
-// everywhere a snackbar is shown, instead of relying on the ambient theme.
+// (blue-ish text on a dark background — hard to read). This forces an
+// explicit, always-legible dark-navy/white style everywhere a snackbar is
+// shown, instead of relying on the ambient theme.
 private val SnackbarBackground = Color(0xFF1A1A2E)
 private val SnackbarText = Color.White
 
@@ -35,8 +35,9 @@ fun AppSnackbarHost(
             containerColor = SnackbarBackground,
             contentColor = SnackbarText,
             actionContentColor = Color(0xFF7FB6FF),
-        ) {
-            Text(data.visuals.message, color = SnackbarText, fontWeight = FontWeight.Medium)
-        }
+            content = {
+                Text(data.visuals.message, color = SnackbarText, fontWeight = FontWeight.Medium)
+            }
+        )
     }
 }

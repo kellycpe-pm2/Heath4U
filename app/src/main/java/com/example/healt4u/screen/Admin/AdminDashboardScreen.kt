@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
+import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
@@ -40,6 +41,7 @@ private val ScreenBlue = Color(0xFFE6F8FC)
 fun AdminDashboardScreen(
     onDoctorsClick: () -> Unit = {},
     onHospitalsClick: () -> Unit = {},
+    onStatisticsClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
     onBack: (() -> Unit)? = null
 ) {
@@ -89,6 +91,16 @@ fun AdminDashboardScreen(
                     icon = Icons.Default.Business,
                     iconBg = Color(0xFFE8F5E9),
                     onClick = onHospitalsClick
+                )
+            }
+
+            item {
+                DashboardCard(
+                    title = "Dashboard Statistics",
+                    subtitle = "View users, missed doses, and system alerts",
+                    icon = Icons.Default.Analytics,
+                    iconBg = Color(0xFFFFF3E0),
+                    onClick = onStatisticsClick
                 )
             }
 

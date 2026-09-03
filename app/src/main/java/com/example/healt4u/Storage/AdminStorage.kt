@@ -4,11 +4,55 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.example.healt4u.model.Doctor
+import com.example.healt4u.model.FamilyAlert
 import com.example.healt4u.model.Hospital
+import com.example.healt4u.model.PatientUser
 import com.example.healt4u.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+data class AdminDashboardStatistics(
+    val patients: Int = 0,
+    val caregiverLinks: Int = 0,
+    val doctors: Int = 0,
+    val hospitals: Int = 0,
+    val missedDosesToday: Int = 0,
+    val unresolvedAlerts: Int = 0
+)
+
+suspend fun getAdminDashboardStatistics(): AdminDashboardStatistics {
+    return try {
+        withContext(Dispatchers.IO) {
+            val patients = SupabaseClient.supabase.from("Patient")
+                .select().decodeList<PatientUser>()
+            val caregiverLinks = SupabaseClient.supabase.from("caregivers")
+                .select().decodeList<com.example.healt4u.model.CaregiverLink>()
+            val doctors = SupabaseClient.supabase.from("doctors")
+                .select().decodeList<Doctor>()
+            val hospitals = SupabaseClient.supabase.from("hospitals")
+                .select().decodeList<Hospital>()
+            val alerts = SupabaseClient.supabase.from("family_alerts")
+                .select().decodeList<FamilyAlert>()
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+            AdminDashboardStatistics(
+                patients = patients.size,
+                caregiverLinks = caregiverLinks.size,
+                doctors = doctors.size,
+                hospitals = hospitals.size,
+                missedDosesToday = alerts.count { it.date == today },
+                unresolvedAlerts = alerts.count { it.status != "RESOLVED" }
+            )
+        }
+    } catch (e: Exception) {
+        Log.e("AdminStorage", "getAdminDashboardStatistics FAILED", e)
+        AdminDashboardStatistics()
+    }
+}
 
 // ===== HOSPITALS =====
 

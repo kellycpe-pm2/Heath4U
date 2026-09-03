@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import androidx.annotation.RequiresPermission
 import com.example.healt4u.Storage.getReminderLogsForDate
+import com.example.healt4u.Storage.upsertReminderLogs
 import com.example.healt4u.data.local.load_Medicines
 import com.example.healt4u.data.local.loadReminderLogsForDate
 import com.example.healt4u.data.local.upsertReminderLogsLocal
@@ -66,6 +67,15 @@ object ReminderEngine {
             allItems = (merged + cloudAppointments).distinctBy { it.id }
             allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
             upsertReminderLogsLocal(context, allItems)
+        }
+
+        // Auto-missed status must survive this refresh.  Family mode runs in a
+        // separate pass and reads persisted logs, so keeping this only in the
+        // returned in-memory schedule makes auto-missed doses invisible there.
+        val autoMissed = allItems.filter { it.medicineId != -1 && it.status == "MISSED" }
+        if (autoMissed.isNotEmpty()) {
+            upsertReminderLogsLocal(context, autoMissed)
+            upsertReminderLogs(autoMissed)
         }
 
         // Only real medicine doses get a "time to take" alarm — appointments

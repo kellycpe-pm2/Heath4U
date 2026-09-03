@@ -1,5 +1,6 @@
 package com.example.healt4u.ViewModel
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
 import androidx.lifecycle.AndroidViewModel
@@ -20,6 +21,7 @@ import com.example.healt4u.data.local.upsertReminderLogLocal
 import com.example.healt4u.model.CaregiverLink
 import com.example.healt4u.model.FamilyAlert
 import com.example.healt4u.Storage.upsertReminderLog
+import com.example.healt4u.notification.ReminderEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -178,6 +180,7 @@ class FamilyModeViewModel(
         }
     }
 
+    @SuppressLint("MissingPermission")
     fun checkOverdueAndCreateAlerts(context: Context, patientUserId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
@@ -185,10 +188,14 @@ class FamilyModeViewModel(
                 val date = todayDate()
                 val now = Calendar.getInstance()
                 val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)
-                val graceMinutes = 5
 
-                val logs = loadReminderLogsForDate(context, date)
-                val existingAlerts = loadFamilyAlerts(context).filter { it.date == date }
+                // Refresh first so overdue PENDING logs are converted to the
+                // same 30-minute MISSED state used by Today's Schedule.  The
+                // engine also persists that state for subsequent family-mode
+                // loads.
+                val logs = ReminderEngine.refresh(context, date, patientUserId).schedule
+                val allStoredAlerts = loadFamilyAlerts(context)
+                val existingAlerts = allStoredAlerts.filter { it.date == date }
                 val existingAlertKeys = existingAlerts.map { "${it.medicineName}_${it.scheduledTime}" }.toSet()
 
                 var caregivers = _caregivers.value
@@ -205,10 +212,10 @@ class FamilyModeViewModel(
 
                 val newAlerts = mutableListOf<FamilyAlert>()
                 for (log in logs) {
-                    if (log.status != "PENDING" && log.status != "MISSED") continue
+                    if (log.medicineId == -1 || (log.status != "PENDING" && log.status != "MISSED")) continue
                     val parts = log.time.split(":")
                     val slotMinutes = (parts.getOrNull(0)?.toIntOrNull() ?: 8) * 60 + (parts.getOrNull(1)?.toIntOrNull() ?: 0)
-                    if (log.status == "PENDING" && nowMinutes - slotMinutes <= graceMinutes) continue
+                    if (log.status == "PENDING" && nowMinutes - slotMinutes <= 30) continue
 
                     val key = "${log.medicineName}_${log.time}"
                     if (key in existingAlertKeys) continue
@@ -233,7 +240,7 @@ class FamilyModeViewModel(
                 }
 
                 if (newAlerts.isNotEmpty()) {
-                    val allAlerts = _alerts.value + newAlerts
+                    val allAlerts = (allStoredAlerts + newAlerts).distinctBy { it.id }
                     _alerts.value = allAlerts
                     saveFamilyAlerts(context, allAlerts)
                     upsertFamilyAlertsCloud(newAlerts)

@@ -55,7 +55,8 @@ fun DoctorDashboardScreen(
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val scheduleCardMinHeight = (screenHeightDp * 0.45f).dp
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedStatus by remember { mutableStateOf("AVAILABLE") }
+
+    var selectedStatus by remember { mutableStateOf("available") }
 
     var patients by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var isLoadingPatients by remember { mutableStateOf(true) }
@@ -198,33 +199,45 @@ fun DoctorDashboardScreen(
                                 modifier = Modifier.align(Alignment.CenterHorizontally)
                             )
                             Spacer(Modifier.height(10.dp))
+
                             val statusPairs = listOf(
-                                "AVAILABLE" to Color(0xFF4CAF50),
-                                "BUSY" to Color(0xFFFF5722),
-                                "OFFLINE" to Color(0xFF9E9E9E)
+                                "available" to Color(0xFF4CAF50),
+                                "busy" to Color(0xFFFF5722),
+                                "offline" to Color(0xFF9E9E9E)
                             )
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceEvenly
                             ) {
-                                statusPairs.forEach { (status, statusColor) ->
+                                statusPairs.forEach { (statusValue, statusColor) ->
                                     Row(
                                         modifier = Modifier.selectable(
-                                            selected = selectedStatus == status,
-                                            onClick = { selectedStatus = status; onChangeStatus(status) },
+                                            selected = selectedStatus == statusValue,
+                                            onClick = {
+                                                selectedStatus = statusValue
+                                                onChangeStatus(statusValue)
+                                            },
                                             role = Role.RadioButton
                                         ),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         RadioButton(
-                                            selected = selectedStatus == status,
-                                            onClick = { selectedStatus = status; onChangeStatus(status) },
+                                            selected = selectedStatus == statusValue,
+                                            onClick = {
+                                                selectedStatus = statusValue
+                                                onChangeStatus(statusValue)
+                                            },
                                             colors = RadioButtonDefaults.colors(
                                                 selectedColor = statusColor,
                                                 unselectedColor = statusColor
                                             )
                                         )
-                                        Text(text = status, color = statusColor, fontSize = 14.sp)
+                                        Text(
+                                            text = statusValue.uppercase(),
+                                            color = statusColor,
+                                            fontSize = 12.sp
+                                        )
                                     }
                                 }
                             }
@@ -390,8 +403,17 @@ private fun DashboardTile(
 @Composable
 private fun BottomNavItem(label: String, icon: ImageVector, selected: Boolean, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.clickable { onClick() }) {
-        Icon(icon, contentDescription = label, tint = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
-        Text(text = label, fontSize = 10.sp, color = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(
+            icon,
+            contentDescription = label,
+            tint = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

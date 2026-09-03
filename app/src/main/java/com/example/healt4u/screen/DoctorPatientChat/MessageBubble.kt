@@ -45,13 +45,19 @@ fun MessageBubble(
     isFromCurrentUser: Boolean,
     userRole: String,
     otherPersonName: String = "",
-    onAvatarClick:(Int)-> Unit,
-    onDeleteClick:()-> Unit
-){
+    onAvatarClick: (Int) -> Unit,
+    onDeleteClick: () -> Unit
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(color = MaterialTheme.colorScheme.primary).padding(horizontal = 0.dp, vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(color = MaterialTheme.colorScheme.primary)
+            .padding(horizontal = 0.dp, vertical = 8.dp),
         horizontalArrangement = if (isFromCurrentUser) {
-            Arrangement.End } else { Arrangement.Start }
+            Arrangement.End
+        } else {
+            Arrangement.Start
+        }
     ) {
         val canClickAvatar = (userRole == "doctor") && !isFromCurrentUser
 
@@ -60,7 +66,11 @@ fun MessageBubble(
             UserAvatar(
                 name = avatarName,
                 canClick = canClickAvatar,
-                onClick = {if (canClickAvatar) onAvatarClick(message.senderId) else null},
+                onClick = {
+                    if (canClickAvatar) {
+                        onAvatarClick(message.senderId)
+                    }
+                },
                 modifier = Modifier.padding(8.dp)
             )
         }
@@ -68,13 +78,15 @@ fun MessageBubble(
         Column(
             modifier = Modifier
                 .wrapContentWidth()
-                .widthIn(min = 50.dp, max = if (isFromCurrentUser){280.dp} else {250.dp})
+                .widthIn(min = 50.dp, max = if (isFromCurrentUser) 280.dp else 250.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(if (isFromCurrentUser){
-                    MaterialTheme.colorScheme.secondary
-                }else{
-                    MaterialTheme.colorScheme.onSecondary
-                })
+                .background(
+                    if (isFromCurrentUser) {
+                        MaterialTheme.colorScheme.secondary
+                    } else {
+                        MaterialTheme.colorScheme.onSecondary
+                    }
+                )
                 .pointerInput(Unit) {
                     detectTapGestures(
                         onLongPress = { onDeleteClick() },
@@ -85,7 +97,7 @@ fun MessageBubble(
         ) {
             Text(
                 text = message.content,
-                color = if (isFromCurrentUser){
+                color = if (isFromCurrentUser) {
                     MaterialTheme.colorScheme.onSecondary
                 } else {
                     MaterialTheme.colorScheme.secondary
@@ -153,11 +165,9 @@ private fun formatTimestamp(timestamp: String): String {
     return try {
         val instant = when {
             timestamp.all { it.isDigit() } -> {
-                // Plain numeric timestamp (milliseconds since epoch)
                 java.time.Instant.ofEpochMilli(timestamp.toLong())
             }
             else -> {
-                // Try ISO 8601 with offset first, then fallback to Instant.parse
                 try {
                     OffsetDateTime.parse(timestamp).toInstant()
                 } catch (e: DateTimeParseException) {

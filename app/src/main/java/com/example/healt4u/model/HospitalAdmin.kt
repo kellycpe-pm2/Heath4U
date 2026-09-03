@@ -21,6 +21,7 @@ data class Doctor(
     val email: String,
     @SerialName("consultation_fee") val consultationFee: Double,
     val specialization: String,
+    val status: String = "available",
     @SerialName("hospital_id") val hospitalId: Int?,
     @SerialName("qualification_doc_url") val qualificationDocUrl: String? = null,
     @SerialName("verification_status") val verificationStatus: String = "pending",

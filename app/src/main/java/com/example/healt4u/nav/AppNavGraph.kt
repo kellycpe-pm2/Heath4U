@@ -87,7 +87,6 @@ import com.example.healt4u.model.PatientUser
 import com.example.healt4u.model.Payment
 import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
-import com.example.healt4u.screen.Dashboard.DoctorSettingScreen
 import com.example.healt4u.screen.DoctorPatientChat.Notification
 import com.example.healt4u.screen.PatientListScreen
 import com.example.healt4u.screen.Payment.PaymentScreen
@@ -842,42 +841,9 @@ fun AppNavGraph(
                 onStatisticClick = {
                     navController.navigate("revenue_statistic/$currentUserId")
                 },
-                onSettingClick = { navController.navigate("doctor_settings") },
+                onSettingClick = {},
                 onScanClick = {},
-                onProfileClick = { navController.navigate("doctor_settings") },
-                onLogout = {
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    currentUserName = ""
-                    currentUserPhone = ""
-                    CurrentSession.clearSession(context)
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
-            )
-        }
-
-        composable("doctor_settings") {
-            DoctorSettingScreen(
-                doctorId = currentUserId,
-                onBack = { navController.popBackStack() },
-                onSwitchAccount = {
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    CurrentSession.clearSession(context)
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-                onLogout = {
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    CurrentSession.clearSession(context)
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
+                onProfileClick = {}
             )
         }
 
@@ -908,15 +874,6 @@ fun AppNavGraph(
         composable("admin_settings") {
             AdminSettingsScreen(
                 onBack = { navController.popBackStack() },
-                onSwitchAccount = {
-                    loggedInAdminUsername = ""
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    CurrentSession.clearSession(context)
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
                 onLogout = {
                     loggedInAdminUsername = ""
                     currentUserId = 0

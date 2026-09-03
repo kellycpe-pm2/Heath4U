@@ -256,6 +256,7 @@ fun AppNavGraph(
         composable("dashboard") {
             HomeDashboardScreen(
                 vm = vm_reminder,
+                vmFamily = vm_family,
                 patientId = currentUserId,
                 onMedicineClick = { navController.navigate("list") },
                 onScheduleClick = { navController.navigate("schedule") },

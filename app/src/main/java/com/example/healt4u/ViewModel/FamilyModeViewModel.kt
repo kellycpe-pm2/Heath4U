@@ -22,10 +22,17 @@ import com.example.healt4u.model.CaregiverLink
 import com.example.healt4u.model.FamilyAlert
 import com.example.healt4u.Storage.upsertReminderLog
 import com.example.healt4u.notification.ReminderEngine
+import com.example.healt4u.notification.CaregiverAlertScheduler
+import com.example.healt4u.supabase.SupabaseClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import io.github.jan.supabase.realtime.PostgresAction
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -52,6 +59,8 @@ class FamilyModeViewModel(
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
+
+    private var caregiverRealtimeJob: Job? = null
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
@@ -176,6 +185,26 @@ class FamilyModeViewModel(
                 _caregiverAlerts.value = alertsList
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    fun startCaregiverAlertRealtime(context: Context, caregiverUserId: Int) {
+        if (caregiverUserId == 0) return
+        caregiverRealtimeJob?.cancel()
+        caregiverRealtimeJob = viewModelScope.launch {
+            val channel = SupabaseClient.supabase.realtime.channel("family-alerts-$caregiverUserId") {}
+            val changes = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
+                table = "family_alerts"
+            }
+            channel.subscribe()
+            try {
+                changes.collect {
+                    CaregiverAlertScheduler.runNow(context, caregiverUserId)
+                    loadCaregiverAlerts(caregiverUserId)
+                }
+            } finally {
+                channel.unsubscribe()
             }
         }
     }

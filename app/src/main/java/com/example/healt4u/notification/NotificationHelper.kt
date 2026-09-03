@@ -84,4 +84,20 @@ object NotificationHelper {
         NotificationManagerCompat.from(context)
             .notify(notificationId, notification)
     }
+
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    fun showMissedDoseAlert(context: Context, notificationId: Int, medicineName: String, scheduledTime: String) {
+        if (!hasPermission(context)) return
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_DOSE)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle("Your patient miss a dose")
+            .setContentText("$medicineName was scheduled for $scheduledTime")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+
+        NotificationManagerCompat.from(context)
+            .notify(notificationId, notification)
+    }
 }

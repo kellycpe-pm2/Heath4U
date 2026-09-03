@@ -48,6 +48,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.model.CaregiverLink
 import com.example.healt4u.model.FamilyAlert
+import com.example.healt4u.notification.CaregiverAlertScheduler
 import com.example.healt4u.screen.componentUI.button
 
 private val AppBlue = Color(0xFF3779EE)
@@ -82,12 +83,22 @@ fun FamilyModeScreen(
         vm.checkOverdueAndCreateAlerts(context, currentUserId)
     }
 
+    LaunchedEffect(myPatients, currentUserId) {
+        if (myPatients.isNotEmpty()) {
+            CaregiverAlertScheduler.start(context, currentUserId)
+            vm.startCaregiverAlertRealtime(context, currentUserId)
+        }
+    }
+
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         vm.loadPatientPhone(context)
         vm.refreshCaregivers(currentUserId)
         vm.refreshMyPatients(currentUserId)
         vm.loadAlerts(context)
         vm.loadCaregiverAlerts(currentUserId)
+        if (myPatients.isNotEmpty()) {
+            CaregiverAlertScheduler.start(context, currentUserId)
+        }
     }
 
     val pendingAlerts = alerts.filter { it.status == "PENDING" }

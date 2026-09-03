@@ -299,9 +299,7 @@ fun AppNavGraph(
                     currentUserName = ""
                     currentUserPhone = ""
                     CurrentSession.clearSession(context)
-                    // Skips role selection since they're still a patient —
-                    // just lets a different patient account sign in.
-                    navController.navigate("patient_login") {
+                    navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -909,6 +907,15 @@ fun AppNavGraph(
             AdminSettingsScreen(
                 onBack = { navController.popBackStack() },
                 onLogout = {
+                    loggedInAdminUsername = ""
+                    currentUserId = 0
+                    currentUserRole = "patient"
+                    CurrentSession.clearSession(context)
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onSwitchAccount = {
                     loggedInAdminUsername = ""
                     currentUserId = 0
                     currentUserRole = "patient"

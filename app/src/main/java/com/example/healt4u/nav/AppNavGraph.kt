@@ -176,8 +176,10 @@ fun AppNavGraph(
         navController = navController,
         startDestination = startDest
     ) {
-        composable("login") {
+        composable("login") { backStackEntry ->
+            val initialRole = backStackEntry.savedStateHandle.get<String>("start_role")
             AdminLoginScreen(
+                initialRole = initialRole,
                 onAdminLoginSuccess = { admin ->
                     loggedInAdminUsername = admin.username
                     currentUserId = admin.id
@@ -303,7 +305,8 @@ fun AppNavGraph(
                     currentUserName = ""
                     currentUserPhone = ""
                     CurrentSession.clearSession(context)
-                    navController.navigate("login") {
+                    // Navigate to patient login directly
+                    navController.navigate("patient_login") {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -847,6 +850,7 @@ fun AppNavGraph(
                     currentUserName = ""
                     currentUserPhone = ""
                     CurrentSession.clearSession(context)
+                    // Go back to login (Role Selection) for doctor switch
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -905,6 +909,8 @@ fun AppNavGraph(
                     currentUserId = 0
                     currentUserRole = "patient"
                     CurrentSession.clearSession(context)
+                    // Go back to login screen but tell it to show Admin form immediately
+                    navController.currentBackStackEntry?.savedStateHandle?.set("start_role", "admin")
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }

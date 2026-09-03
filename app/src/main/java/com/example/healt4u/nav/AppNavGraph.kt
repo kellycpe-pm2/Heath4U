@@ -171,10 +171,13 @@ fun AppNavGraph(
     ) {
         composable("login") {
             AdminLoginScreen(
-                onAdminLoginSuccess = { username ->
-                    loggedInAdminUsername = username
+                onAdminLoginSuccess = { admin ->
+                    loggedInAdminUsername = admin.username
+                    currentUserId = admin.id
+                    currentUserName = admin.username
+                    currentUserPhone = admin.phone ?: ""
                     currentUserRole = "admin"
-                    CurrentSession.saveSession(context, 1, "admin", username) 
+                    CurrentSession.saveSession(context, admin.id, "admin", admin.username, admin.phone ?: "")
                     navController.navigate("admin") {
                         popUpTo("login") { inclusive = true }
                     }

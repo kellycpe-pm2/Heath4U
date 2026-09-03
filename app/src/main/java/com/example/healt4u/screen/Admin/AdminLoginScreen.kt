@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.adminSignIn
 import com.example.healt4u.Storage.adminSignUp
+import com.example.healt4u.model.AdminUser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -52,7 +53,7 @@ private fun isValidPassword(password: String): Boolean {
 
 @Composable
 fun AdminLoginScreen(
-    onAdminLoginSuccess: (String) -> Unit,
+    onAdminLoginSuccess: (AdminUser) -> Unit,
     onPatientLoginClick: () -> Unit = {},
     onForgotPassword: () -> Unit = {},
     onDoctorSuccessClick : ()->Unit  ={}
@@ -276,7 +277,7 @@ private suspend fun handleSignIn(
     snackbarHostState: SnackbarHostState,
     scope: CoroutineScope,
     isLoading: (Boolean) -> Unit,
-    onSuccess: (String) -> Unit
+    onSuccess: (AdminUser) -> Unit
 ) {
     val credential = if (loginMethod == "email") email else phone
     if (credential.isBlank()) {
@@ -304,7 +305,7 @@ private suspend fun handleSignIn(
     val result = adminSignIn(credential, password, loginMethod)
     isLoading(false)
     result.fold(
-        onSuccess = { username -> onSuccess(username) },
+        onSuccess = { admin -> onSuccess(admin) },
         onFailure = { e ->
             scope.launch { snackbarHostState.showSnackbar(e.message ?: "Login failed") }
         }

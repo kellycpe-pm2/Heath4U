@@ -17,13 +17,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -46,7 +46,7 @@ fun AdminDashboardScreen(
     Column(
         modifier = Modifier.fillMaxSize().background(ScreenBlue)
     ) {
-        AdminHeader(onBack = onBack)
+        AdminHeader(onBack = onBack, onSettingsClick = onSettingsClick)
 
         LazyColumn(
             modifier = Modifier.weight(1f),
@@ -93,17 +93,11 @@ fun AdminDashboardScreen(
             }
 
         }
-
-        AdminBottomNavigation(
-            onHomeClick = { },
-            onDoctorsClick = onDoctorsClick,
-            onSettingsClick = onSettingsClick
-        )
     }
 }
 
 @Composable
-private fun AdminHeader(onBack: (() -> Unit)?) {
+private fun AdminHeader(onBack: (() -> Unit)?, onSettingsClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -123,6 +117,10 @@ private fun AdminHeader(onBack: (() -> Unit)?) {
         Column {
             Text("HEALTH4U", color = AppBlue, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
             Text("ADMIN PORTAL", color = Color(0xFF63727D), fontSize = 9.sp, letterSpacing = 1.sp)
+        }
+        Spacer(Modifier.weight(1f))
+        IconButton(onClick = onSettingsClick) {
+            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = AppBlue)
         }
     }
 }
@@ -166,32 +164,3 @@ private fun DashboardCard(
     }
 }
 
-@Composable
-private fun AdminBottomNavigation(
-    onHomeClick: () -> Unit,
-    onDoctorsClick: () -> Unit,
-    onSettingsClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(AppBlue)
-            .padding(vertical = 10.dp, horizontal = 36.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        BottomItem("Home", Icons.Default.Home, true, onHomeClick)
-        BottomItem("Doctors", Icons.Default.PersonAdd, false, onDoctorsClick)
-        BottomItem("Settings", Icons.Default.Settings, false, onSettingsClick)
-    }
-}
-
-@Composable
-private fun BottomItem(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, selected: Boolean, onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Icon(icon, label, tint = if (selected) Color.White else Color(0xFFCFE0FF), modifier = Modifier.size(23.dp))
-        Text(label.uppercase(), color = if (selected) Color.White else Color(0xFFCFE0FF), fontSize = 7.sp, fontWeight = FontWeight.Bold)
-    }
-}

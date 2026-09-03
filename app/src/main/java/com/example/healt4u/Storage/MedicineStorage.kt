@@ -252,7 +252,7 @@ suspend fun delete_Medicine(
     }
 }
 
-suspend fun adminSignIn(emailOrPhone: String, password: String, loginMethod: String): Result<String> {
+suspend fun adminSignIn(emailOrPhone: String, password: String, loginMethod: String): Result<AdminUser> {
     return try {
         withContext(Dispatchers.IO) {
             android.util.Log.d("AdminAuth", "Signing in with $loginMethod: $emailOrPhone")
@@ -273,7 +273,7 @@ suspend fun adminSignIn(emailOrPhone: String, password: String, loginMethod: Str
             }
             if (matched != null) {
                 android.util.Log.d("AdminAuth", "Login successful for: ${matched.username}")
-                Result.success(matched.username)
+                Result.success(matched)
             } else {
                 android.util.Log.d("AdminAuth", "No match found for: $emailOrPhone")
                 Result.failure(Exception("Invalid credentials or password"))

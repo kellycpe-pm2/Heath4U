@@ -2,12 +2,14 @@
 package com.example.healt4u.data.local
 
 import android.content.Context
+import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.model.ReminderLog
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
-private const val FILE_NAME = "reminder_logs.json"
+// One file PER PATIENT — same reasoning as LocalMedicine.kt.
+private fun fileName(): String = "reminder_logs_${CurrentSession.patientId}.json"
 
 private val json = Json {
     prettyPrint = true
@@ -18,7 +20,7 @@ private val json = Json {
 fun saveReminderLogs(context: Context, logs: List<ReminderLog>) {
     try {
         val jsonString = json.encodeToString(logs)
-        context.openFileOutput(FILE_NAME, Context.MODE_PRIVATE).use {
+        context.openFileOutput(fileName(), Context.MODE_PRIVATE).use {
             it.write(jsonString.toByteArray())
         }
     } catch (e: Exception) {
@@ -27,7 +29,7 @@ fun saveReminderLogs(context: Context, logs: List<ReminderLog>) {
 }
 
 fun loadReminderLogs(context: Context): List<ReminderLog> {
-    val file = File(context.filesDir, FILE_NAME)
+    val file = File(context.filesDir, fileName())
     if (!file.exists()) return emptyList()
     return try {
         Json.decodeFromString(file.readText())

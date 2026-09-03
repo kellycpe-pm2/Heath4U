@@ -40,5 +40,11 @@ data class Medicine(
 
     // How many times a day this medicine should be taken (e.g. 3 = 08:00, 13:00, 18:00)
     @SerialName("times_per_day")
-    val timesPerDay: Int? = 1
+    val timesPerDay: Int? = 1,
+
+    // Which patient this medicine belongs to. Nullable/defaulted so existing
+    // rows without the column still decode fine; used to scope cloud fetches
+    // per-account instead of pulling every patient's medicines.
+    @SerialName("patient_id")
+    val patientId: Int? = null
 )

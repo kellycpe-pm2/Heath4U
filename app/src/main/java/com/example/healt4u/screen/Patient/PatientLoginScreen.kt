@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.patientSignIn
 import com.example.healt4u.Storage.patientSignUp
 import com.example.healt4u.model.PatientUser
+import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import kotlinx.coroutines.launch
 
 private val AppBlue = Color(0xFF3779EE)
@@ -172,7 +173,7 @@ fun PatientLoginScreen(
             )
         }
 
-        SnackbarHost(
+        AppSnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)

@@ -3,8 +3,8 @@ package com.example.healt4u.notification
 import android.Manifest
 import android.content.Context
 import androidx.annotation.RequiresPermission
+import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.Storage.getReminderLogsForDate
-import com.example.healt4u.Storage.upsertReminderLogs
 import com.example.healt4u.data.local.load_Medicines
 import com.example.healt4u.data.local.loadReminderLogsForDate
 import com.example.healt4u.data.local.upsertReminderLogsLocal
@@ -15,12 +15,13 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
-// Headless "build today's schedule + book alarms + check alerts" logic, usable
-// with or without a UI. ReminderViewModel calls this when the app is open (and
-// publishes the result to its StateFlows); DailyRefreshReceiver and BootReceiver
-// call it directly so the same thing happens even if the user never opens the
-// app that day — which is what previously caused dose/stock notifications to
-// only ever fire after a manual login.
+// Headless "build today's schedule + book alarms + check alerts" logic for
+// whichever patient is currently logged in (CurrentSession.patientId).
+// DailyRefreshReceiver and BootReceiver call this directly — with no UI and
+// no ViewModel — so dose/stock notifications keep firing on days the user
+// never opens the app. Mirrors ReminderViewModel's own schedule-building
+// logic; kept as a separate, self-contained copy on purpose so this can run
+// standalone from a BroadcastReceiver without depending on the ViewModel.
 object ReminderEngine {
 
     data class RefreshResult(
@@ -30,27 +31,27 @@ object ReminderEngine {
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    // Per-process dedupe. A background refresh runs in its own short-lived
-    // process, so this only prevents duplicate notifications within one run —
-    // that's fine, since each day's refresh is a fresh dedupe window anyway.
+    // Per-process dedupe — fine since each background run is short-lived and
+    // each day gets a fresh window anyway.
     private val notifiedAlertKeys = mutableSetOf<String>()
     private val scheduledAlarmIds = mutableSetOf<String>()
 
     private const val EXPIRY_WARNING_DAYS = 7
     private const val LOW_STOCK_THRESHOLD = 5
-
-    // Doses are spaced across waking hours only (07:00-22:00), not the full
-    // 24-hour clock, so a medicine taken 5x/day doesn't get scheduled at 3 AM.
     private const val WAKING_START_MINUTES = 7 * 60
     private const val WAKING_END_MINUTES = 22 * 60
 
     fun todayDate(): String = dateFormat.format(Calendar.getInstance().time)
 
+    // Only ever refreshes TODAY for the currently logged-in patient — that's
+    // the only case where booking alarms/notifications makes sense in the
+    // background.
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    suspend fun refresh(context: Context, targetDate: String? = null, patientId: Int = 0): RefreshResult {
+    suspend fun refresh(context: Context): RefreshResult {
+        val patientId = CurrentSession.patientId
         NotificationHelper.createChannels(context)
 
-        val date = targetDate ?: todayDate()
+        val date = todayDate()
         val medicines = load_Medicines(context)
         val generated = generateSlotsFor(medicines, date, patientId)
 
@@ -60,7 +61,7 @@ object ReminderEngine {
         var allItems = (merged + appointments).distinctBy { it.id }
         allItems = flagOverdueAsMissed(allItems.sortedBy { it.time })
 
-        val savedCloud = getReminderLogsForDate(date)
+        val savedCloud = getReminderLogsForDate(date, patientId)
         if (savedCloud.isNotEmpty()) {
             merged = mergeGeneratedWithSaved(generated, savedCloud)
             val cloudAppointments = savedCloud.filter { it.medicineId == -1 }
@@ -69,17 +70,6 @@ object ReminderEngine {
             upsertReminderLogsLocal(context, allItems)
         }
 
-        // Auto-missed status must survive this refresh.  Family mode runs in a
-        // separate pass and reads persisted logs, so keeping this only in the
-        // returned in-memory schedule makes auto-missed doses invisible there.
-        val autoMissed = allItems.filter { it.medicineId != -1 && it.status == "MISSED" }
-        if (autoMissed.isNotEmpty()) {
-            upsertReminderLogsLocal(context, autoMissed)
-            upsertReminderLogs(autoMissed)
-        }
-
-        // Only real medicine doses get a "time to take" alarm — appointments
-        // belong to a different module and will get their own reminders later.
         scheduleAlarmsForPendingDoses(context, allItems.filter { it.medicineId != -1 })
         val alerts = checkMedicineAlerts(context, medicines)
 
@@ -95,9 +85,6 @@ object ReminderEngine {
         }
     }
 
-    // 7 days before expiry, or stock at/under the low-stock threshold — posts a
-    // notification once per dedupe window per medicine, and returns the full
-    // alert list for the banner shown on Dashboard/Schedule.
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun checkMedicineAlerts(context: Context, medicines: List<Medicine>): List<MedicineAlert> {
         val now = System.currentTimeMillis()
@@ -155,7 +142,7 @@ object ReminderEngine {
         return alerts
     }
 
-    private fun generateSlotsFor(medicines: List<Medicine>, date: String, patientId: Int = 0): List<ReminderLog> {
+    private fun generateSlotsFor(medicines: List<Medicine>, date: String, patientId: Int): List<ReminderLog> {
         val slots = mutableListOf<ReminderLog>()
         for (med in medicines) {
             val timesPerDay = (med.timesPerDay ?: 1).coerceIn(1, 6)
@@ -170,7 +157,7 @@ object ReminderEngine {
                 val timeLabel = minutesToTimeString(minutesOfDay)
                 slots.add(
                     ReminderLog(
-                        id = "${med.id}_${date}_$slot",
+                        id = "${patientId}_${med.id}_${date}_$slot",
                         patientId = patientId,
                         medicineId = med.id,
                         medicineName = med.name_medicine,
@@ -193,8 +180,8 @@ object ReminderEngine {
         return generated.map { savedById[it.id] ?: it }
     }
 
-    // Anything still PENDING more than 30 minutes past its slot time is auto-flagged
-    // MISSED — this is what drives the family "missed-dose alert" on the dashboard.
+    // Background refresh only ever runs for "today", so this is the simpler
+    // same-day-only version (no past/future date branching needed here).
     private fun flagOverdueAsMissed(logs: List<ReminderLog>): List<ReminderLog> {
         val now = Calendar.getInstance()
         val nowMinutes = now.get(Calendar.HOUR_OF_DAY) * 60 + now.get(Calendar.MINUTE)

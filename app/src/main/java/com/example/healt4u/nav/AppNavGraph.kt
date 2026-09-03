@@ -59,6 +59,8 @@ import com.example.healt4u.screen.DoctorPatientChat.DoctorListScreen
 import com.example.healt4u.screen.DoctorPatientChat.HospitalListScreen
 import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
 import com.example.healt4u.screen.FamilyMode.FamilyModeScreen
+import com.example.healt4u.screen.FamilyMode.AllResolvedAlertsScreen
+import com.example.healt4u.screen.FamilyMode.AllPatientsScreen
 import com.example.healt4u.screen.FamilyMode.SetPatientPhoneScreen
 import com.example.healt4u.screen.Patient.PatientLoginScreen
 import com.example.healt4u.screen.Patient.PatientSettingsScreen
@@ -905,6 +907,24 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onAddCaregiverClick = { navController.navigate("add_caregiver") },
                 onSetPhoneClick = { navController.navigate("set_patient_phone") },
+                onViewAllResolved = { navController.navigate("all_resolved_alerts") },
+                onViewAllPatients = { navController.navigate("all_patients") },
+            )
+        }
+
+        composable("all_resolved_alerts") {
+            AllResolvedAlertsScreen(
+                vm = vm_family,
+                currentUserId = currentUserId,
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("all_patients") {
+            AllPatientsScreen(
+                vm = vm_family,
+                currentUserId = currentUserId,
+                onBack = { navController.popBackStack() }
             )
         }
 

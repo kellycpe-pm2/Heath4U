@@ -30,7 +30,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,7 +67,9 @@ fun FamilyModeScreen(
     currentUserPhone: String,
     onBack: () -> Unit = {},
     onAddCaregiverClick: () -> Unit = {},
-    onSetPhoneClick: () -> Unit = {}
+    onSetPhoneClick: () -> Unit = {},
+    onViewAllResolved: () -> Unit = {},
+    onViewAllPatients: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val caregivers by vm.caregivers.collectAsStateWithLifecycle()
@@ -101,11 +105,15 @@ fun FamilyModeScreen(
         }
     }
 
-    val pendingAlerts = alerts.filter { it.status == "PENDING" }
-    val resolvedAlerts = alerts.filter { it.status == "RESOLVED" }
+    // Local alerts are scoped to the currently signed-in patient. Caregiver
+    // alerts are already scoped by caregiverUserId when loaded from Supabase.
+    val patientAlerts = alerts.filter { it.patientUserId == currentUserId }
+    val pendingAlerts = patientAlerts.filter { it.status == "PENDING" }
+    val resolvedAlerts = (patientAlerts + caregiverAlerts.filter { it.status == "RESOLVED" })
+        .distinctBy { it.id }
+        .sortedByDescending { it.resolvedAt ?: 0L }
 
     val pendingCaregiverAlerts = caregiverAlerts.filter { it.status == "PENDING" }
-
     Column(
         modifier = Modifier.fillMaxSize().background(ScreenBlue)
     ) {
@@ -217,43 +225,72 @@ fun FamilyModeScreen(
 
             if (resolvedAlerts.isNotEmpty()) {
                 item {
-                    Text(
-                        "Recent Resolved",
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        color = Color(0xFF101820)
-                    )
-                }
-                items(resolvedAlerts.take(5), key = { it.id }) { alert ->
-                    ResolvedAlertCard(alert)
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp)
+                    ) {
+                        Column(Modifier.padding(vertical = 12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    "Recent Resolved",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = Color(0xFF101820)
+                                )
+                                TextButton(onClick = onViewAllResolved) {
+                                    Text("View All", color = Color.Black)
+                                }
+                            }
+                            resolvedAlerts.take(2).forEach { alert -> ResolvedAlertCard(alert) }
+                        }
+                    }
                 }
             }
 
             if (myPatients.isNotEmpty()) {
                 item {
-                    Row(
+                    Card(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp)
                     ) {
-                        Text("My Patients (I'm their caregiver)", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                        if (pendingCaregiverAlerts.isNotEmpty()) {
-                            Text(
-                                "${pendingCaregiverAlerts.size} pending",
-                                fontSize = 12.sp,
-                                color = AlertRed,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                        Column(Modifier.padding(vertical = 12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("My Patients (I'm their caregiver)", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (pendingCaregiverAlerts.isNotEmpty()) {
+                                        Text(
+                                            "${pendingCaregiverAlerts.size} pending",
+                                            fontSize = 12.sp,
+                                            color = AlertRed,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                    TextButton(onClick = onViewAllResolved) {
+                                        Text("View All", color = Color.Black)
+                                    }
+                                }
+                            }
+                            myPatients.take(2).forEach { patient ->
+                                PatientCard(
+                                    patient = patient,
+                                    pendingCount = pendingCaregiverAlerts.filter { it.patientUserId == patient.patientUserId }.size,
+                                    onClick = {}
+                                )
+                            }
                         }
                     }
-                }
-                items(myPatients, key = { it.id }) { patient ->
-                    PatientCard(
-                        patient = patient,
-                        pendingCount = pendingCaregiverAlerts.filter { it.patientUserId == patient.patientUserId }.size,
-                        onClick = {}
-                    )
                 }
             }
 

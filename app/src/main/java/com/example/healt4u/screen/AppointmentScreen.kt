@@ -4,6 +4,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,7 +56,6 @@ fun AppointmentScreen(
     val hospitals by viewModel.hospitals.collectAsState()
     val doctors by viewModel.doctors.collectAsState()
     val isLoadingData by viewModel.isLoading.collectAsState()
-    val errorLoading by viewModel.errorMessage.collectAsState()
 
     var selectedHospital by remember { mutableStateOf<Hospital?>(null) }
     var selectedDoctor by remember { mutableStateOf<Doctor?>(null) }
@@ -94,9 +94,12 @@ fun AppointmentScreen(
                 title = {
                     Text(
                         text = "Make Appointment",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSecondary
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentWidth(Alignment.CenterHorizontally)
+                            .padding(end=48.dp)
                     )
                 },
                 navigationIcon = {
@@ -131,11 +134,16 @@ fun AppointmentScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { showHospitalDropdown = true },
+                        .clickable { showHospitalDropdown = true }
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = Color.White
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
@@ -187,17 +195,16 @@ fun AppointmentScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            if (selectedHospital != null) {
-                                showDoctorDropdown = true
-                            } else {
-                                errorMessage = "Please select a hospital first"
-                            }
-                        },
+                        .clickable { showDoctorDropdown = true }
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = Color.White
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(

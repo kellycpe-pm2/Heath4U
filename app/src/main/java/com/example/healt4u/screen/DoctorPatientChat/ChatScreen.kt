@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
@@ -18,9 +19,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.model.Message
@@ -35,7 +35,7 @@ import java.time.ZoneId
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    chatName: String,           // ✅ ALREADY CORRECT — USE THIS DIRECTLY!
+    chatName: String,
     userId: Int,
     userRole: String,
     conversationId: Int,
@@ -51,10 +51,8 @@ fun ChatScreen(
     isMuted: Boolean = false,
     onMuteChanged: (Boolean) -> Unit = {}
 ) {
-    // ✅ USE THE PASSED NAME — NO ID LOOKUP CONFUSION!
     val displayName = chatName
 
-    // ✅ Load ONLY MY name for sending messages
     var myName by remember { mutableStateOf("Me") }
     val coroutineScope = rememberCoroutineScope()
 
@@ -137,12 +135,20 @@ fun ChatScreen(
                 title = {
                     Column {
                         Text(
-                            text = displayName,  // ✅ chatName = Dr. Sarah Tan ✅
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondary
+                            text = displayName,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = Color.White,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .wrapContentWidth(Alignment.CenterHorizontally)
+                                .padding(end=12.dp)
+                            ,
+                            verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
@@ -151,8 +157,8 @@ fun ChatScreen(
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 text = "Online",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.8f)
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Color.White,
                             )
                         }
                     }
@@ -218,12 +224,17 @@ fun ChatScreen(
                     OutlinedTextField(
                         value = textInput,
                         onValueChange = { textInput = it },
-                        placeholder = { Text("Type here...") },
-                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onBackground) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(Color.White, shape = RoundedCornerShape(28.dp)),
+                        shape = RoundedCornerShape(28.dp),
                         singleLine = true,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                            unfocusedBorderColor = MaterialTheme.colorScheme.onBackground,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
                         )
                     )
                     FloatingActionButton(
@@ -235,7 +246,7 @@ fun ChatScreen(
                                     conversationId = conversationId,
                                     content = textInput,
                                     senderId = userId,
-                                    senderName = myName,  // ✅ YOUR name
+                                    senderName = myName,
                                     timestamp = nowIso,
                                     type = "text"
                                 )
@@ -362,3 +373,44 @@ private data class MessageGroup(
     val dateMillis: Long,
     val messages: List<Message>
 )
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun PreviewChatScreen() {
+    com.example.healt4u.screen.componentUI.Theme.colorTheme {
+        ChatScreen(
+            chatName = "Dr. Sarah Tan",
+            userId = 2,
+            userRole = "patient",
+            conversationId = 1,
+            doctorId = 1,
+            patientId = 2,
+            initialMessages = listOf(
+                com.example.healt4u.model.Message(
+                    id = 1,
+                    conversationId = 1,
+                    content = "Hello! How are you feeling today?",
+                    senderId = 1,
+                    senderName = "Dr. Sarah Tan",
+                    timestamp = "2026-09-02 10:00:00Z",
+                    type = "text"
+                ),
+                com.example.healt4u.model.Message(
+                    id = 2,
+                    conversationId = 1,
+                    content = "I am feeling much better, thank you doctor.",
+                    senderId = 2,
+                    senderName = "Yuki Chung",
+                    timestamp = "2026-09-02 11:00:00Z",
+                    type = "text"
+                )
+            ),
+            onBack = {},
+            onSendMessage = {},
+            onDeleteMessage = {},
+            onAvatarClick = {},
+            onClearAllMessages = {}
+        )
+    }
+}

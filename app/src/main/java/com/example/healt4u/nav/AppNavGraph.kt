@@ -81,6 +81,7 @@ import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.Storage.updateDoctorStatusInSupabase
 import com.example.healt4u.ViewModel.FindMedicineViewModel
 import com.example.healt4u.model.Hospital
 import com.example.healt4u.model.PatientUser
@@ -645,6 +646,9 @@ fun AppNavGraph(
             if (selectedHospital?.id == hospitalId) {
                 DoctorListScreen(
                     hospital = selectedHospital!!,
+                    getDoctorStatus = { doctorId ->
+                        doctors.find { it.id == doctorId }?.status?.lowercase() ?: "offline"
+                    },
                     onDoctorSelected = { doctor ->
                         navController.navigate("payment/${doctor.id}/$hospitalId")
                     },
@@ -715,9 +719,9 @@ fun AppNavGraph(
 
                             val saved = createPayment(payment)
                             if (saved != null) {
-                                Log.d("PAYMENT", "✅ Payment saved! ID=${saved.id}")
+                                Log.d("PAYMENT", "Payment saved! ID=${saved.id}")
                             } else {
-                                Log.e("PAYMENT", "❌ Failed to save payment")
+                                Log.e("PAYMENT", "Failed to save payment")
                             }
 
                             navController.navigate(
@@ -812,7 +816,9 @@ fun AppNavGraph(
                     onDeleteMessage = { message ->
                         GlobalScope.launch { deleteMessage(message.id) }
                     },
-                    onAvatarClick = { pid -> selectedPatientId = pid },
+                    onAvatarClick = {  patientId ->
+                        navController.navigate("adherence_statistics/$patientId")
+                                    },
                     isMuted = convId.toString() in mutedConversations,
                     onMuteChanged = { newState ->
                         if (newState) mutedConversations.add(convId.toString())
@@ -827,8 +833,6 @@ fun AppNavGraph(
 
         composable("doctor") {
             currentUserRole = "doctor"
-            // ⚠️ SET THIS FROM DOCTOR LOGIN — NOT HARDCODED!
-            // currentUserId = 2  // ❌ REMOVED — should come from login!
             DoctorDashboardScreen(
                 onPatientClick = { pId, conv ->
                     navController.navigate("adherence_statistics/$pId")
@@ -843,7 +847,17 @@ fun AppNavGraph(
                 },
                 onSettingClick = {},
                 onScanClick = {},
-                onProfileClick = {}
+                onProfileClick = {},
+                onChangeStatus = { newStatus ->
+                    // newStatus is ALREADY lowercase: available / busy / offline
+                    coroutineScope.launch {
+                        // Call your Storage function to UPDATE doctor status
+                        updateDoctorStatusInSupabase(
+                            doctorId = currentUserId,
+                            newStatus = newStatus
+                        )
+                    }
+                },
             )
         }
 

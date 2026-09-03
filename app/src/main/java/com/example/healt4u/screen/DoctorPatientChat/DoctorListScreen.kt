@@ -1,5 +1,6 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,9 +35,12 @@ fun DoctorListScreen(
     hospital: Hospital,
     onDoctorSelected: (Doctor) -> Unit,
     onBack: () -> Unit,
+    getDoctorStatus: (Int) -> String, // "available" / "busy" / "offline"
     viewModel: HospitalViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
+    var selectedDoctor by remember { mutableStateOf<Doctor?>(null) }
+    var showBusyConfirmDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(hospital.id) {
         viewModel.selectHospital(hospital)
@@ -69,7 +73,7 @@ fun DoctorListScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .wrapContentWidth(Alignment.CenterHorizontally)
-                                .padding(end=48.dp)
+                                .padding(end = 48.dp)
                         )
                         Text(
                             text = hospital.name,
@@ -78,7 +82,7 @@ fun DoctorListScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .wrapContentWidth(Alignment.CenterHorizontally)
-                                .padding(end=48.dp)
+                                .padding(end = 48.dp)
                         )
                     }
                 },
@@ -149,24 +153,15 @@ fun DoctorListScreen(
 
             when {
                 isLoading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
                     }
                 }
 
                 errorMessage != null -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = errorMessage ?: "Something went wrong",
-                                color = MaterialTheme.colorScheme.error
-                            )
+                            Text(text = errorMessage ?: "Something went wrong", color = MaterialTheme.colorScheme.error)
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(onClick = { viewModel.loadDoctorsForHospital(hospital.id) }) {
                                 Text("Retry")
@@ -176,10 +171,7 @@ fun DoctorListScreen(
                 }
 
                 filteredDoctors.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = if (searchQuery.isNotBlank()) "No doctors found" else "No doctors available",
@@ -203,13 +195,23 @@ fun DoctorListScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(
-                            items = filteredDoctors,
-                            key = { it.id }
-                        ) { doctor ->
+                        items(filteredDoctors, key = { it.id }) { doctor ->
                             DoctorCard(
                                 doctor = doctor,
-                                onClick = { onDoctorSelected(doctor) }
+                                status = getDoctorStatus(doctor.id),
+                                onClick = {
+                                    val status = getDoctorStatus(doctor.id)
+                                    when (status.lowercase()) {
+                                        "offline" -> { /* Blocked — card handles it */ }
+                                        "busy" -> {
+                                            selectedDoctor = doctor
+                                            showBusyConfirmDialog = true
+                                        }
+                                        "available" -> {
+                                            onDoctorSelected(doctor)
+                                        }
+                                    }
+                                }
                             )
                         }
                     }
@@ -217,22 +219,76 @@ fun DoctorListScreen(
             }
         }
     }
+
+    if (showBusyConfirmDialog && selectedDoctor != null) {
+        AlertDialog(
+            title = { Text("Doctor is busy") },
+            text = {
+                Text(
+                    "${selectedDoctor!!.name} is currently busy.\n\n" +
+                            "You may still proceed, but response may be delayed.\n\n" +
+                            "Continue to payment?"
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBusyConfirmDialog = false
+                        onDoctorSelected(selectedDoctor!!)
+                        selectedDoctor = null
+                    }
+                ) {
+                    Text("Continue", color = MaterialTheme.colorScheme.secondary)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showBusyConfirmDialog = false
+                        selectedDoctor = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            },
+            onDismissRequest = {
+                showBusyConfirmDialog = false
+                selectedDoctor = null
+            }
+        )
+    }
 }
 
 @Composable
 fun DoctorCard(
     doctor: Doctor,
+    status: String,
     onClick: () -> Unit
 ) {
+    val safeStatus = status.lowercase()
+    val statusColor = when (safeStatus) {
+        "available" -> Color(0xFF4CAF50)
+        "busy" -> Color(0xFFFF5722)
+        "offline" -> Color(0xFF9E9E9E)
+        else -> Color(0xFF9E9E9E)
+    }
+    val isClickable = safeStatus != "offline"
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .then(if (isClickable) Modifier.clickable { onClick() } else Modifier),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isClickable)
+                MaterialTheme.colorScheme.surface
+            else
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
         ),
         shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isClickable) 2.dp else 0.dp),
+        border = if (!isClickable)
+            BorderStroke(1.dp, Color(0xFFE0E0E0))
+        else null
     ) {
         Row(
             modifier = Modifier
@@ -240,18 +296,31 @@ fun DoctorCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(50.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = doctor.name.take(2).uppercase(),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
+            Box {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = doctor.name.take(2).uppercase(),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isClickable)
+                            MaterialTheme.colorScheme.secondary
+                        else
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                    )
+                }
+                // Status dot on avatar
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(14.dp)
+                        .clip(CircleShape)
+                        .background(statusColor)
                 )
             }
 
@@ -260,68 +329,93 @@ fun DoctorCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = doctor.name,
                         fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = if (isClickable)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
-                    StatusBadge(status = doctor.verificationStatus)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        StatusBadge(status = doctor.verificationStatus)
+                        // Live Status Badge — all lowercase
+                        Text(
+                            text = safeStatus,
+                            fontSize = 10.sp,
+                            color = statusColor,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
                 Text(
                     text = doctor.specialization,
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isClickable)
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                 )
                 Text(
                     text = doctor.email,
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    color = if (isClickable)
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                     maxLines = 1
                 )
                 Text(
                     text = "RM %.2f".format(doctor.consultationFee),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = if (isClickable)
+                        MaterialTheme.colorScheme.secondary
+                    else
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
                 )
             }
 
-            Icon(
-                Icons.Filled.ChevronRight,
-                contentDescription = "Select",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (isClickable) {
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = "Select",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                Text(
+                    "unavailable",
+                    fontSize = 11.sp,
+                    color = statusColor,
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }
 
 @Composable
 fun StatusBadge(status: String) {
-    val (color, text) = when (status.lowercase()) {
-        "verified" -> Color(0xFF4CAF50) to "Verified"
-        "pending" -> Color(0xFFFF9800) to "Pending"
-        "rejected" -> Color(0xFFF44336) to "Rejected"
-        else -> Color(0xFF9E9E9E) to "Unknown"
+    val safeStatus = status.lowercase()
+    val (color, text) = when (safeStatus) {
+        "verified" -> Color(0xFF4CAF50) to "verified"
+        "pending" -> Color(0xFFFF9800) to "pending"
+        "rejected" -> Color(0xFFF44336) to "rejected"
+        else -> Color(0xFF9E9E9E) to "unknown"
     }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(
             modifier = Modifier
                 .size(8.dp)
                 .clip(CircleShape)
                 .background(color)
         )
-        Text(
-            text = text,
-            fontSize = 10.sp,
-            color = color,
-            fontWeight = FontWeight.Medium
-        )
+        Text(text = text, fontSize = 10.sp, color = color, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -329,13 +423,23 @@ fun StatusBadge(status: String) {
 @Composable
 fun PreviewDoctorListScreen() {
     colorTheme {
+        val sampleHospital = Hospital(
+            id = 1,
+            name = "Penang General Hospital",
+            address = "Jalan Residensi, 10450 George Town, Pulau Pinang",
+            phone = "04-2225333"
+        )
+
+        // Simulate different statuses — all lowercase
+        val doctorStatuses = mapOf(
+            1 to "available",
+            2 to "busy",
+            3 to "offline"
+        )
+
         DoctorListScreen(
-            hospital = Hospital(
-                id = 1,
-                name = "Penang General Hospital",
-                address = "Jalan Residensi, 10450 George Town, Pulau Pinang",
-                phone = "04-2225333"
-            ),
+            hospital = sampleHospital,
+            getDoctorStatus = { id -> doctorStatuses[id] ?: "offline" },
             onDoctorSelected = {},
             onBack = {}
         )

@@ -227,3 +227,17 @@ suspend fun getDoctorsByHospital(hospitalId: Int): List<Doctor> {
         emptyList()
     }
 }
+
+suspend fun updateDoctorStatusInSupabase(doctorId: Int, newStatus: String) {
+    withContext(Dispatchers.IO) {
+        SupabaseClient.supabase
+            .from("doctors")
+            .update(
+                mapOf(
+                    "status" to newStatus
+                )
+            ) {
+                filter { eq("id", doctorId) }
+            }
+    }
+}

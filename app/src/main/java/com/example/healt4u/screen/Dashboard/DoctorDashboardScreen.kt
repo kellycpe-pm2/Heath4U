@@ -49,7 +49,8 @@ fun DoctorDashboardScreen(
     onStatisticClick: () -> Unit = {},
     onSettingClick: () -> Unit = {},
     onScanClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {}
+    onProfileClick: () -> Unit = {},
+    onLogout: () -> Unit = {}
 ) {
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val scheduleCardMinHeight = (screenHeightDp * 0.45f).dp

@@ -48,12 +48,13 @@ private fun isValidPhone(phone: String): Boolean {
 
 @Composable
 fun AdminLoginScreen(
+    initialRole: String? = null,
     onAdminLoginSuccess: (AdminUser) -> Unit,
     onPatientLoginClick: () -> Unit = {},
     onForgotPassword: () -> Unit = {},
     onDoctorSuccessClick : ()->Unit  ={}
 ) {
-    var selectedRole by remember { mutableStateOf<String?>(null) }
+    var selectedRole by remember { mutableStateOf<String?>(initialRole) }
     var loginMethod by remember { mutableStateOf("email") }
     var isLoading by remember { mutableStateOf(false) }
 

@@ -4,17 +4,16 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.os.Vibrator
 import android.util.Log
 import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.Camera
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
-import androidx.camera.core.CameraSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
@@ -62,7 +61,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,20 +68,17 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import com.example.healt4u.screen.ScanScreen.ScannerOverlay
-import com.example.healt4u.screen.ScanScreen.TopBar
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -91,11 +86,12 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.concurrent.Executors
 import java.util.regex.Pattern
+import kotlin.coroutines.resume
 
 @OptIn(ExperimentalGetImage::class)
 @Composable
@@ -148,10 +144,9 @@ fun ScannerContent(
         mutableStateOf(0L)
     }
 
-    val cameraExecutor =
-        remember {
-            Executors.newSingleThreadExecutor()
-        }
+    val cameraExecutor = remember {
+        Executors.newSingleThreadExecutor()
+    }
 
     val infiniteTransition =
         rememberInfiniteTransition(
@@ -166,7 +161,7 @@ fun ScannerContent(
             infiniteRepeatable(
                 animation =
                     tween(
-                        2000,
+                        durationMillis = 2000,
                         easing = LinearEasing
                     ),
                 repeatMode =
@@ -175,20 +170,16 @@ fun ScannerContent(
         label = "scanLineOffset"
     )
 
-    // ================================================================
-    // GALLERY PICKER
-    // ================================================================
+    // ============================================================
+    // GALLERY
+    // ============================================================
 
     val galleryLauncher =
         rememberLauncherForActivityResult(
-            ActivityResultContracts.GetContent()
+            contract = ActivityResultContracts.GetContent()
         ) { uri: Uri? ->
 
-            if (uri == null) {
-                return@rememberLauncherForActivityResult
-            }
-
-            if (isGalleryAnalyzing) {
+            if (uri == null || isGalleryAnalyzing) {
                 return@rememberLauncherForActivityResult
             }
 
@@ -202,7 +193,7 @@ fun ScannerContent(
 
                     Log.d(
                         "Scanner",
-                        "Gallery image selected: $uri"
+                        "Gallery image selected = $uri"
                     )
 
                     val result =
@@ -211,7 +202,7 @@ fun ScannerContent(
                             uri = uri
                         )
 
-                    if (result != null) {
+                    if (!result.isNullOrBlank()) {
 
                         Log.d(
                             "Scanner",
@@ -220,16 +211,15 @@ fun ScannerContent(
 
                         scanResult = result
 
-                        /*
-                         * Only ONE callback.
-                         */
+                        // IMPORTANT:
+                        // Only call this ONCE.
                         onScanResult(result)
 
                     } else {
 
                         Log.d(
                             "Scanner",
-                            "No MAL/barcode found in image"
+                            "No barcode or MAL found"
                         )
                     }
 
@@ -250,28 +240,21 @@ fun ScannerContent(
             }
         }
 
-    // ================================================================
-    // GALLERY BUTTON
-    // ================================================================
-
     val requestGallery = {
 
         if (!isGalleryAnalyzing) {
 
-            /*
-             * GetContent opens the Android gallery/file picker.
-             *
-             * No READ_MEDIA_IMAGES permission is required here.
-             */
-            galleryLauncher.launch("image/*")
-
             onGalleryPick()
+
+            galleryLauncher.launch(
+                "image/*"
+            )
         }
     }
 
-    // ================================================================
-    // CAMERA CLEANUP
-    // ================================================================
+    // ============================================================
+    // CLEANUP
+    // ============================================================
 
     DisposableEffect(Unit) {
 
@@ -281,32 +264,31 @@ fun ScannerContent(
         }
     }
 
-    // ================================================================
+    // ============================================================
     // FLASH
-    // ================================================================
+    // ============================================================
 
     val toggleFlash = {
 
-        cameraInstance?.cameraControl?.let { control ->
+        val nextState =
+            !isFlashOn
 
-            val nextState =
-                !isFlashOn
-
-            control.enableTorch(
+        cameraInstance
+            ?.cameraControl
+            ?.enableTorch(
                 nextState
             )
 
-            isFlashOn = nextState
+        isFlashOn = nextState
 
-            onFlashToggle(
-                nextState
-            )
-        }
+        onFlashToggle(
+            nextState
+        )
     }
 
-    // ================================================================
+    // ============================================================
     // MAIN UI
-    // ================================================================
+    // ============================================================
 
     Box(
         modifier =
@@ -315,9 +297,9 @@ fun ScannerContent(
                 .background(Color.Black)
     ) {
 
-        // ============================================================
+        // ========================================================
         // CAMERA
-        // ============================================================
+        // ========================================================
 
         AndroidView(
             factory = { ctx ->
@@ -337,9 +319,6 @@ fun ScannerContent(
 
             update = { previewView ->
 
-                /*
-                 * Do not bind repeatedly while Compose updates.
-                 */
                 if (isCameraReady) {
                     return@AndroidView
                 }
@@ -360,7 +339,9 @@ fun ScannerContent(
                             Preview.Builder()
                                 .build()
                                 .also {
-                                    it.setSurfaceProvider(
+                                        previewUseCase ->
+
+                                    previewUseCase.setSurfaceProvider(
                                         previewView.surfaceProvider
                                     )
                                 }
@@ -368,10 +349,14 @@ fun ScannerContent(
                         val imageAnalysis =
                             ImageAnalysis.Builder()
                                 .setTargetResolution(
-                                    Size(1280, 720)
+                                    Size(
+                                        1280,
+                                        720
+                                    )
                                 )
                                 .setBackpressureStrategy(
-                                    ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
+                                    ImageAnalysis
+                                        .STRATEGY_KEEP_ONLY_LATEST
                                 )
                                 .build()
 
@@ -384,83 +369,64 @@ fun ScannerContent(
                                 isProcessing ||
                                 isGalleryAnalyzing
                             ) {
+
                                 imageProxy.close()
                                 return@setAnalyzer
                             }
 
-                            val currentTime = System.currentTimeMillis()
+                            val currentTime =
+                                System.currentTimeMillis()
 
-                            if (currentTime - lastScanTime < 1500) {
+                            if (
+                                currentTime -
+                                lastScanTime < 1500
+                            ) {
+
                                 imageProxy.close()
                                 return@setAnalyzer
                             }
 
                             isProcessing = true
 
-                            processImageProxy(
-                                imageProxy
-                            ) { barcode, malNumber ->
+                            processCameraImage(
+                                imageProxy = imageProxy
+                            ) { result ->
 
                                 isProcessing = false
 
-                                // OCR found MAL number
-                                if (!malNumber.isNullOrBlank()) {
+                                if (
+                                    !result.isNullOrBlank()
+                                ) {
 
-                                    lastScanTime = System.currentTimeMillis()
+                                    lastScanTime =
+                                        System.currentTimeMillis()
+
+                                    scanResult = result
+
+                                    isScanning = false
+                                    isScanningAnimation = false
 
                                     Log.d(
                                         "Scanner",
-                                        "OCR MAL = $malNumber"
+                                        "Camera result = $result"
                                     )
 
-                                    onScanResult(malNumber)
-
-                                    return@processImageProxy
-                                }
-
-                                // Barcode found
-                                if (barcode != null) {
-
-                                    val rawData =
-                                        barcode.rawValue?.trim()
-
-                                    if (!rawData.isNullOrBlank()) {
-
-                                        lastScanTime =
-                                            System.currentTimeMillis()
-
-                                        Log.d(
-                                            "Scanner",
-                                            "BARCODE = $rawData"
-                                        )
-
-                                        // Your barcode handling
-                                        onScanResult(rawData)
-                                    }
+                                    onScanResult(result)
                                 }
                             }
                         }
-
-                        val cameraSelector =
-                            CameraSelector
-                                .DEFAULT_BACK_CAMERA
 
                         cameraProvider.unbindAll()
 
                         cameraInstance =
                             cameraProvider.bindToLifecycle(
                                 lifecycleOwner,
-                                cameraSelector,
+                                CameraSelector.DEFAULT_BACK_CAMERA,
                                 preview,
                                 imageAnalysis
                             )
 
                         isCameraReady = true
-
-                        Log.d(
-                            "Scanner",
-                            "Camera ready"
-                        )
 
                     } catch (e: Exception) {
 
@@ -475,26 +441,29 @@ fun ScannerContent(
             }
         )
 
-        // ============================================================
-        // SCANNER OVERLAY
-        // ============================================================
+        // ========================================================
+        // OVERLAY
+        // ========================================================
 
         if (isCameraReady) {
 
             ScannerOverlay(
                 isScanning =
                     isScanningAnimation,
+
                 scanLineOffset =
                     scanLineOffset,
+
                 density =
                     density,
+
                 onScanAreaChanged = {}
             )
         }
 
-        // ============================================================
+        // ========================================================
         // TOP BAR
-        // ============================================================
+        // ========================================================
 
         TopBar(
             isFlashOn = isFlashOn,
@@ -510,9 +479,9 @@ fun ScannerContent(
             onBackClick = onBackClick
         )
 
-        // ============================================================
+        // ========================================================
         // BOTTOM CONTROLS
-        // ============================================================
+        // ========================================================
 
         BottomControls(
             onManualInput = onManualInput,
@@ -522,9 +491,9 @@ fun ScannerContent(
             }
         )
 
-        // ============================================================
-        // SCAN STATUS
-        // ============================================================
+        // ========================================================
+        // STATUS
+        // ========================================================
 
         ScanningStatus(
             isScanning = isScanning,
@@ -535,9 +504,9 @@ fun ScannerContent(
                 )
         )
 
-        // ============================================================
+        // ========================================================
         // CAMERA LOADING
-        // ============================================================
+        // ========================================================
 
         if (!isCameraReady) {
 
@@ -550,6 +519,7 @@ fun ScannerContent(
                                 alpha = 0.75f
                             )
                         ),
+
                 contentAlignment =
                     Alignment.Center
             ) {
@@ -570,16 +540,15 @@ fun ScannerContent(
 
                     Text(
                         text = "Starting camera...",
-                        color = Color.White,
-                        fontSize = 16.sp
+                        color = Color.White
                     )
                 }
             }
         }
 
-        // ============================================================
-        // GALLERY ANALYZING SCREEN
-        // ============================================================
+        // ========================================================
+        // GALLERY LOADING
+        // ========================================================
 
         if (isGalleryAnalyzing) {
 
@@ -588,9 +557,9 @@ fun ScannerContent(
     }
 }
 
-// ====================================================================
+// =================================================================
 // GALLERY ANALYZING SCREEN
-// ====================================================================
+// =================================================================
 
 @Composable
 fun GalleryAnalyzingScreen() {
@@ -604,6 +573,7 @@ fun GalleryAnalyzingScreen() {
                         alpha = 0.92f
                     )
                 ),
+
         contentAlignment =
             Alignment.Center
     ) {
@@ -616,11 +586,14 @@ fun GalleryAnalyzingScreen() {
             CircularProgressIndicator(
                 modifier =
                     Modifier.size(64.dp),
+
                 color =
                     MaterialTheme
                         .colorScheme
                         .primary,
-                strokeWidth = 5.dp
+
+                strokeWidth =
+                    5.dp
             )
 
             Spacer(
@@ -642,33 +615,36 @@ fun GalleryAnalyzingScreen() {
 
             Text(
                 text =
-                    "Looking for MAL number or barcode",
+                    "Scanning barcode and MAL number",
+
                 color =
                     Color.White.copy(
                         alpha = 0.7f
                     ),
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
+
+                textAlign =
+                    TextAlign.Center
             )
         }
     }
 }
 
-// ====================================================================
+// =================================================================
 // MAL DETECTOR
-// ====================================================================
+// =================================================================
 
 object MalNumberDetector {
 
+    /*
+     * Examples:
+     *
+     * MAL19912345X
+     * MAL 19912345 X
+     * MAL12035013X
+     */
     private val MAL_PATTERN =
         Pattern.compile(
-            "MAL\\s*[0-9]{6,12}\\s*[A-Za-z]{0,3}",
-            Pattern.CASE_INSENSITIVE
-        )
-
-    private val MAL_EXTRACT =
-        Pattern.compile(
-            "MAL[0-9]{6,14}[A-Za-z]{0,3}",
+            "MAL\\s*[0-9]{6,14}\\s*[A-Za-z]{0,3}",
             Pattern.CASE_INSENSITIVE
         )
 
@@ -680,31 +656,20 @@ object MalNumberDetector {
             return null
         }
 
-        var matcher =
+        val matcher =
             MAL_PATTERN.matcher(text)
 
-        if (matcher.find()) {
-
-            return matcher
-                .group()
-                .uppercase()
-                .replace(
-                    Regex("\\s+"),
-                    ""
-                )
+        if (!matcher.find()) {
+            return null
         }
 
-        matcher =
-            MAL_EXTRACT.matcher(text)
-
-        if (matcher.find()) {
-
-            return matcher
-                .group()
-                .uppercase()
-        }
-
-        return null
+        return matcher
+            .group()
+            .uppercase()
+            .replace(
+                Regex("\\s+"),
+                ""
+            )
     }
 
     fun containsMalNumber(
@@ -715,90 +680,582 @@ object MalNumberDetector {
     }
 }
 
-// ====================================================================
-// SCAN RESULT TYPE
-// ====================================================================
+// =================================================================
+// GALLERY IMAGE
+// =================================================================
 
-sealed class ScanResultType {
+private suspend fun scanImageForMedicine(
+    context: Context,
+    uri: Uri
+): String? {
 
-    data class MalNumber(
-        val number: String
-    ) : ScanResultType()
+    return withContext(Dispatchers.IO) {
 
-    data class Barcode(
-        val code: String
-    ) : ScanResultType()
+        try {
 
-    data class Eleaflet(
-        val url: String
-    ) : ScanResultType()
+            // -----------------------------------------------------
+            // First read image size
+            // -----------------------------------------------------
 
-    data class Unknown(
-        val data: String
-    ) : ScanResultType()
-}
+            val boundsOptions =
+                BitmapFactory.Options().apply {
 
-// ====================================================================
-// DETECT SCAN TYPE
-// ====================================================================
+                    inJustDecodeBounds = true
+                }
 
-fun detectScanResultType(
-    data: String
-): ScanResultType {
+            context.contentResolver
+                .openInputStream(uri)
+                ?.use { stream ->
 
-    val cleanData =
-        data.trim()
-
-    return when {
-
-        cleanData.contains(
-            "quest3plus.npra.gov.my",
-            ignoreCase = true
-        ) ||
-                cleanData.contains(
-                    "npra.gov.my",
-                    ignoreCase = true
-                ) -> {
-
-            ScanResultType.Eleaflet(
-                cleanData
-            )
-        }
-
-        MalNumberDetector
-            .containsMalNumber(cleanData) -> {
-
-            ScanResultType.MalNumber(
-                MalNumberDetector
-                    .extractMalNumber(
-                        cleanData
+                    BitmapFactory.decodeStream(
+                        stream,
+                        null,
+                        boundsOptions
                     )
-                    ?: cleanData
+                }
+
+            val sampleSize =
+                calculateInSampleSize(
+                    options = boundsOptions,
+                    reqWidth = 1600,
+                    reqHeight = 1600
+                )
+
+            // -----------------------------------------------------
+            // Decode smaller image
+            // -----------------------------------------------------
+
+            val decodeOptions =
+                BitmapFactory.Options().apply {
+
+                    inSampleSize = sampleSize
+
+                    inPreferredConfig =
+                        Bitmap.Config.ARGB_8888
+                }
+
+            val bitmap =
+                context.contentResolver
+                    .openInputStream(uri)
+                    ?.use { stream ->
+
+                        BitmapFactory.decodeStream(
+                            stream,
+                            null,
+                            decodeOptions
+                        )
+                    }
+
+            if (bitmap == null) {
+
+                Log.e(
+                    "GalleryScanner",
+                    "Unable to decode image"
+                )
+
+                return@withContext null
+            }
+
+            Log.d(
+                "GalleryScanner",
+                "Image = ${bitmap.width} x ${bitmap.height}"
             )
-        }
 
-        cleanData.all {
-            it.isDigit()
-        } &&
-                cleanData.length in 8..13 -> {
+            try {
 
-            ScanResultType.Barcode(
-                cleanData
+                scanBitmap(
+                    bitmap
+                )
+
+            } finally {
+
+                bitmap.recycle()
+            }
+
+        } catch (e: Exception) {
+
+            Log.e(
+                "GalleryScanner",
+                "Image analysis failed",
+                e
             )
-        }
 
-        else -> {
-
-            ScanResultType.Unknown(
-                cleanData
-            )
+            null
         }
     }
 }
 
-// ====================================================================
+// =================================================================
+// GALLERY BARCODE + OCR
+// =================================================================
+
+private suspend fun scanBitmap(
+    bitmap: Bitmap
+): String? {
+
+    /*
+     * 1. Barcode scanning
+     */
+    val barcodeResult =
+        scanBarcodeFromBitmap(
+            bitmap
+        )
+
+    if (!barcodeResult.isNullOrBlank()) {
+
+        Log.d(
+            "GalleryScanner",
+            "Barcode found = $barcodeResult"
+        )
+
+        /*
+         * If barcode itself contains MAL,
+         * return MAL instead.
+         */
+        val malFromBarcode =
+            MalNumberDetector.extractMalNumber(
+                barcodeResult
+            )
+
+        if (!malFromBarcode.isNullOrBlank()) {
+
+            return malFromBarcode
+        }
+
+        /*
+         * Normal barcode result.
+         */
+        return barcodeResult
+    }
+
+    /*
+     * 2. If barcode not found,
+     * try OCR for MAL.
+     */
+    val malResult =
+        scanMalWithOcr(
+            bitmap
+        )
+
+    if (!malResult.isNullOrBlank()) {
+
+        Log.d(
+            "GalleryScanner",
+            "OCR MAL found = $malResult"
+        )
+
+        return malResult
+    }
+
+    /*
+     * Nothing found.
+     */
+    return null
+}
+
+// =================================================================
+// GALLERY BARCODE
+// =================================================================
+
+private suspend fun scanBarcodeFromBitmap(
+    bitmap: Bitmap
+): String? {
+
+    return suspendCancellableCoroutine { continuation ->
+
+        try {
+
+            val inputImage =
+                InputImage.fromBitmap(
+                    bitmap,
+                    0
+                )
+
+            val options =
+                BarcodeScannerOptions.Builder()
+                    .setBarcodeFormats(
+                        Barcode.FORMAT_ALL_FORMATS
+                    )
+                    .build()
+
+            val scanner =
+                BarcodeScanning.getClient(
+                    options
+                )
+
+            scanner.process(inputImage)
+
+                .addOnSuccessListener { barcodes ->
+
+                    val result =
+                        barcodes
+                            .asSequence()
+                            .mapNotNull {
+                                it.rawValue?.trim()
+                            }
+                            .firstOrNull()
+
+                    scanner.close()
+
+                    if (
+                        continuation.isActive
+                    ) {
+
+                        continuation.resume(
+                            result
+                        )
+                    }
+                }
+
+                .addOnFailureListener { exception ->
+
+                    Log.e(
+                        "GalleryBarcode",
+                        "Barcode scan failed",
+                        exception
+                    )
+
+                    scanner.close()
+
+                    if (
+                        continuation.isActive
+                    ) {
+
+                        continuation.resume(
+                            null
+                        )
+                    }
+                }
+
+        } catch (e: Exception) {
+
+            Log.e(
+                "GalleryBarcode",
+                "Barcode exception",
+                e
+            )
+
+            if (
+                continuation.isActive
+            ) {
+
+                continuation.resume(
+                    null
+                )
+            }
+        }
+    }
+}
+
+// =================================================================
+// GALLERY OCR
+// =================================================================
+
+private suspend fun scanMalWithOcr(
+    bitmap: Bitmap
+): String? {
+
+    return suspendCancellableCoroutine { continuation ->
+
+        try {
+
+            val inputImage =
+                InputImage.fromBitmap(
+                    bitmap,
+                    0
+                )
+
+            val recognizer =
+                TextRecognition.getClient(
+                    TextRecognizerOptions.DEFAULT_OPTIONS
+                )
+
+            recognizer.process(inputImage)
+
+                .addOnSuccessListener { result ->
+
+                    val text =
+                        result.text
+
+                    Log.d(
+                        "GalleryOCR",
+                        "OCR TEXT = $text"
+                    )
+
+                    /*
+                     * Normal text.
+                     */
+                    var mal =
+                        MalNumberDetector.extractMalNumber(
+                            text
+                        )
+
+                    /*
+                     * OCR sometimes adds spaces:
+                     *
+                     * MAL 12035013 X
+                     */
+                    if (mal == null) {
+
+                        val normalized =
+                            text.replace(
+                                Regex("\\s+"),
+                                ""
+                            )
+
+                        mal =
+                            MalNumberDetector.extractMalNumber(
+                                normalized
+                            )
+                    }
+
+                    recognizer.close()
+
+                    if (
+                        continuation.isActive
+                    ) {
+
+                        continuation.resume(
+                            mal
+                        )
+                    }
+                }
+
+                .addOnFailureListener { exception ->
+
+                    Log.e(
+                        "GalleryOCR",
+                        "OCR failed",
+                        exception
+                    )
+
+                    recognizer.close()
+
+                    if (
+                        continuation.isActive
+                    ) {
+
+                        continuation.resume(
+                            null
+                        )
+                    }
+                }
+
+        } catch (e: Exception) {
+
+            Log.e(
+                "GalleryOCR",
+                "OCR exception",
+                e
+            )
+
+            if (
+                continuation.isActive
+            ) {
+
+                continuation.resume(
+                    null
+                )
+            }
+        }
+    }
+}
+
+// =================================================================
+// IMAGE SIZE
+// =================================================================
+
+private fun calculateInSampleSize(
+    options: BitmapFactory.Options,
+    reqWidth: Int,
+    reqHeight: Int
+): Int {
+
+    val height =
+        options.outHeight
+
+    val width =
+        options.outWidth
+
+    var sampleSize = 1
+
+    if (
+        height > reqHeight ||
+        width > reqWidth
+    ) {
+
+        var halfHeight =
+            height / 2
+
+        var halfWidth =
+            width / 2
+
+        while (
+            halfHeight / sampleSize >= reqHeight &&
+            halfWidth / sampleSize >= reqWidth
+        ) {
+
+            sampleSize *= 2
+        }
+    }
+
+    return sampleSize
+}
+
+// =================================================================
+// CAMERA BARCODE + OCR
+// =================================================================
+
+@OptIn(ExperimentalGetImage::class)
+private fun processCameraImage(
+    imageProxy: ImageProxy,
+    onResult: (String?) -> Unit
+) {
+
+    val mediaImage =
+        imageProxy.image
+
+    if (mediaImage == null) {
+
+        imageProxy.close()
+
+        onResult(null)
+
+        return
+    }
+
+    val inputImage =
+        InputImage.fromMediaImage(
+            mediaImage,
+            imageProxy
+                .imageInfo
+                .rotationDegrees
+        )
+
+    val barcodeScanner =
+        BarcodeScanning.getClient()
+
+    val textRecognizer =
+        TextRecognition.getClient(
+            TextRecognizerOptions.DEFAULT_OPTIONS
+        )
+
+    var barcodeFinished = false
+    var ocrFinished = false
+
+    var barcodeValue: String? = null
+    var malValue: String? = null
+
+    fun finish() {
+
+        if (
+            !barcodeFinished ||
+            !ocrFinished
+        ) {
+            return
+        }
+
+        /*
+         * MAL has priority.
+         */
+        val finalResult =
+            malValue ?: barcodeValue
+
+        barcodeScanner.close()
+        textRecognizer.close()
+        imageProxy.close()
+
+        onResult(finalResult)
+    }
+
+    // -------------------------------------------------------------
+    // BARCODE
+    // -------------------------------------------------------------
+
+    barcodeScanner
+        .process(inputImage)
+
+        .addOnSuccessListener { barcodes ->
+
+            barcodeValue =
+                barcodes
+                    .asSequence()
+                    .mapNotNull {
+                        it.rawValue?.trim()
+                    }
+                    .firstOrNull()
+        }
+
+        .addOnFailureListener { error ->
+
+            Log.e(
+                "CameraBarcode",
+                "Barcode error",
+                error
+            )
+        }
+
+        .addOnCompleteListener {
+
+            barcodeFinished = true
+
+            finish()
+        }
+
+    // -------------------------------------------------------------
+    // OCR
+    // -------------------------------------------------------------
+
+    textRecognizer
+        .process(inputImage)
+
+        .addOnSuccessListener { result ->
+
+            val text =
+                result.text
+
+            Log.d(
+                "CameraOCR",
+                "OCR TEXT = $text"
+            )
+
+            malValue =
+                MalNumberDetector.extractMalNumber(
+                    text
+                )
+
+            if (malValue == null) {
+
+                malValue =
+                    MalNumberDetector.extractMalNumber(
+                        text.replace(
+                            Regex("\\s+"),
+                            ""
+                        )
+                    )
+            }
+        }
+
+        .addOnFailureListener { error ->
+
+            Log.e(
+                "CameraOCR",
+                "OCR error",
+                error
+            )
+        }
+
+        .addOnCompleteListener {
+
+            ocrFinished = true
+
+            finish()
+        }
+}
+
+// =================================================================
 // TOP BAR
-// ====================================================================
+// =================================================================
 
 @Composable
 fun TopBar(
@@ -827,9 +1284,14 @@ fun TopBar(
         ) {
 
             Icon(
-                Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                tint = Color.White
+                imageVector =
+                    Icons.Default.ArrowBack,
+
+                contentDescription =
+                    "Back",
+
+                tint =
+                    Color.White
             )
         }
 
@@ -847,6 +1309,7 @@ fun TopBar(
 
             IconButton(
                 onClick = onFlashToggle,
+
                 modifier =
                     Modifier
                         .size(44.dp)
@@ -859,20 +1322,24 @@ fun TopBar(
             ) {
 
                 Icon(
-                    if (isFlashOn)
-                        Icons.Default.FlashOn
-                    else
-                        Icons.Default.FlashOff,
+                    imageVector =
+                        if (isFlashOn) {
+                            Icons.Default.FlashOn
+                        } else {
+                            Icons.Default.FlashOff
+                        },
 
                     contentDescription =
                         "Flashlight",
 
-                    tint = Color.White
+                    tint =
+                        Color.White
                 )
             }
 
             IconButton(
                 onClick = onGalleryPick,
+
                 modifier =
                     Modifier
                         .size(44.dp)
@@ -885,18 +1352,23 @@ fun TopBar(
             ) {
 
                 Icon(
-                    Icons.Default.PhotoLibrary,
-                    contentDescription = "Gallery",
-                    tint = Color.White
+                    imageVector =
+                        Icons.Default.PhotoLibrary,
+
+                    contentDescription =
+                        "Gallery",
+
+                    tint =
+                        Color.White
                 )
             }
         }
     }
 }
 
-// ====================================================================
+// =================================================================
 // BOTTOM CONTROLS
-// ====================================================================
+// =================================================================
 
 @Composable
 fun BottomControls(
@@ -946,8 +1418,12 @@ fun BottomControls(
             ) {
 
                 Icon(
-                    Icons.Default.Edit,
-                    contentDescription = null,
+                    imageVector =
+                        Icons.Default.Edit,
+
+                    contentDescription =
+                        null,
+
                     modifier =
                         Modifier.size(20.dp)
                 )
@@ -957,7 +1433,9 @@ fun BottomControls(
                         Modifier.width(8.dp)
                 )
 
-                Text("Manual Entry")
+                Text(
+                    "Manual Entry"
+                )
             }
 
             Button(
@@ -981,8 +1459,12 @@ fun BottomControls(
             ) {
 
                 Icon(
-                    Icons.Default.Photo,
-                    contentDescription = null,
+                    imageVector =
+                        Icons.Default.Photo,
+
+                    contentDescription =
+                        null,
+
                     modifier =
                         Modifier.size(20.dp)
                 )
@@ -992,7 +1474,9 @@ fun BottomControls(
                         Modifier.width(8.dp)
                 )
 
-                Text("Gallery")
+                Text(
+                    "Gallery"
+                )
             }
         }
 
@@ -1003,14 +1487,15 @@ fun BottomControls(
 
         Text(
             text =
-                "Supports MAL numbers and barcodes",
+                "Scan barcode or MAL number",
 
             color =
                 Color.White.copy(
                     alpha = 0.5f
                 ),
 
-            fontSize = 11.sp,
+            fontSize =
+                11.sp,
 
             textAlign =
                 TextAlign.Center
@@ -1018,9 +1503,9 @@ fun BottomControls(
     }
 }
 
-// ====================================================================
+// =================================================================
 // SCANNING STATUS
-// ====================================================================
+// =================================================================
 
 @Composable
 fun ScanningStatus(
@@ -1052,14 +1537,6 @@ fun ScanningStatus(
                     )
                     .fillMaxWidth(0.8f),
 
-            colors =
-                androidx.compose.material3
-                    .CardDefaults
-                    .cardColors(
-                        containerColor =
-                            Color(0xFF4CAF50)
-                    ),
-
             shape =
                 RoundedCornerShape(12.dp)
         ) {
@@ -1078,9 +1555,11 @@ fun ScanningStatus(
             ) {
 
                 Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = Color.White
+                    imageVector =
+                        Icons.Default.CheckCircle,
+
+                    contentDescription =
+                        null
                 )
 
                 Spacer(
@@ -1089,392 +1568,20 @@ fun ScanningStatus(
                 )
 
                 Text(
-                    "Scan Successful!",
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    text =
+                        "Scan Successful!",
+
+                    fontWeight =
+                        FontWeight.Bold
                 )
             }
         }
     }
 }
 
-// ====================================================================
-// GALLERY IMAGE ANALYSIS
-// ====================================================================
-
-private suspend fun scanImageForMedicine(
-    context: Context,
-    uri: Uri
-): String? {
-
-    return withContext(Dispatchers.IO) {
-
-        try {
-
-            Log.d(
-                "Scanner",
-                "Loading gallery image..."
-            )
-
-            val boundsOptions =
-                BitmapFactory.Options().apply {
-                    inJustDecodeBounds = true
-                }
-
-            context.contentResolver
-                .openInputStream(uri)
-                ?.use { stream ->
-
-                    BitmapFactory.decodeStream(
-                        stream,
-                        null,
-                        boundsOptions
-                    )
-                }
-
-            val sampleSize =
-                calculateInSampleSize(
-                    boundsOptions,
-                    1600,
-                    1600
-                )
-
-            val decodeOptions =
-                BitmapFactory.Options().apply {
-
-                    inSampleSize =
-                        sampleSize
-
-                    inPreferredConfig =
-                        Bitmap.Config.ARGB_8888
-                }
-
-            val bitmap =
-                context.contentResolver
-                    .openInputStream(uri)
-                    ?.use { stream ->
-
-                        BitmapFactory.decodeStream(
-                            stream,
-                            null,
-                            decodeOptions
-                        )
-                    }
-
-            if (bitmap == null) {
-
-                Log.e(
-                    "Scanner",
-                    "Unable to decode image"
-                )
-
-                return@withContext null
-            }
-
-            Log.d(
-                "Scanner",
-                "Image = ${bitmap.width}x${bitmap.height}"
-            )
-
-            scanBitmap(bitmap)
-
-        } catch (e: Exception) {
-
-            Log.e(
-                "Scanner",
-                "Gallery image analysis failed",
-                e
-            )
-
-            null
-        }
-    }
-}
-
-// ====================================================================
-// BITMAP SCANNING
-// ====================================================================
-
-private suspend fun scanBitmap(
-    bitmap: Bitmap
-): String? {
-
-    return kotlinx.coroutines.suspendCancellableCoroutine { continuation ->
-
-        try {
-
-            val inputImage =
-                InputImage.fromBitmap(
-                    bitmap,
-                    0
-                )
-
-            val options =
-                BarcodeScannerOptions.Builder()
-                    .setBarcodeFormats(
-                        Barcode.FORMAT_ALL_FORMATS
-                    )
-                    .build()
-
-            val scanner =
-                BarcodeScanning.getClient(
-                    options
-                )
-
-            scanner.process(
-                inputImage
-            )
-                .addOnSuccessListener { barcodes ->
-
-                    var result: String? = null
-
-                    for (barcode in barcodes) {
-
-                        val raw =
-                            barcode.rawValue
-                                ?.trim()
-
-                        if (raw.isNullOrBlank()) {
-                            continue
-                        }
-
-                        val mal =
-                            MalNumberDetector
-                                .extractMalNumber(
-                                    raw
-                                )
-
-                        result =
-                            mal ?: raw
-
-                        break
-                    }
-
-                    if (
-                        result == null
-                    ) {
-
-                        Log.d(
-                            "Scanner",
-                            "Barcode scanner found nothing"
-                        )
-                    }
-
-                    scanner.close()
-
-                    if (
-                        continuation.isActive
-                    ) {
-
-                        continuation.resume(
-                            result,
-                            onCancellation = null
-                        )
-                    }
-                }
-
-                .addOnFailureListener { error ->
-
-                    Log.e(
-                        "Scanner",
-                        "ML Kit gallery scan failed",
-                        error
-                    )
-
-                    scanner.close()
-
-                    if (
-                        continuation.isActive
-                    ) {
-
-                        continuation.resume(
-                            null,
-                            onCancellation = null
-                        )
-                    }
-                }
-
-        } catch (e: Exception) {
-
-            Log.e(
-                "Scanner",
-                "Bitmap scanner error",
-                e
-            )
-
-            if (
-                continuation.isActive
-            ) {
-
-                continuation.resume(
-                    null,
-                    onCancellation = null
-                )
-            }
-        }
-    }
-}
-
-// ====================================================================
-// IMAGE SIZE
-// ====================================================================
-
-private fun calculateInSampleSize(
-    options: BitmapFactory.Options,
-    reqWidth: Int,
-    reqHeight: Int
-): Int {
-
-    val height =
-        options.outHeight
-
-    val width =
-        options.outWidth
-
-    var inSampleSize = 1
-
-    if (
-        height > reqHeight ||
-        width > reqWidth
-    ) {
-
-        val halfHeight =
-            height / 2
-
-        val halfWidth =
-            width / 2
-
-        while (
-            halfHeight / inSampleSize >= reqHeight &&
-            halfWidth / inSampleSize >= reqWidth
-        ) {
-
-            inSampleSize *= 2
-        }
-    }
-
-    return inSampleSize
-}
-
-// ====================================================================
-// CAMERA IMAGE PROCESSING
-// ====================================================================
-
-@ExperimentalGetImage
-@androidx.annotation.OptIn(ExperimentalGetImage::class)
-@OptIn(ExperimentalGetImage::class)
-private fun processImageProxy(
-    imageProxy: ImageProxy,
-    onResult: (
-        Barcode?,
-        String?
-    ) -> Unit
-) {
-
-    val mediaImage = imageProxy.image
-
-    if (mediaImage == null) {
-        imageProxy.close()
-        onResult(null, null)
-        return
-    }
-
-    val image = InputImage.fromMediaImage(
-        mediaImage,
-        imageProxy.imageInfo.rotationDegrees
-    )
-
-    // BARCODE
-    val barcodeScanner =
-        BarcodeScanning.getClient()
-
-    // OCR
-    val textRecognizer =
-        TextRecognition.getClient(
-            TextRecognizerOptions.DEFAULT_OPTIONS
-        )
-
-    var barcodeResult: Barcode? = null
-    var malResult: String? = null
-
-    var barcodeFinished = false
-    var ocrFinished = false
-
-    fun finishIfDone() {
-
-        if (barcodeFinished && ocrFinished) {
-
-            onResult(
-                barcodeResult,
-                malResult
-            )
-
-            barcodeScanner.close()
-            textRecognizer.close()
-            imageProxy.close()
-        }
-    }
-
-    // -------------------------
-    // BARCODE SCANNING
-    // -------------------------
-
-    barcodeScanner.process(image)
-        .addOnSuccessListener { barcodes ->
-
-            barcodeResult =
-                barcodes.firstOrNull()
-        }
-        .addOnFailureListener { exception ->
-
-            Log.e(
-                "Scanner",
-                "Barcode error",
-                exception
-            )
-        }
-        .addOnCompleteListener {
-
-            barcodeFinished = true
-
-            finishIfDone()
-        }
-
-    // -------------------------
-    // OCR
-    // -------------------------
-
-    textRecognizer.process(image)
-        .addOnSuccessListener { result ->
-
-            Log.d(
-                "OCR",
-                "TEXT = ${result.text}"
-            )
-
-            malResult =
-                MalNumberDetector
-                    .extractMalNumber(result.text)
-        }
-        .addOnFailureListener { exception ->
-
-            Log.e(
-                "OCR",
-                "OCR error",
-                exception
-            )
-        }
-        .addOnCompleteListener {
-
-            ocrFinished = true
-
-            finishIfDone()
-        }
-}
-
-// ====================================================================
-// PERMISSION SCREENS
-// ====================================================================
+// =================================================================
+// PERMISSION RATIONALE
+// =================================================================
 
 @Composable
 fun PermissionRationaleScreen(
@@ -1496,9 +1603,15 @@ fun PermissionRationaleScreen(
     ) {
 
         Icon(
-            Icons.Default.PhotoCamera,
-            contentDescription = null,
-            tint = Color.White,
+            imageVector =
+                Icons.Default.PhotoCamera,
+
+            contentDescription =
+                null,
+
+            tint =
+                Color.White,
+
             modifier =
                 Modifier.size(64.dp)
         )
@@ -1509,10 +1622,17 @@ fun PermissionRationaleScreen(
         )
 
         Text(
-            "Camera Permission Required",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+            text =
+                "Camera Permission Required",
+
+            color =
+                Color.White,
+
+            fontSize =
+                24.sp,
+
+            fontWeight =
+                FontWeight.Bold
         )
 
         Spacer(
@@ -1521,11 +1641,14 @@ fun PermissionRationaleScreen(
         )
 
         Text(
-            "Camera access is needed to scan medicine information.",
+            text =
+                "Camera access is needed to scan medicine information.",
+
             color =
                 Color.White.copy(
                     alpha = 0.7f
                 ),
+
             textAlign =
                 TextAlign.Center
         )
@@ -1539,10 +1662,16 @@ fun PermissionRationaleScreen(
             onClick = onGrant
         ) {
 
-            Text("Grant Permission")
+            Text(
+                "Grant Permission"
+            )
         }
     }
 }
+
+// =================================================================
+// PERMISSION DENIED
+// =================================================================
 
 @Composable
 fun PermissionDeniedScreen(
@@ -1564,9 +1693,15 @@ fun PermissionDeniedScreen(
     ) {
 
         Icon(
-            Icons.Default.Warning,
-            contentDescription = null,
-            tint = Color(0xFFFF9800),
+            imageVector =
+                Icons.Default.Warning,
+
+            contentDescription =
+                null,
+
+            tint =
+                Color(0xFFFF9800),
+
             modifier =
                 Modifier.size(64.dp)
         )
@@ -1577,10 +1712,17 @@ fun PermissionDeniedScreen(
         )
 
         Text(
-            "Camera Permission Denied",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+            text =
+                "Camera Permission Denied",
+
+            color =
+                Color.White,
+
+            fontSize =
+                24.sp,
+
+            fontWeight =
+                FontWeight.Bold
         )
 
         Spacer(
@@ -1589,11 +1731,14 @@ fun PermissionDeniedScreen(
         )
 
         Text(
-            "Please grant camera permission in system settings.",
+            text =
+                "Please grant camera permission and try again.",
+
             color =
                 Color.White.copy(
                     alpha = 0.7f
                 ),
+
             textAlign =
                 TextAlign.Center
         )
@@ -1607,7 +1752,9 @@ fun PermissionDeniedScreen(
             onClick = onRequest
         ) {
 
-            Text("Request Again")
+            Text(
+                "Request Again"
+            )
         }
     }
 }

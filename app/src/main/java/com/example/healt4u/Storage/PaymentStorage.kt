@@ -27,19 +27,23 @@ private fun getCurrentTimeText(): String {
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun createPayment(payment: Payment): Payment? {
     return try {
-        val record = payment.copy(id = null)
+        Log.d(TAG, "Saving payment with ID=${payment.id}")
 
         val saved = SupabaseClient.supabase
             .from("payments")
-            .insert(record) { select() }
+            .insert(payment) { select() }  // ✅ Send FULL object including ID
             .decodeList<Map<String, JsonElement>>()
 
-        if (saved.isEmpty()) return null
-        val row = saved.first()
+        if (saved.isEmpty()) {
+            Log.e(TAG, "No row returned after insert")
+            return null
+        }
 
-        payment.copy(
-            id = row["id"]?.jsonPrimitive?.content
-        )
+        val row = saved.first()
+        val returnedId = row["id"]?.jsonPrimitive?.content
+        Log.d(TAG, "✅ Inserted! DB returned ID=$returnedId")
+
+        payment  // ✅ Return original object — ID is already correct
     } catch (e: Exception) {
         Log.e(TAG, "Error creating payment: ${e.message}", e)
         null

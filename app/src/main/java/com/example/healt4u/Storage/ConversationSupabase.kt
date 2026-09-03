@@ -67,17 +67,7 @@ suspend fun getConversationsByPatient(patientId: Int): List<Conversation> {
 
         Log.d("SupabaseStorage", "Returning ${conversations.size} conversations")
 
-        val syncedConversations = conversations.map { conv ->
-            val latestMsg = getLastMessage(conv.id ?: 0)
-            if (latestMsg != null) {
-                conv.copy(lastMessage = latestMsg.content)
-            } else {
-                conv
-            }
-        }
-
-        Log.d("SupabaseStorage", "Returning synced ${syncedConversations.size} conversations")
-        return syncedConversations
+        return conversations
 
     } catch (e: Exception) {
         Log.e("SupabaseStorage", "Error: ${e.message}", e)
@@ -114,17 +104,8 @@ suspend fun getConversationsByDoctor(doctorId: Int): List<Conversation> {
         }
 
         Log.d(TAG, "Loaded ${conversations.size} conversations")
-        val syncedConversations = conversations.map { conv ->
-            val latestMsg = getLastMessage(conv.id ?: 0)
-            if (latestMsg != null) {
-                conv.copy(lastMessage = latestMsg.content)
-            } else {
-                conv
-            }
-        }
 
-        Log.d(TAG, "Returning ${syncedConversations.size} conversations")
-        return syncedConversations
+        return conversations
 
     } catch (e: Exception) {
         Log.e(TAG, "Error loading conversations: ${e.message}", e)

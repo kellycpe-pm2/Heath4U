@@ -4,17 +4,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -23,29 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -66,7 +35,7 @@ import java.time.ZoneId
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatScreen(
-    chatName: String,
+    chatName: String,           // ✅ ALREADY CORRECT — USE THIS DIRECTLY!
     userId: Int,
     userRole: String,
     conversationId: Int,
@@ -82,34 +51,21 @@ fun ChatScreen(
     isMuted: Boolean = false,
     onMuteChanged: (Boolean) -> Unit = {}
 ) {
-    var doctorName by remember { mutableStateOf("Doctor") }
-    var patientName by remember { mutableStateOf("Patient") }
+    // ✅ USE THE PASSED NAME — NO ID LOOKUP CONFUSION!
+    val displayName = chatName
+
+    // ✅ Load ONLY MY name for sending messages
+    var myName by remember { mutableStateOf("Me") }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(doctorId, patientId) {
+    LaunchedEffect(userId, userRole) {
         coroutineScope.launch {
-            try {
-                getDoctorById(doctorId)?.let { doctorName = it.name }
-                getPatientById(patientId)?.let { patientName = it.name }
-                Log.d("ChatNames", "Loaded: doctor=$doctorName, patient=$patientName")
-            } catch (e: Exception) {
-                Log.e("ChatNames", "Failed to load names", e)
+            myName = if (userRole == "doctor") {
+                getDoctorById(userId)?.name ?: "Doctor"
+            } else {
+                getPatientById(userId)?.name ?: "Patient"
             }
         }
-    }
-
-    val effectiveRole = when {
-        userRole == "doctor" || userId == doctorId -> "doctor"
-        userRole == "patient" || userId == patientId -> "patient"
-        else -> "patient"
-    }
-
-    val myName = remember(effectiveRole, doctorName, patientName) {
-        if (effectiveRole == "doctor") doctorName else patientName
-    }
-
-    val displayName = remember(effectiveRole, doctorName, patientName) {
-        if (effectiveRole == "doctor") patientName else doctorName
     }
 
     var messages by remember { mutableStateOf(initialMessages) }
@@ -181,14 +137,12 @@ fun ChatScreen(
                 title = {
                     Column {
                         Text(
-                            text = displayName,
+                            text = displayName,  // ✅ chatName = Dr. Sarah Tan ✅
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onSecondary
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
@@ -281,7 +235,7 @@ fun ChatScreen(
                                     conversationId = conversationId,
                                     content = textInput,
                                     senderId = userId,
-                                    senderName = myName,
+                                    senderName = myName,  // ✅ YOUR name
                                     timestamp = nowIso,
                                     type = "text"
                                 )
@@ -352,7 +306,7 @@ fun ChatScreen(
                             MessageBubble(
                                 message = message,
                                 isFromCurrentUser = isFromCurrentUser,
-                                userRole = effectiveRole,
+                                userRole = userRole,
                                 otherPersonName = displayName,
                                 onAvatarClick = onAvatarClick,
                                 onDeleteClick = { messageToDelete = message }

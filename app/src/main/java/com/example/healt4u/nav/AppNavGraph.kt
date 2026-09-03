@@ -1,9 +1,6 @@
 package com.example.healt4u.nav
 
-import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.util.Log
@@ -27,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -91,6 +87,7 @@ import com.example.healt4u.screen.Payment.PaymentScreen
 import com.example.healt4u.screen.ScanScreen.AddReminderScreen
 import com.example.healt4u.screen.ScanScreen.HistoryScreen
 import com.example.healt4u.screen.ScanScreen.ScanResult
+import com.example.healt4u.screen.ScanScreen.getCurrentDate
 import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
@@ -112,7 +109,8 @@ fun AppNavGraph(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    var currentUserId by remember { mutableStateOf(2) }
+    // ✅ START AT 0 — will be set by login
+    var currentUserId by remember { mutableIntStateOf(0) }
     var currentUserRole by remember { mutableStateOf("patient") }
     var loggedInAdminUsername by remember { mutableStateOf("") }
     var currentUserName by remember { mutableStateOf("") }
@@ -238,14 +236,12 @@ fun AppNavGraph(
             val context = LocalContext.current
             val reloadKey = remember { mutableIntStateOf(0) }
 
-            LaunchedEffect(Unit, reloadKey.intValue) @androidx.annotation.RequiresPermission(android.Manifest.permission.POST_NOTIFICATIONS) {
+            LaunchedEffect(Unit, reloadKey.intValue) {
                 val allLogs = loadReminderLogs(context)
                 Log.d("SCHEDULE", "Total logs found: ${allLogs.size}")
                 allLogs.forEach {
                     Log.d("SCHEDULE", "→ ${it.date} | ${it.medicineName}")
                 }
-
-               // vm_reminder.loadTodaySchedule(context = context, currentUserId)
             }
 
             LaunchedEffect(Unit) {
@@ -368,110 +364,38 @@ fun AppNavGraph(
         }
 
         composable("scan") {
-
             ScannerScreen(
-
                 onBarcodeScanned = { scannedData ->
-
-                    val cleanData =
-                        scannedData.trim()
-
+                    val cleanData = scannedData.trim()
                     if (cleanData.isBlank()) {
-                        Log.d(
-                            "SCAN_NAV",
-                            "Empty scan result"
-                        )
+                        Log.d("SCAN_NAV", "Empty scan result")
                         return@ScannerScreen
                     }
-
-                    Log.d(
-                        "SCAN_NAV",
-                        "Final scan = $cleanData"
-                    )
-
-                    /*
-                     * Start NPRA search.
-                     */
-                    viewModel.searchUnified(
-                        cleanData
-                    )
-
-                    /*
-                     * Encode safely for Navigation.
-                     */
-                    val encodedData =
-                        Uri.encode(
-                            cleanData
-                        )
-
-                    navController.navigate(
-                        "detail/$encodedData"
-                    )
+                    Log.d("SCAN_NAV", "Final scan = $cleanData")
+                    viewModel.searchUnified(cleanData)
+                    val encodedData = Uri.encode(cleanData)
+                    navController.navigate("detail/$encodedData")
                 },
-
-                onManualInput = {
-                    showManualDialog = true
-                },
-
+                onManualInput = { showManualDialog = true },
                 onFlashToggle = { enabled ->
-
-                    Log.d(
-                        "SCAN_NAV",
-                        "Flashlight = $enabled"
-                    )
+                    Log.d("SCAN_NAV", "Flashlight = $enabled")
                 },
-
                 onGalleryPick = {
-
-                    /*
-                     * Gallery picker is handled inside
-                     * ScannerContent.
-                     *
-                     * Nothing else needs to happen here.
-                     */
-                    Log.d(
-                        "SCAN_NAV",
-                        "Gallery opened"
-                    )
+                    Log.d("SCAN_NAV", "Gallery opened")
                 }
             )
 
             if (showManualDialog) {
-
                 ManualInputDialog(
-
-                    onDismiss = {
-                        showManualDialog = false
-                    },
-
+                    onDismiss = { showManualDialog = false },
                     onSearch = { query ->
-
-                        val cleanQuery =
-                            query.trim()
-
-                        if (cleanQuery.isBlank()) {
-                            return@ManualInputDialog
-                        }
-
+                        val cleanQuery = query.trim()
+                        if (cleanQuery.isBlank()) return@ManualInputDialog
                         showManualDialog = false
-
-                        Log.d(
-                            "SCAN_NAV",
-                            "Manual search = $cleanQuery"
-                        )
-
-                        viewModel.searchUnified(
-                            cleanQuery
-                        )
-
-                        val encodedQuery =
-                            Uri.encode(
-                                cleanQuery
-                            )
-
-                        navController.navigate(
-                            "detail/$encodedQuery"
-                        )
+                        Log.d("SCAN_NAV", "Manual search = $cleanQuery")
+                        viewModel.searchUnified(cleanQuery)
+                        val encodedQuery = Uri.encode(cleanQuery)
+                        navController.navigate("detail/$encodedQuery")
                     }
                 )
             }
@@ -480,74 +404,35 @@ fun AppNavGraph(
         composable(
             route = "detail/{barcode}",
             arguments = listOf(
-                navArgument("barcode") {
-                    type = NavType.StringType
-                }
+                navArgument("barcode") { type = NavType.StringType }
             )
         ) { backStackEntry ->
+            val encodedBarcode = backStackEntry
+                .arguments
+                ?.getString("barcode") ?: ""
+            val barcode = Uri.decode(encodedBarcode)
+            Log.d("DETAIL_SCREEN", "Showing result for = $barcode")
 
-            val encodedBarcode =
-                backStackEntry
-                    .arguments
-                    ?.getString("barcode")
-                    ?: ""
-
-            val barcode =
-                Uri.decode(encodedBarcode)
-
-            Log.d(
-                "DETAIL_SCREEN",
-                "Showing result for = $barcode"
-            )
-
-            val result by
-            viewModel.searchResult
-                .collectAsState()
-
-            val isLoading by
-            viewModel.isLoading
-                .collectAsState()
-
-            val errorMessage by
-            viewModel.errorMessage
-                .collectAsState()
+            val result by viewModel.searchResult.collectAsState()
+            val isLoading by viewModel.isLoading.collectAsState()
+            val errorMessage by viewModel.errorMessage.collectAsState()
 
             ScanResult(
-
                 result = result,
-
                 isLoading = isLoading,
-
                 errorMessage = errorMessage,
-
                 onBack = {
-
                     viewModel.clearResult()
-
                     navController.popBackStack()
                 },
-
                 onAddToReminder = { _ ->
-
-                    val medicineCode =
-                        barcode.trim()
-
-                    if (medicineCode.isBlank()) {
-                        return@ScanResult
-                    }
-
-                    val encodedMedicineCode =
-                        Uri.encode(
-                            medicineCode
-                        )
-
-                    navController.navigate(
-                        "add_reminder/$encodedMedicineCode"
-                    )
+                    val medicineCode = barcode.trim()
+                    if (medicineCode.isBlank()) return@ScanResult
+                    val encodedMedicineCode = Uri.encode(medicineCode)
+                    navController.navigate("add_reminder/$encodedMedicineCode")
                 }
             )
         }
-
 
         composable(
             route = "appointment_screen/{patientId}",
@@ -594,9 +479,10 @@ fun AppNavGraph(
             ChatListScreen(
                 userId = currentUserId,
                 userRole = currentUserRole,
-                onConversationClick = { conversation ->
+                onConversationClick = { conversation, chatName ->
+                    val expiryTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000
                     navController.navigate(
-                        "chat/${conversation.id}/${conversation.doctorId}/${conversation.patientId}"
+                        "chat_with_expiry/${conversation.id}/${conversation.doctorId}/${conversation.patientId}/$expiryTime"
                     )
                 },
                 onNewChatClick = {
@@ -669,6 +555,7 @@ fun AppNavGraph(
                     val doctor = getDoctorById(doctorId)
                     doctorName = doctor?.name ?: "Dr. Unknown"
                     consultationFee = doctor?.consultationFee ?: 50.0
+                    Log.d("PAYMENT_DEBUG", "doctorId=$doctorId → name=$doctorName")
                 }
             }
 
@@ -691,15 +578,22 @@ fun AppNavGraph(
                         )
 
                         if (conversation != null) {
+                            val paymentId = java.util.UUID.randomUUID().toString()
+
                             val payment = Payment(
-                                id = null,
+                                id = paymentId,
                                 patientId = currentUserId,
                                 doctorId = doctorId,
                                 doctorName = doctorName,
                                 amount = consultationFee,
                                 paymentMethod = paymentMethod,
-                                status = "completed"
+                                status = "completed",
+                                date = getCurrentDate(),
+                                time = System.currentTimeMillis().toString()
                             )
+
+                            Log.d("PAYMENT", "Saving payment: id=$paymentId, patient=$currentUserId, doctor=$doctorId")
+
                             val saved = createPayment(payment)
                             if (saved != null) {
                                 Log.d("PAYMENT", "✅ Payment saved! ID=${saved.id}")
@@ -735,12 +629,15 @@ fun AppNavGraph(
 
             LaunchedEffect(doctorId, patientId, currentUserRole) {
                 coroutineScope.launch {
+                    Log.d("NAME_LOOKUP", "role=$currentUserRole, doctorId=$doctorId, patientId=$patientId")
                     if (currentUserRole == "doctor") {
                         val patient = getPatientById(patientId)
                         displayName = patient?.name ?: "Patient"
+                        Log.d("NAME_LOOKUP", "Doctor sees patient: ${patient?.name}")
                     } else {
                         val doctor = getDoctorById(doctorId)
                         displayName = doctor?.name ?: "Doctor"
+                        Log.d("NAME_LOOKUP", "Patient sees doctor: ${doctor?.name}")
                     }
                 }
             }
@@ -811,6 +708,8 @@ fun AppNavGraph(
 
         composable("doctor") {
             currentUserRole = "doctor"
+            // ⚠️ SET THIS FROM DOCTOR LOGIN — NOT HARDCODED!
+            // currentUserId = 2  // ❌ REMOVED — should come from login!
             DoctorDashboardScreen(
                 onPatientClick = { patient ->
                     navController.navigate("adherence_statistics/${patient.id}")
@@ -865,18 +764,11 @@ fun AppNavGraph(
         }
 
         composable("admin_doctors") {
-            AdminDoctorScreen(
-                vm = vm_admin,
-                onBack = { navController.popBackStack() }
-            )
+            AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
         }
 
         composable("admin_add_doctor") {
-            AdminAddDoctorScreen(
-                vm = vm_admin,
-                onBack = { navController.popBackStack() },
-                onDoctorAdded = { navController.popBackStack() }
-            )
+            AdminAddDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() }, onDoctorAdded = { navController.popBackStack() })
         }
 
         composable("family_mode") {
@@ -903,11 +795,7 @@ fun AppNavGraph(
         }
 
         composable("set_patient_phone") {
-            SetPatientPhoneScreen(
-                vm = vm_family,
-                onBack = { navController.popBackStack() },
-                onSaved = { navController.popBackStack() }
-            )
+            SetPatientPhoneScreen(vm = vm_family, onBack = { navController.popBackStack() }, onSaved = { navController.popBackStack() })
         }
     }
 }

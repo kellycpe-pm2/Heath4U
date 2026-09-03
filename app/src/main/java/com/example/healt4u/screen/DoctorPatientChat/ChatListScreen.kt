@@ -43,7 +43,7 @@ import java.util.*
 fun ChatListScreen(
     userId: Int,
     userRole: String,
-    onConversationClick: (Conversation) -> Unit,
+    onConversationClick: (Conversation, String) -> Unit,
     onNewChatClick: () -> Unit,
     onBack: () -> Unit,
     viewModel: ConversationViewModel = viewModel()
@@ -90,10 +90,7 @@ fun ChatListScreen(
                 onClick = onNewChatClick,
                 containerColor = MaterialTheme.colorScheme.secondary
             ) {
-                Icon(
-                    Icons.Filled.Add,
-                    contentDescription = "New Chat"
-                )
+                Icon(Icons.Filled.Add, contentDescription = "New Chat")
             }
         }
     ) { innerPadding ->
@@ -130,15 +127,13 @@ fun ChatListScreen(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = {
-                                if (userRole == "doctor") {
-                                    viewModel.loadConversationsForDoctor(userId)
-                                } else {
-                                    viewModel.loadConversations(userId)
-                                }
+                        Button(onClick = {
+                            if (userRole == "doctor") {
+                                viewModel.loadConversationsForDoctor(userId)
+                            } else {
+                                viewModel.loadConversations(userId)
                             }
-                        ) {
+                        }) {
                             Text("Retry")
                         }
                     }
@@ -174,13 +169,15 @@ fun ChatListScreen(
                     ) {
                         items(
                             items = conversations,
-                            key = { it.id?:0 }
+                            key = { it.id ?: 0 }
                         ) { conversation ->
                             ConversationItem(
                                 userId = userId,
                                 userRole = userRole,
                                 conversation = conversation,
-                                onClick = { onConversationClick(conversation) }
+                                onClick = { chatName ->
+                                    onConversationClick(conversation, chatName)  // ✅ Pass loaded name directly
+                                }
                             )
                         }
                     }
@@ -196,7 +193,7 @@ fun ConversationItem(
     userId: Int,
     userRole: String,
     conversation: Conversation,
-    onClick: () -> Unit
+    onClick: (String) -> Unit
 ) {
     val doctorId = conversation.doctorId
     val patientId = conversation.patientId
@@ -204,48 +201,19 @@ fun ConversationItem(
     var displayName by remember { mutableStateOf("Loading...") }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(doctorId, patientId, userId) {
+    LaunchedEffect(doctorId, patientId, userId, userRole) {
         coroutineScope.launch {
             try {
-                // ✅ Determine WHO is the OTHER person (not current user)
-                val otherPersonId: Int
-                val isOtherPersonDoctor: Boolean
-
-                when {
-                    userId == doctorId -> {
-                        // Current user = Doctor → show PATIENT name
-                        otherPersonId = patientId
-                        isOtherPersonDoctor = false
-                    }
-                    userId == patientId -> {
-                        // Current user = Patient → show DOCTOR name
-                        otherPersonId = doctorId
-                        isOtherPersonDoctor = true
-                    }
-                    userRole == "doctor" -> {
-                        // Fallback: role=doctor → show patient
-                        otherPersonId = patientId
-                        isOtherPersonDoctor = false
-                    }
-                    else -> {
-                        // Fallback: role=patient → show doctor
-                        otherPersonId = doctorId
-                        isOtherPersonDoctor = true
-                    }
-                }
-
-                // ✅ Load ONLY the OTHER person's name
-                displayName = if (isOtherPersonDoctor) {
-                    getDoctorById(otherPersonId)?.name ?: "Dr. Unknown"
+                // ✅ userRole FIRST — no ID overlap confusion!
+                displayName = if (userRole == "patient") {
+                    getDoctorById(doctorId)?.name ?: "Doctor"
                 } else {
-                    getPatientById(otherPersonId)?.name ?: "Patient Unknown"
+                    getPatientById(patientId)?.name ?: "Patient"
                 }
-
-                Log.d("ChatName", "userId=$userId → loading other=$otherPersonId (doctor=$isOtherPersonDoctor) → name=$displayName")
-
+                Log.d("ChatName", "userRole=$userRole → name=$displayName")
             } catch (e: Exception) {
                 Log.e("ChatName", "Failed to load name", e)
-                displayName = if (userId == doctorId) "Patient" else "Doctor"
+                displayName = if (userRole == "patient") "Doctor" else "Patient"
             }
         }
     }
@@ -257,7 +225,7 @@ fun ConversationItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable { onClick(displayName) },  // ✅ Pass loaded name to chat
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
@@ -316,7 +284,7 @@ fun ConversationItem(
                     overflow = TextOverflow.Ellipsis
                 )
 
-                if (userRole == "patient") {
+                if (userRole == "patient" && conversation.hospitalName.isNotEmpty()) {
                     Text(
                         text = conversation.hospitalName,
                         fontSize = 12.sp,
@@ -407,7 +375,7 @@ fun PreviewChatListScreen() {
         ChatListScreen(
             userId = 1,
             userRole = "patient",
-            onConversationClick = {},
+            onConversationClick = { _, _ -> },
             onNewChatClick = {},
             onBack = {}
         )

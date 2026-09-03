@@ -78,8 +78,28 @@ fun PaymentScreen(
     val date = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
     val time = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
 
+    // ✅ TNG Deep Link (try app first, fallback to web)
+    val tngDeepLink = "tngdwallet://client/dl/mp?mpid=123456789"
     val tngWebUrl = "https://www.touchngo.com.my"
     val fpxWebUrl = "https://paynet.my/personal-solutions/fpx.html"
+
+    // ✅ Function to open TNG
+    fun openTNG() {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tngDeepLink)).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+
+        if (intent.resolveActivity(context.packageManager) != null) {
+            // ✅ TNG App installed - open app
+            context.startActivity(intent)
+            Toast.makeText(context, "Opening TNG eWallet...", Toast.LENGTH_SHORT).show()
+        } else {
+            // ❌ TNG App not installed - open website
+            Toast.makeText(context, "TNG App not installed. Opening website...", Toast.LENGTH_SHORT).show()
+            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(tngWebUrl))
+            context.startActivity(webIntent)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -160,18 +180,23 @@ fun PaymentScreen(
 
             Spacer(Modifier.weight(1f))
 
+            // ✅ Modified Pay Button - uses deep link for TNG
             val buttonText = "Open $selectedMethod to Pay — RM %.2f".format(amount)
             Button(
                 onClick = {
-                    val url = if (selectedMethod == "TnG") tngWebUrl else fpxWebUrl
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    if (selectedMethod == "TnG") {
+                        // ✅ Try TNG App first
+                        openTNG()
+                    } else {
+                        // FPX - open web
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(fpxWebUrl)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                        Toast.makeText(context, "Opening FPX...", Toast.LENGTH_SHORT).show()
                     }
-                    context.startActivity(intent)
 
-                    val msg = "Opening $selectedMethod...\nAmount: RM %.2f".format(amount)
-                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-
+                    // Save pending payment
                     val payment = Payment(
                         id = "pay_${System.currentTimeMillis()}",
                         patientId = patientId,

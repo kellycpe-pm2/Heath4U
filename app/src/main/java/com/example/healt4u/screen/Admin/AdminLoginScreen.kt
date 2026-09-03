@@ -57,9 +57,9 @@ fun AdminLoginScreen(
     var loginMethod by remember { mutableStateOf("email") }
     var isLoading by remember { mutableStateOf(false) }
 
-    var email by remember { mutableStateOf("admin@gmail.com") }
+    var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("admin123") }
+    var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
@@ -117,9 +117,9 @@ fun AdminLoginScreen(
                     onLoginMethodChange = { loginMethod = it },
                     onBack = {
                         selectedRole = null
-                        email = "admin@gmail.com"
+                        email = ""
                         phone = ""
-                        password = "admin123"
+                        password = ""
                     },
                     onForgotPassword = onForgotPassword,
                     onSubmit = {

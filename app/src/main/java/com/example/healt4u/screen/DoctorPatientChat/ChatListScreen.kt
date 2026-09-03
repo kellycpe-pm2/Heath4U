@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,9 +67,12 @@ fun ChatListScreen(
                 title = {
                     Text(
                         text = "My Chats",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentWidth(Alignment.CenterHorizontally)
+                            .padding(end = 48.dp)
                     )
                 },
                 navigationIcon = {
@@ -86,11 +90,13 @@ fun ChatListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNewChatClick,
-                containerColor = MaterialTheme.colorScheme.secondary
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "New Chat")
+            if (userRole=="patient"){
+                FloatingActionButton(
+                    onClick = onNewChatClick,
+                    containerColor = MaterialTheme.colorScheme.secondary
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "New Chat")
+                }
             }
         }
     ) { innerPadding ->

@@ -56,6 +56,8 @@ import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatScreen
+import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
+import com.example.healt4u.screen.Dashboard.DoctorSettingScreen
 import com.example.healt4u.screen.DoctorPatientChat.DoctorListScreen
 import com.example.healt4u.screen.DoctorPatientChat.HospitalListScreen
 import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
@@ -648,7 +650,8 @@ fun AppNavGraph(
                     onDoctorSelected = { doctor ->
                         navController.navigate("payment/${doctor.id}/$hospitalId")
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    getDoctorStatus = { "available" } // Provide a default status for now
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -841,9 +844,40 @@ fun AppNavGraph(
                 onStatisticClick = {
                     navController.navigate("revenue_statistic/$currentUserId")
                 },
-                onSettingClick = {},
+                onSettingClick = {
+                    navController.navigate("doctor_settings")
+                },
                 onScanClick = {},
-                onProfileClick = {}
+                onProfileClick = {
+                    navController.navigate("doctor_settings")
+                }
+            )
+        }
+
+        composable("doctor_settings") {
+            DoctorSettingScreen(
+                doctorId = currentUserId,
+                onBack = { navController.popBackStack() },
+                onSwitchAccount = {
+                    currentUserId = 0
+                    currentUserRole = "patient"
+                    currentUserName = ""
+                    currentUserPhone = ""
+                    CurrentSession.clearSession(context)
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onLogout = {
+                    currentUserId = 0
+                    currentUserRole = "patient"
+                    currentUserName = ""
+                    currentUserPhone = ""
+                    CurrentSession.clearSession(context)
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 

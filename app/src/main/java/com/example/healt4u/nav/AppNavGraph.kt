@@ -114,13 +114,32 @@ fun AppNavGraph(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ START AT 0 — will be set by login
-    var currentUserId by remember { mutableStateOf(0) }
-    var currentUserRole by remember { mutableStateOf("patient") }
-    var loggedInAdminUsername by remember { mutableStateOf("") }
-    var currentUserName by remember { mutableStateOf("") }
-    var currentUserPhone by remember { mutableStateOf("") }
+    // ✅ Load from persisted session if available
+    var currentUserId by remember { mutableStateOf(CurrentSession.getUserId(context)) }
+    var currentUserRole by remember { mutableStateOf(CurrentSession.getUserRole(context)) }
+    var loggedInAdminUsername by remember { mutableStateOf(if (CurrentSession.getUserRole(context) == "admin") CurrentSession.getUserName(context) else "") }
+    var currentUserName by remember { mutableStateOf(CurrentSession.getUserName(context)) }
+    var currentUserPhone by remember { mutableStateOf(CurrentSession.getUserPhone(context)) }
     val patient = remember { mutableStateOf<PatientUser?>(null) }
+
+    val startDest = remember {
+        if (CurrentSession.isLoggedIn(context)) {
+            val role = CurrentSession.getUserRole(context)
+            when (role) {
+                "admin" -> "admin"
+                "doctor" -> "doctor"
+                else -> "dashboard"
+            }
+        } else {
+            "login"
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (CurrentSession.isLoggedIn(context)) {
+            CurrentSession.patientId = currentUserId
+        }
+    }
 
     LaunchedEffect(Unit) {
         vm_med.loadFromLocal(context)
@@ -146,12 +165,14 @@ fun AppNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = "login"
+        startDestination = startDest
     ) {
         composable("login") {
             AdminLoginScreen(
                 onAdminLoginSuccess = { username ->
                     loggedInAdminUsername = username
+                    currentUserRole = "admin"
+                    CurrentSession.saveSession(context, 1, "admin", username) 
                     navController.navigate("admin") {
                         popUpTo("login") { inclusive = true }
                     }
@@ -163,7 +184,11 @@ fun AppNavGraph(
                     navController.navigate("forgot_password")
                 },
                 onDoctorSuccessClick = {
-                    navController.navigate("doctor")
+                    currentUserRole = "doctor"
+                    CurrentSession.saveSession(context, 2, "doctor", "Doctor")
+                    navController.navigate("doctor") {
+                         popUpTo("login") { inclusive = true }
+                    }
                 }
             )
         }
@@ -175,7 +200,7 @@ fun AppNavGraph(
                     currentUserName = userName
                     currentUserPhone = userPhone
                     currentUserRole = "patient"
-                    CurrentSession.patientId = userId
+                    CurrentSession.saveSession(context, userId, "patient", userName, userPhone)
                     vm_family.savePatientPhone(context, userPhone)
                     navController.navigate("dashboard") {
                         popUpTo("login") { inclusive = true }
@@ -260,11 +285,11 @@ fun AppNavGraph(
                 startAtProfile = startAtProfile,
                 onBack = { navController.popBackStack() },
                 onSwitchAccount = {
-                    currentUserId = 2
+                    currentUserId = 0
                     currentUserRole = "patient"
                     currentUserName = ""
                     currentUserPhone = ""
-                    CurrentSession.patientId = 0
+                    CurrentSession.clearSession(context)
                     // Skips role selection since they're still a patient —
                     // just lets a different patient account sign in.
                     navController.navigate("patient_login") {
@@ -272,11 +297,11 @@ fun AppNavGraph(
                     }
                 },
                 onLogout = {
-                    currentUserId = 2
+                    currentUserId = 0
                     currentUserRole = "patient"
                     currentUserName = ""
                     currentUserPhone = ""
-                    CurrentSession.patientId = 0
+                    CurrentSession.clearSession(context)
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -839,6 +864,9 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onLogout = {
                     loggedInAdminUsername = ""
+                    currentUserId = 0
+                    currentUserRole = "patient"
+                    CurrentSession.clearSession(context)
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }

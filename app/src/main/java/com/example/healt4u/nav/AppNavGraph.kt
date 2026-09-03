@@ -742,7 +742,7 @@ fun AppNavGraph(
                 },
                 onHospitalsClick = { navController.navigate("admin_hospitals") },
                 onDoctorsClick = { navController.navigate("admin_doctors") },
-                onSettingsClick = {}
+                onSettingsClick = { navController.navigate("admin_settings") }
             )
         }
 
@@ -764,7 +764,11 @@ fun AppNavGraph(
         }
 
         composable("admin_doctors") {
-            AdminDoctorScreen(vm = vm_admin, onBack = { navController.popBackStack() })
+            AdminDoctorScreen(
+                vm = vm_admin,
+                onBack = { navController.popBackStack() },
+                onAddDoctor = { navController.navigate("admin_add_doctor") }
+            )
         }
 
         composable("admin_add_doctor") {

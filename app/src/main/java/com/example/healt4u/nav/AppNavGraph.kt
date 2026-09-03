@@ -648,7 +648,8 @@ fun AppNavGraph(
                     onDoctorSelected = { doctor ->
                         navController.navigate("payment/${doctor.id}/$hospitalId")
                     },
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    getDoctorStatus = { _ -> "offline" }
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {

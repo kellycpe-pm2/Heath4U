@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.adminChangePassword
 import com.example.healt4u.Storage.adminGetProfile
+import com.example.healt4u.Storage.adminSignUp
 import com.example.healt4u.Storage.adminUpdateEmail
 import com.example.healt4u.Storage.adminUpdatePhone
 import com.example.healt4u.Storage.adminUpdateUsername
@@ -56,6 +58,7 @@ fun AdminSettingsScreen(
     adminUsername: String = ""
 ) {
     var showProfile by remember { mutableStateOf(false) }
+    var showCreateAdmin by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -95,6 +98,13 @@ fun AdminSettingsScreen(
                     title = "Admin Profile",
                     subtitle = "View and edit your account",
                     onClick = { showProfile = true }
+                )
+                HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                SettingsItem(
+                    icon = Icons.Default.AdminPanelSettings,
+                    title = "Create Admin Account",
+                    subtitle = "Add a new admin to the system",
+                    onClick = { showCreateAdmin = true }
                 )
             }
         }
@@ -172,6 +182,12 @@ fun AdminSettingsScreen(
         AdminProfileScreen(
             adminUsername = adminUsername,
             onBack = { showProfile = false }
+        )
+    }
+
+    if (showCreateAdmin) {
+        CreateAdminAccountDialog(
+            onDismiss = { showCreateAdmin = false }
         )
     }
 }
@@ -881,6 +897,203 @@ private fun ChangePasswordDialog(
                         )
                     } else {
                         Text("Save", color = Color.White)
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (!showSuccess) {
+                Button(
+                    onClick = onDismiss,
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Cancel", color = Color.White)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun CreateAdminAccountDialog(
+    onDismiss: () -> Unit
+) {
+    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var showSuccess by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = { Text("Create Admin Account", fontWeight = FontWeight.Bold) },
+        text = {
+            if (showSuccess) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.AdminPanelSettings,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Text(
+                        "Admin account created successfully!",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = Color(0xFF4CAF50)
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = { Text("Username") },
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(Icons.Default.Person, contentDescription = null, tint = AppBlue)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = { email = it },
+                        label = { Text("Email") },
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, contentDescription = null, tint = AppBlue)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = { Text("Phone (optional)") },
+                        singleLine = true,
+                        leadingIcon = {
+                            Icon(Icons.Default.Phone, contentDescription = null, tint = AppBlue)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = { Text("Password") },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                                Icon(
+                                    if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Toggle password",
+                                    tint = AppBlue
+                                )
+                            }
+                        },
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it },
+                        label = { Text("Confirm Password") },
+                        singleLine = true,
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                    contentDescription = "Toggle confirm password",
+                                    tint = AppBlue
+                                )
+                            }
+                        },
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (showSuccess) {
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("OK", color = Color.White)
+                }
+            } else {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            if (username.isBlank()) {
+                                snackbarHostState.showSnackbar("Please enter a username")
+                                return@launch
+                            }
+                            if (username.length < 3) {
+                                snackbarHostState.showSnackbar("Username must be at least 3 characters")
+                                return@launch
+                            }
+                            if (email.isBlank()) {
+                                snackbarHostState.showSnackbar("Please enter an email address")
+                                return@launch
+                            }
+                            if (!isValidEmail(email)) {
+                                snackbarHostState.showSnackbar("Please enter a valid email address")
+                                return@launch
+                            }
+                            if (password.isBlank()) {
+                                snackbarHostState.showSnackbar("Please enter a password")
+                                return@launch
+                            }
+                            if (password.length < 6) {
+                                snackbarHostState.showSnackbar("Password must be at least 6 characters")
+                                return@launch
+                            }
+                            if (password != confirmPassword) {
+                                snackbarHostState.showSnackbar("Passwords do not match")
+                                return@launch
+                            }
+
+                            isLoading = true
+                            val result = adminSignUp(
+                                username = username,
+                                password = password,
+                                email = email,
+                                phone = phone.ifBlank { null }
+                            )
+                            isLoading = false
+                            result.fold(
+                                onSuccess = { showSuccess = true },
+                                onFailure = { e ->
+                                    snackbarHostState.showSnackbar(e.message ?: "Failed to create account")
+                                }
+                            )
+                        }
+                    },
+                    enabled = !isLoading,
+                    colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.White
+                        )
+                    } else {
+                        Text("Create Account", color = Color.White)
                     }
                 }
             }

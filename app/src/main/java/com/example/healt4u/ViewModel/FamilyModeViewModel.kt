@@ -193,7 +193,7 @@ class FamilyModeViewModel(
                 // same 30-minute MISSED state used by Today's Schedule.  The
                 // engine also persists that state for subsequent family-mode
                 // loads.
-                val logs = ReminderEngine.refresh(context, date, patientUserId).schedule
+                val logs = ReminderEngine.refresh(context).schedule
                 val allStoredAlerts = loadFamilyAlerts(context)
                 val existingAlerts = allStoredAlerts.filter { it.date == date }
                 val existingAlertKeys = existingAlerts.map { "${it.medicineName}_${it.scheduledTime}" }.toSet()

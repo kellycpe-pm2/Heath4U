@@ -710,8 +710,7 @@ class ViewModelMedicine(
         }
     }
 
-    // ========== CLEAR FORM ==========
-    private fun clearForm() {
+    fun clearForm() {
         _input_med_name.value = ""
         _input_category.value = ""
         _input_dosage.value = 0

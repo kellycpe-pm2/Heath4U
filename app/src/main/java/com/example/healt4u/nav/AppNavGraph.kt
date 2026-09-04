@@ -403,7 +403,8 @@ fun AppNavGraph(
                 onAddClick = {
                     vm_med.addMedicineWithValidation(context)
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { vm_med.clearForm()
+                    navController.popBackStack() }
             )
         }
 

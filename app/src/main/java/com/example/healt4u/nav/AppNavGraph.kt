@@ -52,12 +52,11 @@ import com.example.healt4u.screen.Admin.AdminLoginScreen
 import com.example.healt4u.screen.Admin.AdminResetPasswordScreen
 import com.example.healt4u.screen.Admin.AdminSettingsScreen
 import com.example.healt4u.screen.Admin.AdminDashboardStatisticsScreen
+import com.example.healt4u.screen.Dashboard.DoctorSettingScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatScreen
-import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
-import com.example.healt4u.screen.Dashboard.DoctorSettingScreen
 import com.example.healt4u.screen.DoctorPatientChat.DoctorListScreen
 import com.example.healt4u.screen.DoctorPatientChat.HospitalListScreen
 import com.example.healt4u.screen.FamilyMode.AddCaregiverScreen
@@ -67,6 +66,9 @@ import com.example.healt4u.screen.FamilyMode.AllPatientsScreen
 import com.example.healt4u.screen.FamilyMode.SetPatientPhoneScreen
 import com.example.healt4u.screen.Patient.PatientLoginScreen
 import com.example.healt4u.screen.Patient.PatientSettingsScreen
+import com.example.healt4u.screen.Patient.PatientForgotPasswordScreen
+import com.example.healt4u.screen.Patient.PatientResetPasswordScreen
+import com.example.healt4u.screen.componentUI.OtpVerificationScreen
 import com.example.healt4u.notification.DailyRefreshScheduler
 import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.Storage.createPayment
@@ -148,8 +150,6 @@ fun AppNavGraph(
 
     LaunchedEffect(Unit) {
         vm_med.loadFromLocal(context)
-        vm_med.cleanUpOrphanedMedicines(context)
-
     }
 
     LaunchedEffect(Unit) {
@@ -164,13 +164,11 @@ fun AppNavGraph(
     val success by vm_med.success.collectAsStateWithLifecycle()
     var showManualDialog by remember { mutableStateOf(false) }
     val mutedConversations = remember { mutableStateListOf<String>() }
-    LaunchedEffect(Unit) {
 
-        vm_med.clearSuccessState()
-        vm_med.clearError()
-        vm_med.clearValidationErrors()
-        vm_med.clearSuccess()
-    }
+    vm_med.clearSuccessState()
+    vm_med.clearError()
+    vm_med.clearValidationErrors()
+    vm_med.clearSuccess()
 
     NavHost(
         navController = navController,
@@ -220,7 +218,76 @@ fun AppNavGraph(
                         popUpTo("login") { inclusive = true }
                     }
                 },
+                onForgotPassword = {
+                    navController.navigate("patient_forgot_password")
+                },
                 onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable("patient_forgot_password") {
+            PatientForgotPasswordScreen(
+                onBack = { navController.popBackStack() },
+                onAccountFound = { emailOrPhone, method ->
+                    navController.navigate(
+                        "patient_otp_verify/${method}/${
+                            java.net.URLEncoder.encode(emailOrPhone, "UTF-8")
+                        }"
+                    )
+                }
+            )
+        }
+
+        composable(
+            route = "patient_otp_verify/{method}/{emailOrPhone}",
+            arguments = listOf(
+                navArgument("method") { type = NavType.StringType },
+                navArgument("emailOrPhone") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val method = backStackEntry.arguments?.getString("method") ?: "email"
+            val emailOrPhone = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("emailOrPhone") ?: "",
+                "UTF-8"
+            )
+
+            OtpVerificationScreen(
+                identifier = emailOrPhone,
+                onBack = { navController.popBackStack() },
+                onVerified = {
+                    navController.navigate(
+                        "patient_reset_password/${method}/${
+                            java.net.URLEncoder.encode(emailOrPhone, "UTF-8")
+                        }"
+                    ) {
+                        popUpTo("patient_forgot_password") { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(
+            route = "patient_reset_password/{method}/{emailOrPhone}",
+            arguments = listOf(
+                navArgument("method") { type = NavType.StringType },
+                navArgument("emailOrPhone") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val method = backStackEntry.arguments?.getString("method") ?: "email"
+            val emailOrPhone = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("emailOrPhone") ?: "",
+                "UTF-8"
+            )
+
+            PatientResetPasswordScreen(
+                emailOrPhone = emailOrPhone,
+                method = method,
+                onBack = { navController.popBackStack() },
+                onPasswordReset = {
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -229,11 +296,34 @@ fun AppNavGraph(
                 onBack = { navController.popBackStack() },
                 onAccountFound = { emailOrPhone, method ->
                     navController.navigate(
+                        "admin_otp_verify/${method}/${
+                            java.net.URLEncoder.encode(emailOrPhone, "UTF-8")
+                        }"
+                    )
+                }
+            )
+        }
+
+        composable(
+            route = "admin_otp_verify/{method}/{emailOrPhone}",
+            arguments = listOf(
+                navArgument("method") { type = NavType.StringType },
+                navArgument("emailOrPhone") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val method = backStackEntry.arguments?.getString("method") ?: "email"
+            val emailOrPhone = java.net.URLDecoder.decode(
+                backStackEntry.arguments?.getString("emailOrPhone") ?: "",
+                "UTF-8"
+            )
+
+            OtpVerificationScreen(
+                identifier = emailOrPhone,
+                onBack = { navController.popBackStack() },
+                onVerified = {
+                    navController.navigate(
                         "reset_password/${method}/${
-                            java.net.URLEncoder.encode(
-                                emailOrPhone,
-                                "UTF-8"
-                            )
+                            java.net.URLEncoder.encode(emailOrPhone, "UTF-8")
                         }"
                     ) {
                         popUpTo("forgot_password") { inclusive = true }
@@ -305,7 +395,6 @@ fun AppNavGraph(
                     currentUserName = ""
                     currentUserPhone = ""
                     CurrentSession.clearSession(context)
-                    // Navigate to patient login directly
                     navController.navigate("patient_login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -363,17 +452,6 @@ fun AppNavGraph(
         }
 
         composable("list") {
-
-            LaunchedEffect(Unit) {
-                // Make sure patientId is set
-                val patientId = CurrentSession.patientId
-
-                if (patientId != null && patientId > 0) {
-                    vm_med.loadFromLocal(context)
-                } else {
-                }
-            }
-
             MedicineListScreen(
                 vm = vm_med,
                 onAddClick = { navController.navigate("add") },
@@ -509,6 +587,18 @@ fun AppNavGraph(
             }
         }
 
+        /*composable("history") {
+            HistoryScreen(
+                medicines = viewModel.medicines.collectAsState().value,
+                onItemClick = { regNo ->
+                    navController.navigate("detail/$regNo")
+                },
+                onClearHistory = {
+                    // 清空历史逻辑
+                }
+            )
+        }*/
+
         composable(
             route = "detail/{barcode}",
             arguments = listOf(
@@ -541,6 +631,21 @@ fun AppNavGraph(
                 }
             )
         }
+
+        /*composable(
+            route = "add_reminder/{regNo}",
+            arguments = listOf(navArgument("regNo") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val regNo = backStackEntry.arguments?.getString("regNo") ?: ""
+            val medicine = viewModel.medicines.value.find { it.regNo == regNo }
+                ?: viewModel.searchResult.collectAsState().value
+
+            AddReminderScreen(
+                onBack = { navController.popBackStack() },
+                onSave = {
+                }
+            )
+        }*/
 
 
         composable(
@@ -640,7 +745,7 @@ fun AppNavGraph(
                         navController.navigate("payment/${doctor.id}/$hospitalId")
                     },
                     onBack = { navController.popBackStack() },
-                    getDoctorStatus = { "available" } // Provide a default status for now
+                    getDoctorStatus = { "available" }
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -819,6 +924,8 @@ fun AppNavGraph(
 
         composable("doctor") {
             currentUserRole = "doctor"
+            // ⚠️ SET THIS FROM DOCTOR LOGIN — NOT HARDCODED!
+            // currentUserId = 2  // ❌ REMOVED — should come from login!
             DoctorDashboardScreen(
                 onPatientClick = { pId, conv ->
                     navController.navigate("adherence_statistics/$pId")
@@ -836,6 +943,16 @@ fun AppNavGraph(
                 },
                 onProfileClick = {
                     navController.navigate("doctor_settings")
+                },
+                onLogout = {
+                    currentUserId = 0
+                    currentUserRole = "patient"
+                    currentUserName = ""
+                    currentUserPhone = ""
+                    CurrentSession.clearSession(context)
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
                 }
             )
         }
@@ -850,7 +967,6 @@ fun AppNavGraph(
                     currentUserName = ""
                     currentUserPhone = ""
                     CurrentSession.clearSession(context)
-                    // Go back to login (Role Selection) for doctor switch
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -895,22 +1011,21 @@ fun AppNavGraph(
         composable("admin_settings") {
             AdminSettingsScreen(
                 onBack = { navController.popBackStack() },
-                onLogout = {
-                    loggedInAdminUsername = ""
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    CurrentSession.clearSession(context)
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
                 onSwitchAccount = {
                     loggedInAdminUsername = ""
                     currentUserId = 0
                     currentUserRole = "patient"
                     CurrentSession.clearSession(context)
-                    // Go back to login screen but tell it to show Admin form immediately
                     navController.currentBackStackEntry?.savedStateHandle?.set("start_role", "admin")
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
+                onLogout = {
+                    loggedInAdminUsername = ""
+                    currentUserId = 0
+                    currentUserRole = "patient"
+                    CurrentSession.clearSession(context)
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }

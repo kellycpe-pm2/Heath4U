@@ -52,6 +52,7 @@ private fun isValidPassword(password: String): Boolean {
 @Composable
 fun PatientLoginScreen(
     onLoginSuccess: (userId: Int, userName: String, userPhone: String) -> Unit,
+    onForgotPassword: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     var isSignUp by remember { mutableStateOf(false) }
@@ -139,6 +140,7 @@ fun PatientLoginScreen(
                     confirmPassword = ""
                 },
                 onBack = onBack,
+                onForgotPassword = onForgotPassword,
                 onSubmit = {
                     scope.launch {
                         if (isSignUp) {
@@ -314,6 +316,7 @@ private fun PatientAuthContent(
     onLoginMethodChange: (String) -> Unit,
     onToggleMode: () -> Unit,
     onBack: () -> Unit,
+    onForgotPassword: () -> Unit = {},
     onSubmit: () -> Unit
 ) {
     Column(
@@ -511,6 +514,18 @@ private fun PatientAuthContent(
                     fontWeight = FontWeight.Bold
                 )
             }
+        }
+
+        if (!isSignUp) {
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "Forgot Password?",
+                color = AppBlue,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.clickable { onForgotPassword() }
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))

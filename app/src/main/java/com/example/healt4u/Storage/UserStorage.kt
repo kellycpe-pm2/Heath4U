@@ -151,6 +151,68 @@ suspend fun getPatientById(id: Int): PatientUser? {
     }
 }
 
+suspend fun patientFindAccount(credential: String, method: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            val patients = supabase
+                .from("Patient")
+                .select()
+                .decodeList<PatientUser>()
+
+            val matched = patients.find { p ->
+                when (method) {
+                    "email" -> p.email == credential
+                    "phone" -> p.phone == credential
+                    else -> false
+                }
+            }
+
+            if (matched != null) {
+                Result.success(matched.name)
+            } else {
+                Result.failure(Exception("No account found with this $method"))
+            }
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("PatientAuth", "patientFindAccount failed", e)
+        Result.failure(Exception("Account lookup failed: ${e.message}"))
+    }
+}
+
+// Resets a forgotten password after OTP verification — unlike
+// patientChangePassword, this deliberately does NOT require the old
+// password, since the OTP step already proved the requester owns the
+// account's email/phone.
+suspend fun patientResetPassword(credential: String, method: String, newPassword: String): Result<String> {
+    return try {
+        withContext(Dispatchers.IO) {
+            val patients = supabase
+                .from("Patient")
+                .select()
+                .decodeList<PatientUser>()
+
+            val matched = patients.find { p ->
+                when (method) {
+                    "email" -> p.email == credential
+                    "phone" -> p.phone == credential
+                    else -> false
+                }
+            } ?: return@withContext Result.failure(Exception("No account found with this $method"))
+
+            supabase
+                .from("Patient")
+                .update(mapOf("password" to newPassword)) {
+                    filter { eq("id", matched.id) }
+                }
+
+            Result.success("Password reset successfully")
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("PatientAuth", "patientResetPassword failed", e)
+        Result.failure(Exception("Password reset failed: ${e.message}"))
+    }
+}
+
 suspend fun getAllPatients(): List<PatientUser> {
     return try {
         withContext(Dispatchers.IO) {

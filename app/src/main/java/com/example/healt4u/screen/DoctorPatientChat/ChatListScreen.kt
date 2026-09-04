@@ -1,5 +1,6 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -73,7 +74,7 @@ fun ChatListScreen(
         }
     }
 
-    // ⏱️ TIMER — updates EVERY 30 SECONDS
+    // ⏱️ TIMER — updates EVERY 30 SECONDS for live countdown
     var tickTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -241,10 +242,12 @@ fun ConversationItem(
 ) {
     val conversationId = conversation.id ?: 0
     val ONE_DAY_MS = 24 * 60 * 60 * 1000L
+    // val ONE_DAY_MS = 60 * 1000L  // ⏰ TEST MODE: 60 seconds
 
     var displayName by remember { mutableStateOf("Loading...") }
     val coroutineScope = rememberCoroutineScope()
 
+    // Load display name
     LaunchedEffect(doctorId, patientId, userId, userRole) {
         coroutineScope.launch {
             try {
@@ -259,29 +262,31 @@ fun ConversationItem(
         }
     }
 
+    // Parse timestamps
     val timestampMillis = remember(conversation.lastMessageTime) {
         parseTimestampSafe(conversation.lastMessageTime)
     }
-
     val createdTimeMs = remember(conversation.createdTime) {
         parseTimestampSafe(conversation.createdTime)
     }
 
+    // Calculate expiry
     val expiryTimeMs = remember(createdTimeMs) { createdTimeMs + ONE_DAY_MS }
 
+    // Check if doctor ever replied
     var hasDoctorReplied by remember { mutableStateOf(false) }
-
     LaunchedEffect(conversationId, doctorId) {
         coroutineScope.launch {
             hasDoctorReplied = checkIfDoctorReplied(conversationId, doctorId)
         }
     }
 
+    // Countdown logic
     val remainingTime = expiryTimeMs - currentTimeMs
     val isExpired = remainingTime <= 0L
 
     val countdownText = when {
-        isExpired -> if (!hasDoctorReplied) "Refund Available" else "Expired"
+        isExpired -> if (!hasDoctorReplied) "✅ Refund Available" else "❌ Expired"
         else -> {
             val hours = TimeUnit.MILLISECONDS.toHours(remainingTime)
             val mins = TimeUnit.MILLISECONDS.toMinutes(remainingTime) % 60
@@ -294,13 +299,15 @@ fun ConversationItem(
         }
     }
 
+    // Status colors
     val statusColor = when {
-        isExpired && !hasDoctorReplied -> Color(0xFF4CAF50)
-        isExpired -> Color(0xFFFF5722)
-        remainingTime < 60 * 60 * 1000 -> Color(0xFFFF9800)
-        else -> Color(0xFF2196F3)
+        isExpired && !hasDoctorReplied -> Color(0xFF4CAF50)  // Green = refund
+        isExpired -> Color(0xFFFF5722)                         // Orange = expired
+        remainingTime < 60 * 60 * 1000 -> Color(0xFFFF9800)    // Orange = <1h left
+        else -> Color(0xFF2196F3)                               // Blue = active
     }
 
+    // ✅ CAN OPEN? Only if NOT expired OR doctor already replied
     val canOpen = !isExpired || hasDoctorReplied
 
     Card(
@@ -308,8 +315,11 @@ fun ConversationItem(
             .fillMaxWidth()
             .clickable(enabled = canOpen) { onConversationClick(expiryTimeMs) },
         colors = CardDefaults.cardColors(
-            containerColor = if (isExpired && !hasDoctorReplied)
-                Color(0xFFE8F5E9) else MaterialTheme.colorScheme.onPrimary
+            containerColor = when {
+                isExpired && !hasDoctorReplied -> Color(0xFFE8F5E9)  // Light green bg
+                isExpired -> Color(0xFFFFF3E0)                         // Light orange bg
+                else -> MaterialTheme.colorScheme.onPrimary
+            }
         ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -318,6 +328,7 @@ fun ConversationItem(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Avatar
             Box(
                 modifier = Modifier
                     .size(50.dp)
@@ -335,7 +346,10 @@ fun ConversationItem(
                     fontWeight = FontWeight.Bold
                 )
             }
+
             Spacer(modifier = Modifier.width(16.dp))
+
+            // Info
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -348,6 +362,7 @@ fun ConversationItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+
                 Text(
                     text = conversation.lastMessage.takeIf { it.isNotEmpty() } ?: "No messages yet",
                     fontSize = 14.sp,
@@ -355,6 +370,7 @@ fun ConversationItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
                 Text(
                     text = countdownText,
                     fontSize = 12.sp,
@@ -362,6 +378,7 @@ fun ConversationItem(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+
                 if (userRole == "patient" && conversation.hospitalName.isNotEmpty()) {
                     Text(
                         text = conversation.hospitalName,
@@ -371,6 +388,8 @@ fun ConversationItem(
                     )
                 }
             }
+
+            // Unread badge
             if (conversation.unreadCount > 0) {
                 Box(
                     modifier = Modifier
@@ -383,15 +402,37 @@ fun ConversationItem(
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
+
+            // Arrow — dimmed if blocked
             Icon(
                 Icons.Filled.ChevronRight,
                 "Open chat",
                 tint = if (canOpen) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFBDBDBD)
             )
         }
+
+        // 🔒 BLOCKED OVERLAY
+        if (isExpired && !canOpen) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xCCEF5350))
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "🔒 CHAT CLOSED — No reply received",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp)
+                )
+            }
+        }
     }
 }
 
+// Check if doctor has ever replied
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun checkIfDoctorReplied(conversationId: Int, doctorId: Int): Boolean {
     return try {
@@ -402,6 +443,7 @@ suspend fun checkIfDoctorReplied(conversationId: Int, doctorId: Int): Boolean {
     }
 }
 
+// Parse timestamp safely
 @RequiresApi(Build.VERSION_CODES.O)
 private fun parseTimestampSafe(timestampStr: String): Long {
     val cleaned = timestampStr.replace(" ", "T")
@@ -416,6 +458,8 @@ private fun parseTimestampSafe(timestampStr: String): Long {
     }
 }
 
+// Format time display
+@SuppressLint("SimpleDateFormat")
 @RequiresApi(Build.VERSION_CODES.O)
 private fun formatTime(timestamp: Long): String {
     val date = Date(timestamp)

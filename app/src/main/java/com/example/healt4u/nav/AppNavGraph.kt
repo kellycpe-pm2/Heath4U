@@ -788,7 +788,6 @@ fun AppNavGraph(
                     conversationId = convId,
                     doctorId = doctorId,
                     patientId = patientId,
-                    chatExpiryTime = expiryTime,
                     initialMessages = initialMessages,
                     onBack = { navController.popBackStack() },
                     onSendMessage = { message ->

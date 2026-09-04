@@ -54,7 +54,6 @@ fun ChatScreen(
     doctorId: Int,
     patientId: Int,
     initialMessages: List<Message>,
-    chatExpiryTime: Long = 0L,
     onBack: () -> Unit,
     onSendMessage: (Message) -> Unit,
     onDeleteMessage: (Message) -> Unit,
@@ -68,9 +67,8 @@ fun ChatScreen(
     val displayName = chatName
     var myName by remember { mutableStateOf("Me") }
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
-    // Doctor status
+    // Doctor status — auto-refresh every 3s
     var doctorStatus by remember { mutableStateOf("offline") }
 
     LaunchedEffect(userId, userRole) {
@@ -101,6 +99,7 @@ fun ChatScreen(
 
     var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var lockedExpiryTime by remember { mutableLongStateOf(0L) }
+
     val ONE_DAY_MS = 24 * 60 * 60 * 1000L
 
     LaunchedEffect(conversationId) {
@@ -128,17 +127,16 @@ fun ChatScreen(
         derivedStateOf { initialMessages.any { it.senderId == doctorId } }
     }
 
-    // Trigger refund if expired AND no reply
     LaunchedEffect(isChatExpired, hasDoctorReplied.value) {
-        if (isChatExpired && !hasDoctorReplied.value) {
-            Log.d("Refund", "Chat expired with no reply — processing refund")
-            coroutineScope.launch {
-                refundPaymentIfEligible(patientId, doctorId)
+        if (isChatExpired) {
+            if (!hasDoctorReplied.value) {
+                coroutineScope.launch {
+                    refundPaymentIfEligible(patientId, doctorId)
+                }
             }
         }
     }
 
-    // Can send messages? Only if NOT expired OR doctor already replied
     val canSend = !isChatExpired || hasDoctorReplied.value
 
     // Messages state
@@ -377,7 +375,7 @@ fun ChatScreen(
                         )
                         FloatingActionButton(
                             onClick = {
-                                if (textInput.isNotBlank()) {
+                                if (textInput.isNotBlank() && canSend) {
                                     val nowIso = Instant.now().toString()
                                     val newMessage = Message(
                                         id = Instant.now().toEpochMilli().toInt(),
@@ -393,12 +391,12 @@ fun ChatScreen(
                                     textInput = ""
                                 }
                             },
-                            containerColor = if (textInput.isNotEmpty()) {
+                            containerColor = if (textInput.isNotEmpty() && canSend) {
                                 MaterialTheme.colorScheme.secondary
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
-                            contentColor = if (textInput.isNotEmpty()) {
+                            contentColor = if (textInput.isNotEmpty() && canSend) {
                                 MaterialTheme.colorScheme.onSecondary
                             } else {
                                 MaterialTheme.colorScheme.surface
@@ -478,7 +476,6 @@ fun ChatScreen(
 }
 
 // --- Helper Functions ---
-
 @RequiresApi(Build.VERSION_CODES.O)
 private fun parseTimestampSafe(timestampStr: String): Instant {
     return try {
@@ -527,7 +524,6 @@ fun PreviewChatScreen() {
             conversationId = 1,
             doctorId = 1,
             patientId = 2,
-            chatExpiryTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000,
             initialMessages = listOf(
                 Message(1, 1, "Hello! How are you feeling today?", 1, "Dr. Sarah Tan", "2026-09-02 10:00:00Z", "text"),
                 Message(2, 1, "I am feeling much better, thank you doctor.", 2, "Yuki Chung", "2026-09-02 11:00:00Z", "text")
@@ -537,7 +533,7 @@ fun PreviewChatScreen() {
             onDeleteMessage = {},
             onAvatarClick = {},
             onClearAllMessages = {},
-            getDoctorStatus = {"available"}
+            getDoctorStatus = { "available" }
         )
     }
 }

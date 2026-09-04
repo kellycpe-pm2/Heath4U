@@ -39,17 +39,32 @@ fun RevenueStatisticScreen(
         loading = false
     }
 
-    val totalRevenue = remember(payments) {
-        payments.filter { it.status.equals("completed", true) }.sumOf { it.amount }
+    // ✅ ONLY COUNT COMPLETED — EXCLUDE REFUNDED
+    val completedPayments = remember(payments) {
+        payments.filter { it.status.equals("completed", ignoreCase = true) }
     }
-    val todayRevenue = remember(payments) {
+
+    val totalRevenue = remember(completedPayments) {
+        completedPayments.sumOf { it.amount }
+    }
+
+    val todayRevenue = remember(completedPayments) {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-        payments.filter { it.status.equals("completed", true) && it.date == today }.sumOf { it.amount }
+        completedPayments.filter { it.date == today }.sumOf { it.amount }
     }
-    val monthRevenue = remember(payments) {
+
+    val monthRevenue = remember(completedPayments) {
         val fmt = SimpleDateFormat("yyyy-MM", Locale.getDefault())
         val thisMonth = fmt.format(Date())
-        payments.filter { it.status.equals("completed", true) && it.date.startsWith(thisMonth) }.sumOf { it.amount }
+        completedPayments.filter { it.date.orEmpty().startsWith(thisMonth) }.sumOf { it.amount }
+    }
+
+    // ✅ COUNT REFUNDS
+    val refundedPayments = remember(payments) {
+        payments.filter { it.status.equals("refunded", ignoreCase = true) }
+    }
+    val totalRefunded = remember(refundedPayments) {
+        refundedPayments.sumOf { it.amount }
     }
 
     Scaffold(
@@ -117,9 +132,18 @@ fun RevenueStatisticScreen(
                                     "RM %.2f".format(totalRevenue),
                                     fontSize = 32.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary // ✅ THEME BLUE
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
-                                Spacer(Modifier.height(20.dp))
+                                Spacer(Modifier.height(8.dp))
+                                if (totalRefunded > 0) {
+                                    Text(
+                                        "Refunded: -RM %.2f".format(totalRefunded),
+                                        fontSize = 13.sp,
+                                        color = Color(0xFFE53935),
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                Spacer(Modifier.height(16.dp))
                                 Divider(
                                     color = MaterialTheme.colorScheme.secondaryContainer,
                                     thickness = 1.dp
@@ -221,15 +245,19 @@ fun RevenueStatisticScreen(
                                             "RM %.2f".format(p.amount),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 16.sp,
-                                            color = MaterialTheme.colorScheme.secondary
+                                            color = when {
+                                                p.status.equals("refunded", ignoreCase = true) -> Color(0xFFE53935)
+                                                else -> MaterialTheme.colorScheme.secondary
+                                            }
                                         )
                                         Text(
                                             p.status.uppercase(),
                                             fontSize = 11.sp,
-                                            color = if (p.status.equals("completed", true))
-                                                Color(0xFF2E7D32)
-                                            else
-                                                Color(0xFFEF6C00),
+                                            color = when {
+                                                p.status.equals("completed", ignoreCase = true) -> Color(0xFF2E7D32)
+                                                p.status.equals("refunded", ignoreCase = true) -> Color(0xFFE53935)
+                                                else -> Color(0xFFFF9800)
+                                            },
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
@@ -243,6 +271,7 @@ fun RevenueStatisticScreen(
     }
 }
 
+// --- PREVIEW ---
 @OptIn(ExperimentalMaterial3Api::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true, name = "Revenue Statistics", showSystemUi = true)
@@ -251,7 +280,8 @@ fun PreviewRevenueStatisticScreen() {
     colorTheme {
         val samplePayments = listOf(
             Payment("p1", 1, 2, "Dr. Sarah Tan", 100.00, "2026-09-03", "10:30", "COMPLETED", "TnG"),
-            Payment("p2", 2, 2, "Dr. Sarah Tan", 80.00, "2026-09-03", "14:00", "COMPLETED", "FPX")
+            Payment("p2", 2, 2, "Dr. Sarah Tan", 80.00, "2026-09-03", "14:00", "COMPLETED", "FPX"),
+            Payment("p3", 3, 2, "Dr. Sarah Tan", 50.00, "2026-09-02", "09:15", "REFUNDED", "TnG")
         )
 
         Scaffold(
@@ -271,31 +301,24 @@ fun PreviewRevenueStatisticScreen() {
                     .background(MaterialTheme.colorScheme.primary)
                     .padding(16.dp)
             ) {
-                val total = samplePayments.sumOf { it.amount }
+                val completed = samplePayments.filter { it.status.equals("COMPLETED", ignoreCase = true) }
+                val total = completed.sumOf { it.amount }
+                val refunds = samplePayments.filter { it.status.equals("REFUNDED", ignoreCase = true) }.sumOf { it.amount }
+
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item {
                         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                             Column(Modifier.padding(24.dp)) {
                                 Text("Total Revenue", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("RM %.2f".format(total), fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                Spacer(Modifier.height(16.dp))
-                                Divider(color = MaterialTheme.colorScheme.secondaryContainer)
-                                Spacer(Modifier.height(16.dp))
-                                Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                                    Column {
-                                        Text("Today", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text("RM 180.00", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                    }
-                                    Column {
-                                        Text("This Month", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        Text("RM 180.00", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                    }
+                                if (refunds > 0) {
+                                    Text("Refunded: -RM %.2f".format(refunds), fontSize = 13.sp, color = Color(0xFFE53935))
                                 }
                             }
                         }
                     }
                     item {
-                        Text("Payment History", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                        Text("Payment History", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
                     }
                     items(samplePayments) { p ->
                         Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
@@ -306,8 +329,21 @@ fun PreviewRevenueStatisticScreen() {
                                     Text(p.paymentMethod, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
                                 }
                                 Column {
-                                    Text("RM %.2f".format(p.amount), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-                                    Text(p.status, fontSize = 11.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        "RM %.2f".format(p.amount),
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (p.status.equals("REFUNDED", true)) Color(0xFFE53935) else MaterialTheme.colorScheme.secondary
+                                    )
+                                    Text(
+                                        p.status,
+                                        fontSize = 11.sp,
+                                        color = when {
+                                            p.status.equals("COMPLETED", true) -> Color(0xFF2E7D32)
+                                            p.status.equals("REFUNDED", true) -> Color(0xFFE53935)
+                                            else -> Color(0xFFFF9800)
+                                        },
+                                        fontWeight = FontWeight.SemiBold
+                                    )
                                 }
                             }
                         }

@@ -645,7 +645,7 @@ fun AppNavGraph(
 
                     // IMPORTANT:
                     // Do NOT save yet.
-                    vm_med.setScannedMedicine(medicine)
+                    vm_med.setScannedMedicine(medicine.name_medicine, medicine.category,medicine.dosage,medicine.remark,medicine.expiredDate)
 
                     // Go to Add Medicine screen
                     navController.navigate("add")

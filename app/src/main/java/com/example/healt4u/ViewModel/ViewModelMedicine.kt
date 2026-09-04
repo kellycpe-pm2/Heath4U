@@ -1,13 +1,10 @@
 package com.example.healt4u.ViewModel
 
 import android.app.Application
-import android.bluetooth.le.ScanResult
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healt4u.Storage.delete_Medicine
-import com.example.healt4u.Storage.getAllMedicines
 import com.example.healt4u.Storage.getMedicinesByPatientId
 import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.Storage.insertSingleMedicine
@@ -15,14 +12,11 @@ import com.example.healt4u.Storage.update_Medicine
 import com.example.healt4u.data.MedicineData
 import com.example.healt4u.data.local.*
 import com.example.healt4u.model.Medicine
-import com.example.healt4u.model.UnifiedMedicineResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ViewModelMedicine(
     private val application: Application
@@ -1060,14 +1054,39 @@ class ViewModelMedicine(
 // ADD MEDICINE FROM SCAN
 // ================================================================
 
-    private val _scannedMedicine = MutableStateFlow<Medicine?>(null)
-    val scannedMedicine: StateFlow<Medicine?> = _scannedMedicine
+    fun setScannedMedicine(
+        name: String,
+        category: String,
+        dosage: Int,
+        remark: String?,
+        expiredDate: Long? = null
+    ) {
+        _input_med_name.value = name
+        _input_category.value = category
+        _input_dosage.value = dosage
+        _input_quantity.value = 1
+        if (remark != null) {
+            _input_remark.value = remark
+        }
 
-    fun setScannedMedicine(medicine: Medicine) {
-        _scannedMedicine.value = medicine
+        // Use scanned expiry if you have one,
+        // otherwise keep your normal default.
+        _input_ExpiredDate.value =
+            expiredDate ?: (
+                    System.currentTimeMillis() +
+                            365L * 24L * 60L * 60L * 1000L
+                    )
+
+        // Defaults for the fields that aren't from scanning
+        _input_afterEat.value = true
+        _input_priority.value = 0f
+        _input_reminderTime.value = "08:00"
+        _input_timesPerDay.value = 1
+
+        // Clear old validation/error state
+        clearError()
+        clearValidationErrors()
     }
 
-    fun clearScannedMedicine() {
-        _scannedMedicine.value = null
-    }
+
 }

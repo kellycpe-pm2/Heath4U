@@ -404,6 +404,10 @@ fun AppNavGraph(
                     vm_med.addMedicineWithValidation(context)
                 },
                 onBack = { vm_med.clearForm()
+                    vm_med.clearSuccessState()
+                    vm_med.clearError()
+                    vm_med.clearValidationErrors()
+                    vm_med.clearSuccess()
                     navController.popBackStack() }
             )
         }
@@ -485,7 +489,8 @@ fun AppNavGraph(
                 },
                 onGalleryPick = {
                     Log.d("SCAN_NAV", "Gallery opened")
-                }
+                },
+                onBackClick = {navController.popBackStack()}
             )
 
             if (showManualDialog) {
@@ -579,9 +584,11 @@ fun AppNavGraph(
                 // ============================================================
 
                 onBack = {
-
-                    viewModel.clearResult()
-
+                    vm_med.clearForm()
+                    vm_med.clearSuccessState()
+                    vm_med.clearError()
+                    vm_med.clearValidationErrors()
+                    vm_med.clearSuccess()
                     navController.popBackStack()
                 },
 

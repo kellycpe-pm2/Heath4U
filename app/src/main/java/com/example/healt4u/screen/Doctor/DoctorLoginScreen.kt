@@ -12,7 +12,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -28,7 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.doctorSignIn
-import com.example.healt4u.Storage.doctorSignUp
 import com.example.healt4u.model.Doctor
 import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import kotlinx.coroutines.launch
@@ -45,26 +43,18 @@ private fun isValidPhone(phone: String): Boolean {
     return digitsOnly.length in 10..15
 }
 
-private fun isValidPassword(password: String): Boolean {
-    return password.length >= 6
-}
-
 @Composable
 fun DoctorLoginScreen(
     onLoginSuccess: (userId: Int, userName: String, userPhone: String) -> Unit,
     onBack: () -> Unit = {}
 ) {
-    var isSignUp by remember { mutableStateOf(false) }
     var loginMethod by remember { mutableStateOf("email") }
     var isLoading by remember { mutableStateOf(false) }
 
-    var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -112,61 +102,31 @@ fun DoctorLoginScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             DoctorAuthContent(
-                isSignUp = isSignUp,
                 loginMethod = loginMethod,
-                name = name,
                 email = email,
                 phone = phone,
                 password = password,
-                confirmPassword = confirmPassword,
                 passwordVisible = passwordVisible,
-                confirmPasswordVisible = confirmPasswordVisible,
                 isLoading = isLoading,
-                onNameChange = { name = it },
                 onEmailChange = { email = it },
                 onPhoneChange = { phone = it },
                 onPasswordChange = { password = it },
-                onConfirmPasswordChange = { confirmPassword = it },
                 onTogglePassword = { passwordVisible = !passwordVisible },
-                onToggleConfirmPassword = { confirmPasswordVisible = !confirmPasswordVisible },
                 onLoginMethodChange = { loginMethod = it },
-                onToggleMode = {
-                    isSignUp = !isSignUp
-                    name = ""
-                    email = ""
-                    phone = ""
-                    password = ""
-                    confirmPassword = ""
-                },
+                onBack = onBack,
                 onSubmit = {
                     scope.launch {
-                        if (isSignUp) {
-                            handleDoctorSignUp(
-                                name = name,
-                                loginMethod = loginMethod,
-                                email = email,
-                                phone = phone,
-                                password = password,
-                                confirmPassword = confirmPassword,
-                                snackbarHostState = snackbarHostState,
-                                isLoading = { isLoading = it },
-                                onSuccess = { user ->
-                                    onLoginSuccess(user.id, user.name, user.phone)
-                                }
-                            )
-                        } else {
-                            handleDoctorSignIn(
-                                loginMethod = loginMethod,
-                                email = email,
-                                phone = phone,
-                                password = password,
-                                snackbarHostState = snackbarHostState,
-                                isLoading = { isLoading = it },
-                                onSuccess = { user ->
-                                    onLoginSuccess(user.id, user.name, user.phone)
-                                }
-                            )
-                        }
+                        handleDoctorSignIn(
+                            loginMethod = loginMethod,
+                            email = email,
+                            phone = phone,
+                            password = password,
+                            snackbarHostState = snackbarHostState,
+                            isLoading = { isLoading = it },
+                            onSuccess = { user ->
+                                onLoginSuccess(user.id, user.name, user.phone)
+                            }
+                        )
                     }
                 }
             )
@@ -179,72 +139,6 @@ fun DoctorLoginScreen(
                 .padding(bottom = 16.dp)
         )
     }
-}
-
-private suspend fun handleDoctorSignUp(
-    name: String,
-    loginMethod: String,
-    email: String,
-    phone: String,
-    password: String,
-    confirmPassword: String,
-    snackbarHostState: SnackbarHostState,
-    isLoading: (Boolean) -> Unit,
-    onSuccess: (Doctor) -> Unit
-) {
-    if (name.isBlank()) {
-        snackbarHostState.showSnackbar("Please enter your name")
-        return
-    }
-    if (loginMethod == "email") {
-        if (email.isBlank()) {
-            snackbarHostState.showSnackbar("Please enter your email address")
-            return
-        }
-        if (!isValidEmail(email)) {
-            snackbarHostState.showSnackbar("Please enter a valid email address")
-            return
-        }
-    } else {
-        if (phone.isBlank()) {
-            snackbarHostState.showSnackbar("Please enter your phone number")
-            return
-        }
-        if (!isValidPhone(phone)) {
-            snackbarHostState.showSnackbar("Please enter a valid phone number")
-            return
-        }
-    }
-    if (password.isBlank()) {
-        snackbarHostState.showSnackbar("Please enter a password")
-        return
-    }
-    if (!isValidPassword(password)) {
-        snackbarHostState.showSnackbar("Password must be at least 6 characters")
-        return
-    }
-    if (password != confirmPassword) {
-        snackbarHostState.showSnackbar("Passwords do not match")
-        return
-    }
-
-    isLoading(true)
-    val signUpResult = doctorSignUp(
-        name = name,
-        password = password,
-        email = if (loginMethod == "email") email else null,
-        phone = if (loginMethod == "phone") phone else null
-    )
-    isLoading(false)
-    signUpResult.fold(
-        onSuccess = { user ->
-            snackbarHostState.showSnackbar("Doctor account created! Logging you in...")
-            onSuccess(user)
-        },
-        onFailure = { e ->
-            snackbarHostState.showSnackbar(e.message ?: "Registration failed")
-        }
-    )
 }
 
 private suspend fun handleDoctorSignIn(
@@ -263,6 +157,17 @@ private suspend fun handleDoctorSignIn(
         )
         return
     }
+
+    if (loginMethod == "email" && !isValidEmail(email)) {
+        snackbarHostState.showSnackbar("Please enter a valid email address")
+        return
+    }
+
+    if (loginMethod == "phone" && !isValidPhone(phone)) {
+        snackbarHostState.showSnackbar("Please enter a valid phone number")
+        return
+    }
+
     if (password.isBlank()) {
         snackbarHostState.showSnackbar("Please enter a password")
         return
@@ -281,25 +186,18 @@ private suspend fun handleDoctorSignIn(
 
 @Composable
 private fun DoctorAuthContent(
-    isSignUp: Boolean,
     loginMethod: String,
-    name: String,
     email: String,
     phone: String,
     password: String,
-    confirmPassword: String,
     passwordVisible: Boolean,
-    confirmPasswordVisible: Boolean,
     isLoading: Boolean,
-    onNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onConfirmPasswordChange: (String) -> Unit,
     onTogglePassword: () -> Unit,
-    onToggleConfirmPassword: () -> Unit,
     onLoginMethodChange: (String) -> Unit,
-    onToggleMode: () -> Unit,
+    onBack: () -> Unit,
     onSubmit: () -> Unit
 ) {
     Column(
@@ -316,7 +214,7 @@ private fun DoctorAuthContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = if (isSignUp) "Create Doctor\nAccount" else "Doctor\nLogin",
+                text = "Doctor\nLogin",
                 color = Color.White,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
@@ -326,25 +224,6 @@ private fun DoctorAuthContent(
         }
 
         Spacer(modifier = Modifier.height(20.dp))
-
-        if (isSignUp) {
-            OutlinedTextField(
-                value = name,
-                onValueChange = onNameChange,
-                placeholder = { Text("Full Name", color = Color(0xFF9E9E9E)) },
-                leadingIcon = { Icon(Icons.Default.Person, null, tint = AppBlue) },
-                singleLine = true,
-                shape = RoundedCornerShape(50.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedIndicatorColor = AppBlue,
-                    unfocusedIndicatorColor = Color(0xFFBDBDBD)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -415,31 +294,6 @@ private fun DoctorAuthContent(
             modifier = Modifier.fillMaxWidth()
         )
 
-        if (isSignUp) {
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = confirmPassword,
-                onValueChange = onConfirmPasswordChange,
-                placeholder = { Text("Confirm Password", color = Color(0xFF9E9E9E)) },
-                leadingIcon = { Icon(Icons.Default.Lock, null, tint = AppBlue) },
-                trailingIcon = {
-                    IconButton(onClick = onToggleConfirmPassword) {
-                        Icon(if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null, tint = AppBlue)
-                    }
-                },
-                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                singleLine = true,
-                shape = RoundedCornerShape(50.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedIndicatorColor = AppBlue,
-                    unfocusedIndicatorColor = Color(0xFFBDBDBD)
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
-
         Spacer(modifier = Modifier.height(20.dp))
 
         Button(
@@ -452,20 +306,19 @@ private fun DoctorAuthContent(
             if (isLoading) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
-                Text(if (isSignUp) "REGISTER" else "LOGIN", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("LOGIN", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(if (isSignUp) "Already have an account? " else "Don't have an account? ", color = Color(0xFF61717D), fontSize = 12.sp)
-            Text(if (isSignUp) "Login Here" else "Register Here", color = AppBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onToggleMode() })
-        }
+        Text(
+            text = "Back to role selection",
+            color = AppBlue,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.clickable { onBack() }
+        )
     }
 }
 

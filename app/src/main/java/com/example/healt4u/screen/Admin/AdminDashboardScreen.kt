@@ -1,41 +1,29 @@
 package com.example.healt4u.screen.Admin
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.*
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-private val AppBlue = Color(0xFF3779EE)
-private val ScreenBlue = Color(0xFFE6F8FC)
+import com.example.healt4u.screen.componentUI.Theme.colorTheme
 
 @Composable
 fun AdminDashboardScreen(
@@ -45,94 +33,345 @@ fun AdminDashboardScreen(
     onSettingsClick: () -> Unit = {},
     onBack: (() -> Unit)? = null
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize().background(ScreenBlue)
-    ) {
-        AdminHeader(onBack = onBack, onSettingsClick = onSettingsClick)
+    colorTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color(0xFFE9FCFF),
+                                Color(0xFFD4F0FF)
+                            )
+                        )
+                    )
+            ) {
+                // ===== Enhanced Top Bar with Secondary Color =====
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.secondary,
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color.White.copy(alpha = 0.2f),
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Filled.AdminPanelSettings,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
 
-        LazyColumn(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            item {
-                Text(
-                    text = "Admin Dashboard",
-                    modifier = Modifier.padding(start = 20.dp, top = 4.dp),
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF101820)
-                )
-                Text(
-                    text = "Manage your health service at a glance",
-                    modifier = Modifier.padding(start = 20.dp, top = 2.dp),
-                    fontSize = 12.sp,
-                    color = Color(0xFF61717D)
-                )
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Text(
+                                    text = "Health4U",
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        color = Color.White
+                                    ),
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "ADMIN PORTAL",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.White.copy(alpha = 0.8f),
+                                    letterSpacing = 1.5.sp
+                                )
+                            }
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = onSettingsClick,
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Settings,
+                                    contentDescription = "Settings",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+
+                // ===== Main Content with LazyColumn =====
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // ===== Quick Stats Row =====
+                    item {
+                        // ===== Animated Greeting (Sticky at top) =====
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0xFFE9FCFF),
+                                            Color(0xFFD4F0FF)
+                                        )
+                                    )
+                                )
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "Good ${getTimeOfDay()}!",
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                Text(
+                                    text = "Manage your health service at a glance",
+                                    fontSize = 14.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            QuickStatCard(
+                                title = "Doctors",
+                                count = "24",
+                                icon = Icons.Filled.Person,
+                                iconColor = Color(0xFF4CAF50),
+                                modifier = Modifier.weight(1f)
+                            )
+                            QuickStatCard(
+                                title = "Hospitals",
+                                count = "12",
+                                icon = Icons.Filled.Business,
+                                iconColor = Color(0xFF2196F3),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            QuickStatCard(
+                                title = "Patients",
+                                count = "156",
+                                icon = Icons.Filled.People,
+                                iconColor = Color(0xFF9C27B0),
+                                modifier = Modifier.weight(1f)
+                            )
+                            QuickStatCard(
+                                title = "Alerts",
+                                count = "3",
+                                icon = Icons.Filled.Notifications,
+                                iconColor = Color(0xFFFF5722),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    // ===== Dashboard Cards =====
+                    item {
+                        DashboardCard(
+                            title = "Doctor Account Management",
+                            subtitle = "Create, delete, and view all doctors",
+                            icon = Icons.Filled.PersonAdd,
+                            iconBg = Color(0xFFE3F2FD),
+                            iconColor = Color(0xFF2196F3),
+                            onClick = onDoctorsClick
+                        )
+                    }
+
+                    item {
+                        DashboardCard(
+                            title = "Hospital Management",
+                            subtitle = "Add, remove hospitals and link doctors",
+                            icon = Icons.Filled.Business,
+                            iconBg = Color(0xFFE8F5E9),
+                            iconColor = Color(0xFF4CAF50),
+                            onClick = onHospitalsClick
+                        )
+                    }
+
+                    item {
+                        DashboardCard(
+                            title = "Dashboard Statistics",
+                            subtitle = "View users, missed doses, and system alerts",
+                            icon = Icons.Filled.Analytics,
+                            iconBg = Color(0xFFFFF3E0),
+                            iconColor = Color(0xFFFF9800),
+                            onClick = onStatisticsClick
+                        )
+                    }
+
+                    // ===== Quick Actions =====
+                    item {
+                        Text(
+                            text = "Quick Actions",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            QuickActionTile(
+                                label = "Add Doctor",
+                                icon = Icons.Filled.PersonAdd,
+                                iconColor = Color(0xFF2196F3),
+                                modifier = Modifier.weight(1f),
+                                onClick = onDoctorsClick
+                            )
+                            QuickActionTile(
+                                label = "Add Hospital",
+                                icon = Icons.Filled.AddBusiness,
+                                iconColor = Color(0xFF4CAF50),
+                                modifier = Modifier.weight(1f),
+                                onClick = onHospitalsClick
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(Modifier.height(80.dp))
+                    }
+                }
             }
 
-            item {
-                Spacer(Modifier.height(8.dp))
+            // ===== Enhanced Bottom Navigation =====
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 16.dp
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BottomNavItem(
+                        label = "Dashboard",
+                        icon = Icons.Filled.Dashboard,
+                        selected = true,
+                        onClick = {}
+                    )
+                    BottomNavItem(
+                        label = "Doctors",
+                        icon = Icons.Filled.Person,
+                        selected = false,
+                        onClick = onDoctorsClick
+                    )
+                    BottomNavItem(
+                        label = "Hospitals",
+                        icon = Icons.Filled.Business,
+                        selected = false,
+                        onClick = onHospitalsClick
+                    )
+                    BottomNavItem(
+                        label = "Settings",
+                        icon = Icons.Filled.Settings,
+                        selected = false,
+                        onClick = onSettingsClick
+                    )
+                }
             }
-
-            item {
-                DashboardCard(
-                    title = "Doctor Account Management",
-                    subtitle = "Create, delete, and view all doctors",
-                    icon = Icons.Default.PersonAdd,
-                    iconBg = Color(0xFFE3F2FD),
-                    onClick = onDoctorsClick
-                )
-            }
-
-            item {
-                DashboardCard(
-                    title = "Hospital Management",
-                    subtitle = "Add, remove hospitals and link doctors",
-                    icon = Icons.Default.Business,
-                    iconBg = Color(0xFFE8F5E9),
-                    onClick = onHospitalsClick
-                )
-            }
-
-            item {
-                DashboardCard(
-                    title = "Dashboard Statistics",
-                    subtitle = "View users, missed doses, and system alerts",
-                    icon = Icons.Default.Analytics,
-                    iconBg = Color(0xFFFFF3E0),
-                    onClick = onStatisticsClick
-                )
-            }
-
         }
     }
 }
 
 @Composable
-private fun AdminHeader(onBack: (() -> Unit)?, onSettingsClick: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun QuickStatCard(
+    title: String,
+    count: String,
+    icon: ImageVector,
+    iconColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        onBack?.let {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .background(AppBlue, RoundedCornerShape(12.dp))
-                    .clickable { it() },
-                contentAlignment = Alignment.Center
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = iconColor.copy(alpha = 0.12f),
+                modifier = Modifier.size(36.dp)
             ) {
-                Icon(Icons.Default.Person, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = title,
+                        tint = iconColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
-        }
-        Spacer(Modifier.width(10.dp))
-        Column {
-            Text("HEALTH4U", color = AppBlue, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.5.sp)
-            Text("ADMIN PORTAL", color = Color(0xFF63727D), fontSize = 9.sp, letterSpacing = 1.sp)
-        }
-        Spacer(Modifier.weight(1f))
-        IconButton(onClick = onSettingsClick) {
-            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = AppBlue)
+            Column {
+                Text(
+                    text = count,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = title,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -141,38 +380,155 @@ private fun AdminHeader(onBack: (() -> Unit)?, onSettingsClick: () -> Unit) {
 private fun DashboardCard(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     iconBg: Color,
+    iconColor: Color,
     onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
         elevation = CardDefaults.cardElevation(3.dp)
     ) {
         Row(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(iconBg, RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = iconBg,
+                modifier = Modifier.size(52.dp)
             ) {
-                Icon(icon, null, tint = AppBlue, modifier = Modifier.size(28.dp))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = title,
+                        tint = iconColor,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
             }
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
                 Spacer(Modifier.height(4.dp))
-                Text(subtitle, fontSize = 12.sp, color = Color(0xFF61717D))
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = "Navigate",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
 
+@Composable
+private fun QuickActionTile(
+    label: String,
+    icon: ImageVector,
+    iconColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = modifier.clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = iconColor.copy(alpha = 0.12f),
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = label,
+                        tint = iconColor,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun BottomNavItem(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clickable { onClick() }
+            .padding(vertical = 4.dp)
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = if (selected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f) else Color.Transparent,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    icon,
+                    contentDescription = label,
+                    tint = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            color = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+        )
+    }
+}
+
+private fun getTimeOfDay(): String {
+    val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+    return when (hour) {
+        in 5..11 -> "Morning"
+        in 12..16 -> "Afternoon"
+        in 17..20 -> "Evening"
+        else -> "Night"
+    }
+}

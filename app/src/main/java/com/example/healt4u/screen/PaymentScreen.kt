@@ -111,18 +111,28 @@ fun PaymentScreen(
         hospitalName = hospital?.name ?: "Hospital"
     }
 
-    @SuppressLint("QueryPermissionsNeeded")
+    @SuppressLint("QueryPermissionsNeeded", "UseKtx")
     fun openTNG() {
-        val intent = Intent(Intent.ACTION_VIEW, tngDeepLink.toUri()).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        if (intent.resolveActivity(context.packageManager) != null) {
-            context.startActivity(intent)
-            Toast.makeText(context, "Opening TNG eWallet...", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(context, "TNG App not installed. Opening website...", Toast.LENGTH_SHORT).show()
-            val webIntent = Intent(Intent.ACTION_VIEW, tngWebUrl.toUri())
-            context.startActivity(webIntent)
+        // ✅ TNG eWallet 官方包名
+        val tngPackageName = "com.touchngo.tngwallet"
+        val pm = context.packageManager
+
+        try {
+            val launchIntent = pm.getLaunchIntentForPackage(tngPackageName)
+            if (launchIntent != null) {
+                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(launchIntent)
+                Toast.makeText(context, "Opening TNG eWallet...", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "TNG eWallet not installed. Opening website...", Toast.LENGTH_SHORT).show()
+                val webIntent = Intent(
+                    Intent.ACTION_VIEW,
+                    "https://www.touchngo.com.my".toUri()
+                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+                context.startActivity(webIntent)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(context, "Failed to open TNG eWallet", Toast.LENGTH_SHORT).show()
         }
     }
 

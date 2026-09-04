@@ -113,7 +113,9 @@ fun FamilyModeScreen(
         .distinctBy { it.id }
         .sortedByDescending { it.resolvedAt ?: 0L }
 
-    val pendingCaregiverAlerts = caregiverAlerts.filter { it.status == "PENDING" }
+    val pendingCaregiverAlerts = caregiverAlerts.filter {
+        it.status == "PENDING" && it.patientUserId != currentUserId
+    }
     Column(
         modifier = Modifier.fillMaxSize().background(ScreenBlue)
     ) {
@@ -204,7 +206,7 @@ fun FamilyModeScreen(
                 }
             }
 
-            if (pendingAlerts.isNotEmpty()) {
+            if (pendingCaregiverAlerts.isNotEmpty()) {
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -212,10 +214,10 @@ fun FamilyModeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text("Patient's Missed Dose Alerts", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                        Text("${pendingAlerts.size} pending", fontSize = 12.sp, color = AlertOrange, fontWeight = FontWeight.SemiBold)
+                        Text("${pendingCaregiverAlerts.size} pending", fontSize = 12.sp, color = AlertOrange, fontWeight = FontWeight.SemiBold)
                     }
                 }
-                items(pendingAlerts, key = { it.id }) { alert ->
+                items(pendingCaregiverAlerts, key = { it.id }) { alert ->
                     AlertCard(
                         alert = alert,
                         onResolve = { vm.resolveAlert(context, alert) }
@@ -277,7 +279,7 @@ fun FamilyModeScreen(
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
-                                    TextButton(onClick = onViewAllResolved) {
+                                    TextButton(onClick = onViewAllPatients) {
                                         Text("View All", color = Color.Black)
                                     }
                                 }

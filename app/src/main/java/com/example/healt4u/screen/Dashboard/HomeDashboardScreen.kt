@@ -32,6 +32,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
@@ -67,6 +69,12 @@ fun HomeDashboardScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
+        vm.loadTodaySchedule(context, patientId)
+    }
+
+    // A caregiver can confirm a dose while the patient app is backgrounded.
+    // Refresh the cloud-backed schedule as soon as the patient returns.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         vm.loadTodaySchedule(context, patientId)
     }
 

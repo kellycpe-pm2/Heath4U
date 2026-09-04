@@ -14,6 +14,7 @@ import com.example.healt4u.Storage.getPatientByPhone
 import com.example.healt4u.Storage.upsertFamilyAlertCloud
 import com.example.healt4u.Storage.upsertFamilyAlertsCloud
 import com.example.healt4u.Storage.getFamilyAlertsForCaregiver
+import com.example.healt4u.Storage.getReminderLogsForDate
 import com.example.healt4u.data.local.loadFamilyAlerts
 import com.example.healt4u.data.local.loadReminderLogsForDate
 import com.example.healt4u.data.local.saveFamilyAlerts
@@ -250,7 +251,10 @@ class FamilyModeViewModel(
                     if (key in existingAlertKeys) continue
 
                     for (cg in caregivers) {
-                        val alertId = "fa_${log.medicineId}_${date}_${log.time}_${cg.id}"
+                        // Keep the reminder-log id in the alert id. The caregiver
+                        // may be on another device, so resolving an alert must
+                        // still be able to update the patient's exact schedule row.
+                        val alertId = "fa_${log.id}_${cg.id}"
                         newAlerts.add(
                             FamilyAlert(
                                 id = alertId,
@@ -307,15 +311,48 @@ class FamilyModeViewModel(
 
             upsertFamilyAlertCloud(updated)
 
-            val logs = loadReminderLogsForDate(context, alert.date)
-            val matchingLog = logs.find {
+            // Resolve the patient's cloud log, not only this device's local log.
+            // Caregiver and patient accounts commonly run on separate devices.
+            val cloudLogs = getReminderLogsForDate(alert.date, alert.patientUserId)
+            val localLogs = loadReminderLogsForDate(context, alert.date)
+            val matchingLog = (cloudLogs + localLogs).distinctBy { it.id }.find {
                 it.medicineName == alert.medicineName && it.time == alert.scheduledTime
             }
-            if (matchingLog != null && matchingLog.status == "MISSED") {
-                val takenLog = matchingLog.copy(status = "TAKEN")
-                upsertReminderLogLocal(context, takenLog)
-                upsertReminderLog(takenLog)
+            val reminderLog = matchingLog ?: alertReminderLog(alert)
+            if (reminderLog.status != "TAKEN") {
+                // Only persist locally when this is the patient's own local log.
+                // Writing a patient's log into the caregiver's local file would
+                // pollute the caregiver's schedule after an account switch.
+                if (matchingLog != null && matchingLog.patientId == com.example.healt4u.Session.CurrentSession.patientId) {
+                    upsertReminderLogLocal(context, reminderLog.copy(status = "TAKEN"))
+                }
+                upsertReminderLog(reminderLog.copy(status = "TAKEN"))
             }
         }
+    }
+
+    /** Reconstructs a missing cloud row for alerts created from a local-only log. */
+    private fun alertReminderLog(alert: FamilyAlert): com.example.healt4u.model.ReminderLog {
+        val encodedLogId = alert.id.removePrefix("fa_").substringBeforeLast('_')
+        val idParts = encodedLogId.split('_')
+        val medicineId = when {
+            idParts.getOrNull(2)?.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) == true -> idParts.getOrNull(1)?.toIntOrNull()
+            else -> idParts.firstOrNull()?.toIntOrNull()
+        } ?: -1
+        return com.example.healt4u.model.ReminderLog(
+            // New alerts retain the exact generated id. Older alerts get a
+            // deterministic id and are matched by medicine/time on the patient.
+            id = if (idParts.getOrNull(2)?.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) == true)
+                encodedLogId
+            else
+                "family_${alert.patientUserId}_${medicineId}_${alert.date}_${alert.scheduledTime}",
+            patientId = alert.patientUserId,
+            medicineId = medicineId,
+            medicineName = alert.medicineName,
+            date = alert.date,
+            time = alert.scheduledTime,
+            status = "MISSED",
+            type = "MEDICINE"
+        )
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults.buttonColors
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -388,7 +389,7 @@ fun MedicineListScreen(
                             onDel(med)
                             isPendingDel.clear()
                         },
-                        colors = ButtonDefaults.buttonColors(
+                        colors = buttonColors(
                             containerColor = MaterialTheme.colorScheme.error,
                             contentColor = Color.White
                         )
@@ -397,8 +398,13 @@ fun MedicineListScreen(
                     }
                 },
                 dismissButton = {
-                    TextButton(
-                        onClick = { isPendingDel.clear() }
+                    Button(
+                        onClick = { isPendingDel.clear() },
+                        colors = buttonColors(
+                            containerColor = Color(0xFFFF9800),
+                            contentColor = Color.White
+                        )
+
                     ) {
                         Text("CANCEL")
                     }

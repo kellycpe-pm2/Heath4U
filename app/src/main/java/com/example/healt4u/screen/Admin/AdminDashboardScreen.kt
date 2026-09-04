@@ -47,7 +47,6 @@ fun AdminDashboardScreen(
                         )
                     )
             ) {
-                // ===== Enhanced Top Bar with Secondary Color =====
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.secondary,
@@ -103,17 +102,13 @@ fun AdminDashboardScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(
-                                onClick = onSettingsClick,
-                                modifier = Modifier.size(48.dp)
-                            ) {
                                 Icon(
                                     Icons.Outlined.Settings,
                                     contentDescription = "Settings",
                                     tint = Color.White,
                                     modifier = Modifier.size(26.dp)
                                 )
-                            }
+
                         }
                     }
                 }

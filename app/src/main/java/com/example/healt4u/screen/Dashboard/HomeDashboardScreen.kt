@@ -154,10 +154,6 @@ fun HomeDashboardScreen(
                                     modifier = Modifier.size(26.dp)
                                 )
                             }
-                            IconButton(
-                                onClick = onProfileClick,
-                                modifier = Modifier.size(48.dp)
-                            ) {
                                 Surface(
                                     shape = CircleShape,
                                     color = Color.White.copy(alpha = 0.2f),
@@ -171,7 +167,7 @@ fun HomeDashboardScreen(
                                             modifier = Modifier.size(24.dp)
                                         )
                                     }
-                                }
+
                             }
                         }
                     }

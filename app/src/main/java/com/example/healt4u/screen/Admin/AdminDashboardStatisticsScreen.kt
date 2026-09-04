@@ -84,9 +84,6 @@ fun AdminDashboardStatisticsScreen(onBack: () -> Unit) {
             item {
                 StatisticsCard("Missed Doses Today", statistics.missedDosesToday.toString(), Icons.Default.Warning, Modifier.fillMaxWidth())
             }
-            item {
-                StatisticsCard("Unresolved Alerts", statistics.unresolvedAlerts.toString(), Icons.Default.Warning, Modifier.fillMaxWidth())
-            }
             item { Spacer(Modifier.height(16.dp)) }
         }
     }

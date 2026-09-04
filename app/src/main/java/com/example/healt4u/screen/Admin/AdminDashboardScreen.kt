@@ -157,47 +157,6 @@ fun AdminDashboardScreen(
                         }
 
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            QuickStatCard(
-                                title = "Doctors",
-                                count = "24",
-                                icon = Icons.Filled.Person,
-                                iconColor = Color(0xFF4CAF50),
-                                modifier = Modifier.weight(1f)
-                            )
-                            QuickStatCard(
-                                title = "Hospitals",
-                                count = "12",
-                                icon = Icons.Filled.Business,
-                                iconColor = Color(0xFF2196F3),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            QuickStatCard(
-                                title = "Patients",
-                                count = "156",
-                                icon = Icons.Filled.People,
-                                iconColor = Color(0xFF9C27B0),
-                                modifier = Modifier.weight(1f)
-                            )
-                            QuickStatCard(
-                                title = "Alerts",
-                                count = "3",
-                                icon = Icons.Filled.Notifications,
-                                iconColor = Color(0xFFFF5722),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
                     }
 
                     // ===== Dashboard Cards =====

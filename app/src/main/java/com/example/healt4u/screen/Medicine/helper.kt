@@ -84,3 +84,14 @@ fun getPriorityColor(priority: Float): Color {
         else -> Color(0xFF4CAF50)
     }
 }
+fun getCurrentDate(): String {
+    val formatter =
+        java.text.SimpleDateFormat(
+            "yyyy-MM-dd",
+            java.util.Locale.getDefault()
+        )
+
+    return formatter.format(
+        java.util.Date()
+    )
+}

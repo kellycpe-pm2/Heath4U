@@ -3,9 +3,10 @@ package com.example.healt4u.Service
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-object OpenFdaClient {
+object FdaClient {
 
-    private const val BASE_URL = "https://api.fda.gov/"
+    private const val BASE_URL =
+        "https://api.fda.gov/"
 
     val api: OpenFdaApi by lazy {
 

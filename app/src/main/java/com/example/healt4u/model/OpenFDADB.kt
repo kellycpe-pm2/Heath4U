@@ -4,8 +4,51 @@ import com.google.gson.annotations.SerializedName
 
 data class OpenFdaResponse(
     @SerializedName("results")
-    val results: List<OpenFdaDrug> = emptyList()
+    val results: List<FdaLabel> = emptyList()
 )
+
+data class FdaLabel(
+
+    @SerializedName("purpose")
+    val purpose: List<String>?,
+
+    @SerializedName("indications_and_usage")
+    val indicationsAndUsage: List<String>?,
+
+    @SerializedName("warnings")
+    val warnings: List<String>?,
+
+    @SerializedName("dosage_and_administration")
+    val dosageAndAdministration: List<String>?,
+
+    @SerializedName("contraindications")
+    val contraindications: List<String>?,
+
+    @SerializedName("description")
+    val description: List<String>?,
+
+    @SerializedName("active_ingredient")
+    val activeIngredient: List<String>?,
+
+    @SerializedName("openfda")
+    val openFda: OpenFdaInfo?
+)
+
+data class OpenFdaInfo(
+
+    @SerializedName("brand_name")
+    val brandName: List<String>?,
+
+    @SerializedName("generic_name")
+    val genericName: List<String>?,
+
+    @SerializedName("manufacturer_name")
+    val manufacturerName: List<String>?,
+
+    @SerializedName("substance_name")
+    val substanceName: List<String>?
+)
+
 
 data class OpenFdaDrug(
 
@@ -90,4 +133,22 @@ data class OpenFDADB(
 data class Ingredient(
     val name: String? = null,
     val strength: String? = null
+)
+
+data class FdaMedicineInfo(
+    val brandName: String? = null,
+    val genericName: String? = null,
+    val activeIngredient: String? = null,
+
+    val purpose: String? = null,
+    val indicationsAndUsage: String? = null,
+    val warnings: String? = null,
+    val dosageAndAdministration: String? = null,
+    val contraindications: String? = null,
+
+    val description: String? = null,
+
+    val manufacturer: String? = null,
+
+    val source: String = "openFDA"
 )

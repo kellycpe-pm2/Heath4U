@@ -1,23 +1,27 @@
 package com.example.healt4u.screen.ScanScreen
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 @Composable
 fun ManualInputDialog(
@@ -25,46 +29,313 @@ fun ManualInputDialog(
     onSearch: (String) -> Unit
 ) {
     var inputText by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isFocused by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    // Animation states
+    val scale by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "scale"
+    )
+
+    Dialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text("Manually Input MAL Number")
-        },
-        text = {
-            Column {
-                Text(
-                    text = "Input MAL Number (EG. MAL123456789X）",
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onBackground
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        AnimatedVisibility(
+            visible = true,
+            enter = fadeIn(animationSpec = tween(300)) +
+                    scaleIn(initialScale = 0.8f, animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium
+                    )),
+            exit = fadeOut(animationSpec = tween(200)) +
+                    scaleOut(targetScale = 0.8f, animationSpec = tween(200))
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .shadow(
+                        elevation = 24.dp,
+                        shape = RoundedCornerShape(24.dp),
+                        clip = false
+                    ),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it.uppercase() },
-                    label = { Text("MAL Number") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (inputText.isNotBlank()) {
-                        onSearch(inputText)
-                        onDismiss()
-                    }
-                },
-                enabled = inputText.isNotBlank()
             ) {
-                Text("Search", color = MaterialTheme.colorScheme.onBackground)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = MaterialTheme.colorScheme.onBackground)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White,
+                                    Color(0xFFF8F9FA)
+                                )
+                            )
+                        )
+                        .padding(24.dp)
+                ) {
+                    // ===== HEADER WITH ICON =====
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            // Icon and Title
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.QrCodeScanner,
+                                            contentDescription = "Manual Input",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = "Manual Input",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1A1A2E)
+                                )
+                            }
+
+                            Text(
+                                text = "Enter the MAL number to search",
+                                fontSize = 14.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+
+                        // Close button
+                        IconButton(
+                            onClick = onDismiss,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color(0xFF9E9E9E)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // ===== DIVIDER =====
+                    Divider(
+                        color = Color(0xFFEEEEEE),
+                        thickness = 1.dp
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // ===== INPUT FIELD =====
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        // Label with required indicator
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "MAL Number",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF333333)
+                            )
+                            Text(
+                                text = "*",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "(e.g. MAL123456789X)",
+                                fontSize = 12.sp,
+                                color = Color(0xFF9E9E9E)
+                            )
+                        }
+
+                        // Input field with validation
+                        OutlinedTextField(
+                            value = inputText,
+                            onValueChange = {
+                                val upper = it.uppercase()
+                                inputText = upper
+                                isError = false
+                                errorMessage = null
+                            },
+                            label = {
+                                Text(
+                                    "Enter MAL Number",
+                                    color = if (isFocused) MaterialTheme.colorScheme.primary else Color(0xFF757575)
+                                )
+                            },
+                            placeholder = {
+                                Text(
+                                    "MAL123456789X",
+                                    color = Color(0xFFBDBDBD)
+                                )
+                            },
+
+                            isError = isError,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(
+                                    elevation = if (isFocused) 4.dp else 0.dp,
+                                    shape = RoundedCornerShape(12.dp),
+                                    clip = false
+                                ),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = Color(0xFFE0E0E0),
+                                focusedTextColor = Color(0xFF1A1A2E),
+                                unfocusedTextColor = Color(0xFF1A1A2E),
+                                cursorColor = MaterialTheme.colorScheme.primary,
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLabelColor = Color(0xFF757575)
+                            ),
+                            singleLine = true
+
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // ===== QUICK ACTION EXAMPLES =====
+                    Text(
+                        text = "Quick examples:",
+                        fontSize = 12.sp,
+                        color = Color(0xFF757575),
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("MAL123456789X", "MAL987654321A", "MAL456789123B").forEach { example ->
+                            Surface(
+                                onClick = {
+                                    inputText = example
+                                    isError = false
+                                    errorMessage = null
+                                },
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFF5F5F5),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = example,
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF616161),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // ===== ACTION BUTTONS =====
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Cancel button
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF757575)
+                            )
+                        ) {
+                            Text(
+                                "Cancel",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        // Search button
+                        Button(
+                            onClick = {
+                                if (inputText.isNotBlank()) {
+                                    // Simple validation
+                                    val isValid = inputText.matches(Regex("^MAL\\d{9}[A-Z]$"))
+                                    if (!isValid) {
+                                        isError = true
+                                        errorMessage = "Invalid format. Use MAL123456789X"
+                                        return@Button
+                                    }
+                                    onSearch(inputText)
+                                    onDismiss()
+                                } else {
+                                    isError = true
+                                    errorMessage = "Please enter a MAL number"
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = inputText.isNotBlank(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                disabledContainerColor = Color(0xFFE0E0E0)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Search,
+                                contentDescription = "Search",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Search",
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
         }
-    )
+    }
 }

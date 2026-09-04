@@ -34,3 +34,26 @@ sealed class SearchResult {
     data class Error(val message: String) : SearchResult()
     object NotFound : SearchResult()
 }
+
+data class UnifiedMedicineResult(
+    val medicine: NPRAMedicine,
+
+    val rawValue: String,
+
+    val resolvedMal: String,
+
+    val source: String,
+
+    val isVerified: Boolean,
+
+    val parsedName: String = "",
+
+    val parsedDosage: Int = 0,
+
+    val category: String = "Other",
+
+    val categoryCode: String? = null,
+
+    val fdaInfo: FdaMedicineInfo? = null
+)
+

@@ -4,7 +4,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healt4u.Service.BarcodeLookUpService
-import com.example.healt4u.model.NPRAMedicine
+import com.example.healt4u.Service.OpenFDAService
+import com.example.healt4u.data.MedicineCodeParser
+import com.example.healt4u.data.MedicineData
+import com.example.healt4u.data.MedicineNameParser
+import com.example.healt4u.model.UnifiedMedicineResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,32 +16,65 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+
 @HiltViewModel
 class FindMedicineViewModel @Inject constructor(
-    private val barcodeLookUpService: BarcodeLookUpService
+
+    private val barcodeLookUpService:
+    BarcodeLookUpService,
+
+    private val openFDAService:
+    OpenFDAService
+
 ) : ViewModel() {
+
+
+    // ================================================================
+    // RESULT
+    // ================================================================
 
     private val _searchResult =
         MutableStateFlow<UnifiedMedicineResult?>(null)
 
-    val searchResult: StateFlow<UnifiedMedicineResult?> =
+    val searchResult:
+            StateFlow<UnifiedMedicineResult?> =
         _searchResult.asStateFlow()
+
+
+    // ================================================================
+    // LOADING
+    // ================================================================
 
     private val _isLoading =
         MutableStateFlow(false)
 
-    val isLoading: StateFlow<Boolean> =
+    val isLoading:
+            StateFlow<Boolean> =
         _isLoading.asStateFlow()
+
+
+    // ================================================================
+    // ERROR
+    // ================================================================
 
     private val _errorMessage =
         MutableStateFlow<String?>(null)
 
-    val errorMessage: StateFlow<String?> =
+    val errorMessage:
+            StateFlow<String?> =
         _errorMessage.asStateFlow()
 
-    fun searchUnified(value: String) {
 
-        val cleanValue = value.trim()
+    // ================================================================
+    // MAIN SEARCH
+    // ================================================================
+
+    fun searchUnified(
+        value: String
+    ) {
+
+        val cleanValue =
+            value.trim()
 
         if (cleanValue.isBlank()) {
             return
@@ -46,8 +83,11 @@ class FindMedicineViewModel @Inject constructor(
         viewModelScope.launch {
 
             _isLoading.value = true
+
             _errorMessage.value = null
+
             _searchResult.value = null
+
 
             try {
 
@@ -56,57 +96,252 @@ class FindMedicineViewModel @Inject constructor(
                     "Searching: $cleanValue"
                 )
 
+
+                // ========================================================
+                // NPRA LOOKUP
+                // ========================================================
+
                 when (
                     val result =
-                        barcodeLookUpService.lookup(cleanValue)
+                        barcodeLookUpService
+                            .lookup(cleanValue)
                 ) {
 
-                    is BarcodeLookUpService.LookupResult.Found -> {
+
+                    // ====================================================
+                    // MEDICINE FOUND
+                    // ====================================================
+
+                    is BarcodeLookUpService
+                    .LookupResult
+                    .Found -> {
+
+
+                        val npra =
+                            result.medicine
+
 
                         Log.d(
                             TAG,
-                            "Medicine found: ${result.medicine}"
+                            "NPRA medicine found: $npra"
                         )
+
+
+                        // =================================================
+                        // PARSE NAME + DOSAGE
+                        // =================================================
+
+                        /*
+                         * Example:
+                         *
+                         * PANADOL 500MG TABLET
+                         *
+                         * becomes:
+                         *
+                         * name   = PANADOL
+                         * dosage = 500
+                         */
+
+                        val parsed =
+                            MedicineNameParser.parse(
+
+                                productName =
+                                    npra.product,
+
+                                npraDosage =
+                                    null
+                            )
+
+
+                        Log.d(
+                            TAG,
+                            "Parsed name = ${parsed.name}"
+                        )
+
+                        Log.d(
+                            TAG,
+                            "Parsed dosage = ${parsed.dosage}"
+                        )
+
+
+                        // =================================================
+                        // MAL CATEGORY
+                        // =================================================
+
+                        val categoryCode =
+                            MedicineCodeParser
+                                .extractCategoryFromMal(
+                                    result.resolvedMal
+                                )
+
+
+                        val category =
+                            if (
+                                !categoryCode.isNullOrBlank()
+                            ) {
+
+                                MedicineData
+                                    .getCategoryName(
+                                        categoryCode
+                                    )
+
+                            } else {
+
+                                "Other"
+                            }
+
+
+                        Log.d(
+                            TAG,
+                            "MAL category code = $categoryCode"
+                        )
+
+                        Log.d(
+                            TAG,
+                            "Category = $category"
+                        )
+
+
+                        // =================================================
+                        // FDA LOOKUP
+                        // =================================================
+
+                        val fda =
+                            if (
+                                !npra.activeIngredient
+                                    .isNullOrBlank()
+                            ) {
+
+                                try {
+
+                                    openFDAService
+                                        .searchByIngredient(
+                                            npra.activeIngredient
+                                        )
+
+                                } catch (e: Exception) {
+
+                                    Log.e(
+                                        TAG,
+                                        "FDA lookup failed",
+                                        e
+                                    )
+
+                                    null
+                                }
+
+                            } else {
+
+                                null
+                            }
+
+
+                        // =================================================
+                        // BUILD FINAL RESULT
+                        // =================================================
 
                         _searchResult.value =
                             UnifiedMedicineResult(
-                                medicine = result.medicine,
-                                query = cleanValue,
-                                resolvedMal = result.resolvedMal,
-                                source = result.source.name,
-                                rawValue = result.rawValue,
-                                sourceUrl = result.sourceUrl,
-                                isVerified = true
+
+                                medicine =
+                                    npra,
+
+                                rawValue =
+                                    result.rawValue,
+
+                                resolvedMal =
+                                    result.resolvedMal,
+
+                                source =
+                                    if (
+                                        fda != null
+                                    ) {
+
+                                        "NPRA + openFDA"
+
+                                    } else {
+
+                                        result
+                                            .source
+                                            .name
+                                    },
+
+                                isVerified =
+                                    true,
+
+                                parsedName =
+                                    parsed.name,
+
+                                parsedDosage =
+                                    parsed.dosage,
+
+                                category =
+                                    category,
+
+                                categoryCode =
+                                    categoryCode,
+
+                                fdaInfo =
+                                    fda
                             )
                     }
 
-                    is BarcodeLookUpService.LookupResult.MalNotFound -> {
+
+                    // ====================================================
+                    // MAL NOT FOUND
+                    // ====================================================
+
+                    is BarcodeLookUpService
+                    .LookupResult
+                    .MalNotFound -> {
 
                         _errorMessage.value =
                             "MAL number ${result.mal} was found, " +
                                     "but it is not in the NPRA database."
                     }
 
-                    is BarcodeLookUpService.LookupResult.BarcodeNotMapped -> {
+
+                    // ====================================================
+                    // BARCODE NOT MAPPED
+                    // ====================================================
+
+                    is BarcodeLookUpService
+                    .LookupResult
+                    .BarcodeNotMapped -> {
 
                         _errorMessage.value =
                             "Barcode ${result.barcode} is not currently " +
                                     "mapped to an NPRA MAL number."
                     }
 
-                    is BarcodeLookUpService.LookupResult.Quest3PlusResolutionFailed -> {
+
+                    // ====================================================
+                    // QUEST3+ FAILED
+                    // ====================================================
+
+                    is BarcodeLookUpService
+                    .LookupResult
+                    .Quest3PlusResolutionFailed -> {
 
                         _errorMessage.value =
                             "Unable to obtain the MAL number " +
                                     "from the NPRA QUEST3+ page."
                     }
 
-                    is BarcodeLookUpService.LookupResult.NotFound -> {
+
+                    // ====================================================
+                    // NOTHING FOUND
+                    // ====================================================
+
+                    is BarcodeLookUpService
+                    .LookupResult
+                    .NotFound -> {
 
                         _errorMessage.value =
                             "No valid MAL number or supported barcode was found."
                     }
                 }
+
 
             } catch (e: Exception) {
 
@@ -117,33 +352,36 @@ class FindMedicineViewModel @Inject constructor(
                 )
 
                 _errorMessage.value =
-                    e.message ?: "Unable to find medicine."
+                    e.message
+                        ?: "Unable to find medicine."
+
 
             } finally {
 
-                _isLoading.value = false
+                _isLoading.value =
+                    false
             }
         }
     }
 
+
+    // ================================================================
+    // CLEAR RESULT
+    // ================================================================
+
     fun clearResult() {
 
         _searchResult.value = null
+
         _errorMessage.value = null
+
         _isLoading.value = false
     }
 
+
     companion object {
-        private const val TAG = "FindMedicineViewModel"
+
+        private const val TAG =
+            "FindMedicineViewModel"
     }
 }
-
-data class UnifiedMedicineResult(
-    val medicine: NPRAMedicine,
-    val query: String,
-    val resolvedMal: String,
-    val source: String,
-    val rawValue: String,
-    val sourceUrl: String?,
-    val isVerified: Boolean
-)

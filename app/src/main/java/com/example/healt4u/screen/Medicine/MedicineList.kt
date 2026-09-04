@@ -105,9 +105,8 @@ fun MedicineListScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "Medicine Management",
+                            text = "All Medicines",
                             style = MaterialTheme.typography.headlineMedium,
-                            fontSize = 10.sp,
                             color = Color.White,
                             modifier = Modifier
                                 .fillMaxWidth()

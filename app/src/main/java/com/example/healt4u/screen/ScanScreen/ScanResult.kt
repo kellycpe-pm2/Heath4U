@@ -1,46 +1,36 @@
 package com.example.healt4u.screen.ScanScreen
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Medication
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.healt4u.ViewModel.UnifiedMedicineResult
+import androidx.compose.ui.unit.sp
 import com.example.healt4u.model.NPRAMedicine
+import com.example.healt4u.model.UnifiedMedicineResult
+import kotlinx.coroutines.delay
+
+// ========================================================================
+// MAIN SCAN RESULT
+// ========================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +39,7 @@ fun ScanResult(
     isLoading: Boolean,
     errorMessage: String?,
     onBack: () -> Unit,
+    onAddMedicine: ((UnifiedMedicineResult) -> Unit)? = null,
     onAddToReminder: ((NPRAMedicine) -> Unit)? = null
 ) {
     Scaffold(
@@ -56,92 +47,109 @@ fun ScanResult(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Medicine Result",
-                        fontWeight = FontWeight.Bold
+                        text = "💊 Medicine Details",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
                     )
                 },
                 navigationIcon = {
-                    IconButton(
-                        onClick = onBack
-                    ) {
+                    IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Back",
+                            tint = Color.White
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary
                 )
             )
         },
         bottomBar = {
-            if (result != null && !isLoading && onAddToReminder != null) {
-                Button(
-                    onClick = {
-                        onAddToReminder(result.medicine)
-                    },
+            if (result != null && !isLoading) {
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    shape = RoundedCornerShape(12.dp)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+                        ),
+                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                    color = Color.White
                 ) {
-                    Text(
-                        text = "Add to Reminder",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        onAddMedicine?.let { callback ->
+                            Button(
+                                onClick = { callback(result) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                                shape = RoundedCornerShape(14.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Add to My Medicines",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        onAddToReminder?.let { callback ->
+                            OutlinedButton(
+                                onClick = { callback(result.medicine) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Notifications,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Set Reminder",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     ) { paddingValues ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-
             when {
-
-                // =========================================================
-                // LOADING
-                // =========================================================
-                isLoading -> {
-                    LoadingMedicineScreen()
-                }
-
-                // =========================================================
-                // ERROR
-                // =========================================================
-                errorMessage != null -> {
-                    ErrorMedicineScreen(
-                        message = errorMessage,
-                        onBack = onBack
-                    )
-                }
-
-                // =========================================================
-                // RESULT
-                // =========================================================
-                result != null -> {
-                    MedicineResultContent(
-                        result = result
-                    )
-                }
-
-                // =========================================================
-                // EMPTY
-                // =========================================================
-                else -> {
-                    EmptyMedicineScreen()
-                }
+                isLoading -> LoadingMedicineScreen()
+                errorMessage != null -> ErrorMedicineScreen(message = errorMessage, onBack = onBack)
+                result != null -> MedicineResultContent(result = result)
+                else -> EmptyMedicineScreen()
             }
         }
     }
 }
-
 
 // ========================================================================
 // LOADING SCREEN
@@ -149,43 +157,92 @@ fun ScanResult(
 
 @Composable
 private fun LoadingMedicineScreen() {
+    val infiniteTransition = rememberInfiniteTransition(label = "loading")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing)
+        ),
+        label = "rotation"
+    )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                        Color.White
+                    )
+                )
+            )
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Box(
+            modifier = Modifier.size(120.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Surface(
+                modifier = Modifier
+                    .size(100.dp)
+                    .rotate(rotation),
+                shape = RoundedCornerShape(50.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.Medication,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+            CircularProgressIndicator(
+                modifier = Modifier.size(80.dp),
+                color = MaterialTheme.colorScheme.primary,
+                strokeWidth = 4.dp,
+                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            )
+        }
 
-        CircularProgressIndicator(
-            modifier = Modifier.size(56.dp),
-            strokeWidth = 5.dp
-        )
-
-        Spacer(
-            modifier = Modifier.height(24.dp)
-        )
+        Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Checking medicine...",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
+            text = "Searching for Medicine",
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
-        Spacer(
-            modifier = Modifier.height(8.dp)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Please wait while we search the NPRA database.",
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "Checking NPRA and FDA databases...",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        var dotCount by remember { mutableStateOf(0) }
+        LaunchedEffect(Unit) {
+            while (true) {
+                delay(400)
+                dotCount = (dotCount + 1) % 4
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = ".".repeat(dotCount),
+            fontSize = 24.sp,
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
-
 
 // ========================================================================
 // ERROR SCREEN
@@ -196,56 +253,82 @@ private fun ErrorMedicineScreen(
     message: String,
     onBack: () -> Unit
 ) {
-
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.05f),
+                        Color.White
+                    )
+                )
+            )
             .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Surface(
+            modifier = Modifier.size(100.dp),
+            shape = RoundedCornerShape(50.dp),
+            color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Error,
+                    contentDescription = null,
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
 
-        Icon(
-            imageVector = Icons.Default.Error,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.error
-        )
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "Medicine Not Found",
-            style = MaterialTheme.typography.headlineSmall,
+            fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+            color = MaterialTheme.colorScheme.onBackground
         )
 
-        Spacer(
-            modifier = Modifier.height(12.dp)
-        )
+        Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Text(
+                text = message,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center
+            )
+        }
 
-        Spacer(
-            modifier = Modifier.height(24.dp)
-        )
+        Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = onBack
+            onClick = onBack,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(14.dp)
         ) {
-            Text("Back to Scanner")
+            Icon(Icons.Default.ArrowBack, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Back to Scanner", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
-
 
 // ========================================================================
 // EMPTY SCREEN
@@ -253,7 +336,6 @@ private fun ErrorMedicineScreen(
 
 @Composable
 private fun EmptyMedicineScreen() {
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -261,668 +343,567 @@ private fun EmptyMedicineScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Surface(
+            modifier = Modifier.size(100.dp),
+            shape = RoundedCornerShape(50.dp),
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    Icons.Default.Medication,
+                    contentDescription = null,
+                    modifier = Modifier.size(56.dp),
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                )
+            }
+        }
 
-        Icon(
-            imageVector = Icons.Default.Medication,
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(
-            modifier = Modifier.height(20.dp)
-        )
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = "No Medicine Result",
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
-        Spacer(
-            modifier = Modifier.height(8.dp)
-        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Scan a medicine MAL number or barcode to search.",
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            text = "Scan a medicine barcode or enter a MAL number to search",
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
         )
     }
 }
 
-
 // ========================================================================
-// MEDICINE RESULT
+// MEDICINE RESULT CONTENT
 // ========================================================================
 
 @Composable
 private fun MedicineResultContent(
     result: UnifiedMedicineResult
 ) {
+    val medicine = result.medicine
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF8F9FA)),
         contentPadding = PaddingValues(
             start = 16.dp,
             top = 16.dp,
             end = 16.dp,
-            bottom = 100.dp
+            bottom = 140.dp
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-
         // ================================================================
-        // PRODUCT NAME
+        // HEADER CARD
         // ================================================================
-
         item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(20.dp)
+            AnimatedItem {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(elevation = 4.dp, shape = RoundedCornerShape(16.dp)),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
                 ) {
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.primary,
+                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                    )
+                                )
+                            )
+                            .padding(20.dp)
                     ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color.White.copy(alpha = 0.2f),
+                                modifier = Modifier.size(50.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        Icons.Default.Medication,
+                                        contentDescription = null,
+                                        tint = Color.White,
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
 
-                        Icon(
-                            imageVector = Icons.Default.Medication,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                            Column {
+                                Text(
+                                    text = "Medicine",
+                                    fontSize = 12.sp,
+                                    color = Color.White.copy(alpha = 0.8f)
+                                )
+                                Text(
+                                    text = medicine.product.takeIf { it.isNotBlank() } ?: "Unknown",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
 
-                        Spacer(
-                            modifier = Modifier.size(12.dp)
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                        Text(
-                            text = "Medicine",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Verified badge
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = if (result.isVerified) {
+                                    Color(0xFF4CAF50).copy(alpha = 0.3f)
+                                } else {
+                                    Color(0xFFFF5722).copy(alpha = 0.3f)
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (result.isVerified) {
+                                            Icons.Default.CheckCircle
+                                        } else {
+                                            Icons.Default.Warning
+                                        },
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = if (result.isVerified) Color(0xFF4CAF50) else Color(0xFFFF5722)
+                                    )
+                                    Text(
+                                        text = if (result.isVerified) "Verified" else "Not Verified",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = if (result.isVerified) Color(0xFF4CAF50) else Color(0xFFFF5722)
+                                    )
+                                }
+                            }
+
+                            // Source badge
+                            Surface(
+                                shape = RoundedCornerShape(20.dp),
+                                color = Color.White.copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = "Source: ${result.source}",
+                                    fontSize = 11.sp,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
-
-                    Spacer(
-                        modifier = Modifier.height(12.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.product.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "Unknown medicine",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }
 
-
         // ================================================================
-        // VERIFIED STATUS
+        // QUICK INFO
         // ================================================================
-
         item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Row(
+            AnimatedItem(delay = 100) {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    )
                 ) {
-
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.size(12.dp)
-                    )
-
-                    Column {
-
-                        Text(
-                            text = if (result.isVerified) {
-                                "Verified"
-                            } else {
-                                "Not Verified"
-                            },
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        Text(
-                            text = "Source: ${result.source}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            QuickInfoItem(
+                                icon = Icons.Outlined.QrCode,
+                                label = "MAL Number",
+                                value = result.resolvedMal
+                            )
+                            QuickInfoItem(
+                                icon = Icons.Outlined.Numbers,
+                                label = "Registration",
+                                value = medicine.regNo?.takeIf { it.isNotBlank() } ?: "-"
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            val category = extractMalCategory(result.resolvedMal)
+                            QuickInfoItem(
+                                icon = Icons.Outlined.Category,
+                                label = "Category",
+                                value = when (category) {
+                                    "A" -> "Scheduled Poison"
+                                    "B" -> "Natural Products"
+                                    "X" -> "Non-scheduled Poisons"
+                                    "N" -> "Health Supplements"
+                                    "T" -> "Traditional Products"
+                                    "H" -> "Veterinary Products"
+                                    else -> "Other"
+                                }
+                            )
+                            QuickInfoItem(
+                                icon = Icons.Outlined.Info,
+                                label = "Status",
+                                value = medicine.status?.takeIf { it.isNotBlank() } ?: "-"
+                            )
+                        }
                     }
                 }
             }
         }
 
-
         // ================================================================
-        // MAL NUMBER
+        // DETAILS SECTION TITLE
         // ================================================================
-
         item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "MAL Number",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.resolvedMal,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // REGISTRATION NUMBER
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Registration Number",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.regNo.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // REFERENCE NUMBER
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Reference Number",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.refNo.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // GENERIC NAME
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Generic Name",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.genericName.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // ACTIVE INGREDIENT
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Active Ingredient",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.activeIngredient.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // STATUS
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Status",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.status.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // DESCRIPTION
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Description",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.description.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // HOLDER
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Product Holder",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.holder.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // MANUFACTURER
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Manufacturer",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.manufacturer.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // IMPORTER
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Importer",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.importer.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // REGISTRATION DATE
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Registration Date",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.dateReg.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // EXPIRY DATE
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "Registration Expiry",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.dateEnd.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // MDC CODE
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-
-                    Text(
-                        text = "MDC Code",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(
-                        modifier = Modifier.height(6.dp)
-                    )
-
-                    Text(
-                        text = result.medicine.mdcCode.toString()
-                            .takeIf { it != "null" && it.isNotBlank() }
-                            ?: "-",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-        }
-
-
-        // ================================================================
-        // WARNING
-        // ================================================================
-
-        item {
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
+            AnimatedItem(delay = 150) {
+                Text(
+                    text = "📋 Medicine Information",
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF1A1A2E),
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
-            ) {
+            }
+        }
 
-                Row(
+        // ================================================================
+        // DETAIL CARDS
+        // ================================================================
+        val details = listOf(
+            "Generic Name" to medicine.genericName,
+            "Active Ingredient" to medicine.activeIngredient,
+            "Dosage / Strength" to medicine.strength,
+            "Dosage Form" to medicine.dosageForm,
+            "Description" to medicine.description,
+            "Product Holder" to medicine.holder,
+            "Manufacturer" to medicine.manufacturer,
+            "Importer" to medicine.importer,
+            "Registration Date" to medicine.dateReg,
+            "Registration Expiry" to medicine.dateEnd,
+            "MDC Code" to medicine.mdcCode,
+            "Reference Number" to medicine.refNo
+        )
+
+        details.forEach { (title, value) ->
+            if (!value.isNullOrBlank()) {
+                item {
+                    AnimatedItem(delay = 200) {
+                        DetailCard(title = title, value = value)
+                    }
+                }
+            }
+        }
+
+        // ================================================================
+        // FDA INFORMATION
+        // ================================================================
+        result.fdaInfo?.let { fda ->
+            val fdaDetails = listOf(
+                "Brand Name" to fda.brandName,
+                "Generic Name" to fda.genericName,
+                "Active Ingredient" to fda.activeIngredient,
+                "Manufacturer" to fda.manufacturer,
+                "Purpose" to fda.purpose,
+                "Indications & Usage" to fda.indicationsAndUsage,
+                "Dosage & Administration" to fda.dosageAndAdministration,
+                "Warnings" to fda.warnings,
+                "Contraindications" to fda.contraindications,
+                "Description" to fda.description
+            )
+
+            val hasData = fdaDetails.any { !it.second.isNullOrBlank() }
+
+            if (hasData) {
+                item {
+                    AnimatedItem(delay = 250) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .shadow(elevation = 2.dp, shape = RoundedCornerShape(16.dp)),
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFE3F2FD)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFF1565C0)
+                                    )
+                                    Text(
+                                        text = "🏥 FDA Information",
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF1565C0)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                fdaDetails.forEach { (title, value) ->
+                                    if (!value.isNullOrBlank()) {
+                                        FdaInfoRow(title = title, value = value)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text(
+                                    text = "Source: ${fda.source}",
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF757575)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ================================================================
+        // SAFETY WARNING
+        // ================================================================
+        item {
+            AnimatedItem(delay = 300) {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.Top
+                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(12.dp)),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFFFFF3E0)
+                    )
                 ) {
-
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error
-                    )
-
-                    Spacer(
-                        modifier = Modifier.size(12.dp)
-                    )
-
-                    Text(
-                        text = "Always check the medicine packaging and follow the advice of a qualified healthcare professional.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = Color(0xFFFF9800),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "⚠️ Always check the medicine packaging and follow the advice of a qualified healthcare professional.",
+                            fontSize = 13.sp,
+                            color = Color(0xFF4E342E),
+                            lineHeight = 20.sp
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+// ========================================================================
+// ANIMATED ITEM WRAPPER
+// ========================================================================
+
+@Composable
+private fun AnimatedItem(
+    delay: Int = 0,
+    content: @Composable () -> Unit
+) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(delay.toLong())
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(
+            animationSpec = tween(400, easing = FastOutSlowInEasing)
+        ) + slideInVertically(
+            initialOffsetY = { it / 4 },
+            animationSpec = tween(400, easing = FastOutSlowInEasing)
+        )
+    ) {
+        content()
+    }
+}
+
+// ========================================================================
+// QUICK INFO ITEM
+// ========================================================================
+
+@Composable
+private fun QuickInfoItem(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .background(
+                Color(0xFFF5F5F5),
+                RoundedCornerShape(10.dp)
+            )
+            .padding(12.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                label,
+                fontSize = 11.sp,
+                color = Color(0xFF757575)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF1A1A2E),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+// ========================================================================
+// DETAIL CARD
+// ========================================================================
+
+@Composable
+private fun DetailCard(
+    title: String,
+    value: String
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(elevation = 1.dp, shape = RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = value,
+                fontSize = 14.sp,
+                color = Color(0xFF333333),
+                lineHeight = 20.sp
+            )
+        }
+    }
+}
+
+// ========================================================================
+// FDA INFO ROW
+// ========================================================================
+
+@Composable
+private fun FdaInfoRow(
+    title: String,
+    value: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF757575)
+        )
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            color = Color(0xFF1A1A2E)
+        )
+        Divider(
+            color = Color(0xFFEEEEEE),
+            thickness = 0.5.dp,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+}
+
+// ========================================================================
+// EXTRACT MAL CATEGORY
+// ========================================================================
+
+private fun extractMalCategory(value: String): String? {
+    val mal = value
+        .trim()
+        .uppercase()
+        .replace(Regex("\\s+"), "")
+
+    return Regex("""^MAL\d{8}([ABXNTH])""")
+        .find(mal)
+        ?.groupValues
+        ?.getOrNull(1)
 }

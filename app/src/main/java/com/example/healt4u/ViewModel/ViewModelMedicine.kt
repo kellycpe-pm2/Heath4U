@@ -2,6 +2,7 @@ package com.example.healt4u.ViewModel
 
 import android.app.Application
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healt4u.Storage.delete_Medicine
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ViewModelMedicine(
     private val application: Application
@@ -1047,6 +1049,206 @@ class ViewModelMedicine(
                 _error.value = "Failed to load from cloud: ${e.message}"
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    // ================================================================
+// ADD MEDICINE FROM SCAN
+// ================================================================
+
+    fun addScannedMedicine(
+        medicine: Medicine,
+        context: Context,
+        onSuccess: (Int) -> Unit
+    ) {
+
+        viewModelScope.launch(
+            Dispatchers.IO
+        ) {
+
+            _isLoading.value = true
+            _error.value = null
+            _success.value = null
+
+            try {
+
+                // ============================================================
+                // PATIENT
+                // ============================================================
+
+                val patientId =
+                    CurrentSession.patientId
+
+                if (patientId == 0) {
+
+                    _error.value =
+                        "No patient logged in"
+
+                    return@launch
+                }
+
+
+                // ============================================================
+                // MEDICINE NAME
+                // ============================================================
+
+                val name =
+                    medicine
+                        .name_medicine
+                        .trim()
+
+                if (name.isBlank()) {
+
+                    _error.value =
+                        "Medicine name is required"
+
+                    return@launch
+                }
+
+
+                // ============================================================
+                // DUPLICATE CHECK
+                // ============================================================
+
+                if (
+                    isMedicineNameDuplicate(
+                        name
+                    )
+                ) {
+
+                    _error.value =
+                        "Medicine '$name' already exists!"
+
+                    return@launch
+                }
+
+
+                // ============================================================
+                // GET NEW ID
+                // ============================================================
+
+                val nextId =
+                    getNextMedicineId(
+                        context,patientId
+                    )
+
+
+                // ============================================================
+                // CREATE FINAL MEDICINE
+                // ============================================================
+
+                val finalMedicine =
+                    medicine.copy(
+
+                        id =
+                            nextId,
+
+                        patientId =
+                            patientId
+                    )
+
+
+                // ============================================================
+                // SAVE LOCAL
+                // ============================================================
+
+                val localSuccess =
+                    insertMedicine(
+                        context,
+                        patientId,finalMedicine
+                    )
+
+                if (!localSuccess) {
+
+                    _error.value =
+                        "Failed to add medicine locally"
+
+                    return@launch
+                }
+
+
+                // ============================================================
+                // UPDATE MEMORY LIST
+                // ============================================================
+
+                _medicines.update { current ->
+
+                    current + finalMedicine
+                }
+
+
+                // ============================================================
+                // SUCCESS
+                // ============================================================
+
+                _success.value =
+                    true
+
+                _successMessage.value =
+                    "Medicine added successfully"
+
+
+                // ============================================================
+                // CLOUD SYNC
+                // ============================================================
+
+                try {
+
+                    insertSingleMedicine(
+                        finalMedicine
+                    )
+
+                } catch (e: Exception) {
+
+                    Log.e(
+                        "ViewModelMedicine",
+                        "Cloud sync failed",
+                        e
+                    )
+
+                    /*
+                     * Do not fail the local save just because
+                     * cloud synchronization failed.
+                     */
+                }
+
+
+                // ============================================================
+                // GO TO EDIT SCREEN
+                // ============================================================
+
+                withContext(
+                    Dispatchers.Main
+                ) {
+
+                    onSuccess(
+                        nextId
+                    )
+                }
+
+
+            } catch (e: Exception) {
+
+                Log.e(
+                    "ViewModelMedicine",
+                    "Failed to add scanned medicine",
+                    e
+                )
+
+                _error.value =
+                    e.message
+                        ?: "Failed to add scanned medicine"
+
+
+                _success.value =
+                    false
+
+
+            } finally {
+
+                _isLoading.value =
+                    false
             }
         }
     }

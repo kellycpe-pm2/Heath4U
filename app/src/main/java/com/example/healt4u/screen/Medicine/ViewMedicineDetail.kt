@@ -58,10 +58,13 @@ fun MedicineDetailScreen(
     onBackClick: () -> Unit,
     onEditClick: () -> Unit
 ) {
-    val stock = medicine?.quantityLeft ?: 0
-    val total = medicine?.quantity ?: 0
-    val stockPercentage = if (total > 0) (stock.toFloat() / total) * 100 else 0f
+    val total by remember { mutableStateOf(medicine?.quantity ?: 0) }
+    val stock by remember { mutableStateOf(medicine?.quantityLeft ?: 0) }
 
+    // Calculate percentage with proper null safety
+    val stockPercentage = remember(stock, total) {
+        if (total > 0) (stock.toFloat() / total) * 100 else 0f
+    }
     colorTheme {
         Scaffold(
             topBar = {

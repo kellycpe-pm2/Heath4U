@@ -114,4 +114,20 @@ object MedicineCodeParser {
             .trim()
             .filter { it.isDigit() }
     }
+
+    fun extractCategoryFromMal(mal: String): String? {
+
+        val normalized = normalizeMal(mal)
+
+        // MALYYMM$$$$@##
+        // Category is the character immediately after the 8 digits.
+        val match = Regex(
+            """^MAL\d{8}([ABX NTH])""".replace(" ", "")
+        ).find(normalized)
+
+        return match
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.uppercase()
+    }
 }

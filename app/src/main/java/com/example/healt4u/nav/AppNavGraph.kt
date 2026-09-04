@@ -84,13 +84,14 @@ import com.example.healt4u.Storage.sendMessage
 import com.example.healt4u.Storage.updateDoctorStatusInSupabase
 import com.example.healt4u.ViewModel.FindMedicineViewModel
 import com.example.healt4u.model.Hospital
+import com.example.healt4u.model.Medicine
 import com.example.healt4u.model.Payment
 import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.notification.Notification
+import com.example.healt4u.screen.Medicine.getCurrentDate
 import com.example.healt4u.screen.PatientListScreen
 import com.example.healt4u.screen.Payment.PaymentScreen
 import com.example.healt4u.screen.ScanScreen.ScanResult
-import com.example.healt4u.screen.ScanScreen.getCurrentDate
 import com.example.healt4u.screen.Statistics.AdherenceStatisticScreen
 import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -194,7 +195,7 @@ fun AppNavGraph(
                     currentUserRole = "doctor"
                     CurrentSession.saveSession(context, 2, "doctor", "Doctor")
                     navController.navigate("doctor") {
-                         popUpTo("login") { inclusive = true }
+                        popUpTo("login") { inclusive = true }
                     }
                 }
             )
@@ -504,33 +505,304 @@ fun AppNavGraph(
 
         composable(
             route = "detail/{barcode}",
-            arguments = listOf(
-                navArgument("barcode") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val encodedBarcode = backStackEntry
-                .arguments
-                ?.getString("barcode") ?: ""
-            val barcode = Uri.decode(encodedBarcode)
-            Log.d("DETAIL_SCREEN", "Showing result for = $barcode")
 
-            val result by viewModel.searchResult.collectAsState()
-            val isLoading by viewModel.isLoading.collectAsState()
-            val errorMessage by viewModel.errorMessage.collectAsState()
+            arguments = listOf(
+                navArgument("barcode") {
+                    type = NavType.StringType
+                }
+            )
+
+        ) { backStackEntry ->
+
+
+            // ================================================================
+            // BARCODE
+            // ================================================================
+
+            val encodedBarcode =
+                backStackEntry
+                    .arguments
+                    ?.getString("barcode")
+                    ?: ""
+
+            val barcode =
+                Uri.decode(
+                    encodedBarcode
+                )
+
+
+            Log.d(
+                "DETAIL_SCREEN",
+                "Showing result for = $barcode"
+            )
+
+
+            // ================================================================
+            // SCAN RESULT STATE
+            // ================================================================
+
+            val result by
+            viewModel
+                .searchResult
+                .collectAsState()
+
+            val isLoading by
+            viewModel
+                .isLoading
+                .collectAsState()
+
+            val errorMessage by
+            viewModel
+                .errorMessage
+                .collectAsState()
+
+
+            // ================================================================
+            // RESULT SCREEN
+            // ================================================================
 
             ScanResult(
-                result = result,
-                isLoading = isLoading,
-                errorMessage = errorMessage,
+
+                result =
+                    result,
+
+                isLoading =
+                    isLoading,
+
+                errorMessage =
+                    errorMessage,
+
+
+                // ============================================================
+                // BACK
+                // ============================================================
+
                 onBack = {
+
                     viewModel.clearResult()
+
                     navController.popBackStack()
                 },
+
+
+                // ============================================================
+                // ADD MEDICINE
+                // ============================================================
+
+                onAddMedicine = { scanResult ->
+
+
+                    /*
+                     * Create a Medicine using information
+                     * obtained from NPRA + parser + MAL category.
+                     */
+
+                    val medicine =
+                        Medicine(
+
+                            id = 0,
+
+
+                            // ------------------------------------------------
+                            // NAME
+                            // ------------------------------------------------
+
+                            name_medicine =
+                                scanResult
+                                    .parsedName
+                                    .ifBlank {
+
+                                        scanResult
+                                            .medicine
+                                            .product
+                                            .trim()
+                                    },
+
+
+                            // ------------------------------------------------
+                            // CATEGORY
+                            // ------------------------------------------------
+
+                            category =
+                                scanResult
+                                    .category
+                                    .ifBlank {
+
+                                        "Other"
+                                    },
+
+
+                            // ------------------------------------------------
+                            // DOSAGE
+                            // ------------------------------------------------
+
+                            dosage =
+                                scanResult
+                                    .parsedDosage,
+
+
+                            // ------------------------------------------------
+                            // DEFAULT QUANTITY
+                            // ------------------------------------------------
+
+                            quantity =
+                                1,
+
+                            quantityLeft =
+                                1,
+
+
+                            // ------------------------------------------------
+                            // REMARK
+                            // ------------------------------------------------
+
+                            remark =
+                                buildString {
+
+                                    append(
+                                        "MAL: "
+                                    )
+
+                                    append(
+                                        scanResult
+                                            .resolvedMal
+                                    )
+
+
+                                    scanResult
+                                        .medicine
+                                        .activeIngredient
+                                        ?.takeIf {
+                                            it.isNotBlank()
+                                        }
+                                        ?.let {
+
+                                            append(
+                                                "\nActive ingredient: "
+                                            )
+
+                                            append(
+                                                it
+                                            )
+                                        }
+
+
+                                    scanResult
+                                        .fdaInfo
+                                        ?.brandName
+                                        ?.takeIf {
+                                            it.isNotBlank()
+                                        }
+                                        ?.let {
+
+                                            append(
+                                                "\nFDA brand: "
+                                            )
+
+                                            append(
+                                                it
+                                            )
+                                        }
+                                },
+
+
+                            // ------------------------------------------------
+                            // DEFAULT EXPIRY
+                            // ------------------------------------------------
+
+                            expiredDate =
+                                System.currentTimeMillis() +
+                                        (
+                                                365L *
+                                                        24L *
+                                                        60L *
+                                                        60L *
+                                                        1000L
+                                                ),
+
+
+                            // ------------------------------------------------
+                            // DEFAULT SETTINGS
+                            // ------------------------------------------------
+
+                            afterEat =
+                                true,
+
+                            createDate =
+                                System.currentTimeMillis(),
+
+                            priority =
+                                0f,
+
+                            reminderTime =
+                                "08:00",
+
+                            timesPerDay =
+                                1,
+
+
+                            // ------------------------------------------------
+                            // CURRENT PATIENT
+                            // ------------------------------------------------
+
+                            patientId =
+                                CurrentSession.patientId
+                        )
+
+
+                    // ========================================================
+                    // SAVE MEDICINE
+                    // ========================================================
+
+                    vm_med.addScannedMedicine(
+
+                        medicine =
+                            medicine,
+
+                        context =
+                            context
+
+                    ) { medicineId ->
+
+
+                        // ====================================================
+                        // OPEN EXISTING EDIT SCREEN
+                        // ====================================================
+
+                        navController.navigate(
+                            "edit/$medicineId"
+                        )
+                    }
+                },
+
+
+                // ============================================================
+                // ADD TO REMINDER
+                // ============================================================
+
                 onAddToReminder = { _ ->
-                    val medicineCode = barcode.trim()
-                    if (medicineCode.isBlank()) return@ScanResult
-                    val encodedMedicineCode = Uri.encode(medicineCode)
-                    navController.navigate("add_reminder/$encodedMedicineCode")
+
+                    val medicineCode =
+                        barcode.trim()
+
+
+                    if (
+                        medicineCode.isBlank()
+                    ) {
+
+                        return@ScanResult
+                    }
+
+
+                    val encodedMedicineCode =
+                        Uri.encode(
+                            medicineCode
+                        )
+
+
+                    navController.navigate(
+                        "add_reminder/$encodedMedicineCode"
+                    )
                 }
             )
         }
@@ -810,7 +1082,7 @@ fun AppNavGraph(
                                 "offline"
                             }
                         }
-                                      },
+                    },
                     onClearAllMessages = {
                         GlobalScope.launch { clearMessagesByConversation(convId) }
                     }

@@ -44,12 +44,11 @@ import com.example.healt4u.ViewModel.ViewModelMedicine
 import com.example.healt4u.screen.Admin.AdminDashboardScreen
 import com.example.healt4u.screen.Admin.AdminDoctorScreen
 import com.example.healt4u.screen.Admin.AdminAddDoctorScreen
-import com.example.healt4u.screen.Admin.AdminForgotPasswordScreen
 import com.example.healt4u.screen.Admin.AdminHospitalScreen
 import com.example.healt4u.screen.Admin.AdminLoginScreen
-import com.example.healt4u.screen.Admin.AdminResetPasswordScreen
 import com.example.healt4u.screen.Admin.AdminSettingsScreen
 import com.example.healt4u.screen.Admin.AdminDashboardStatisticsScreen
+import com.example.healt4u.screen.Doctor.DoctorLoginScreen
 import com.example.healt4u.screen.Dashboard.HomeDashboardScreen
 import com.example.healt4u.screen.Dashboard.ScheduleListScreen
 import com.example.healt4u.screen.DoctorPatientChat.ChatListScreen
@@ -93,6 +92,7 @@ import com.example.healt4u.screen.PaymentScreen
 import com.example.healt4u.screen.ScanScreen.ScanResult
 import com.example.healt4u.screen.Statistics.AdherenceStatisticScreen
 import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
+import com.example.healt4u.Storage.createPayment
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.runBlocking
@@ -187,15 +187,8 @@ fun AppNavGraph(
                 onPatientLoginClick = {
                     navController.navigate("patient_login")
                 },
-                onForgotPassword = {
-                    navController.navigate("forgot_password")
-                },
-                onDoctorSuccessClick = {
-                    currentUserRole = "doctor"
-                    CurrentSession.saveSession(context, 2, "doctor", "Doctor")
-                    navController.navigate("doctor") {
-                        popUpTo("login") { inclusive = true }
-                    }
+                onDoctorLoginClick = {
+                    navController.navigate("doctor_login")
                 }
             )
         }
@@ -217,46 +210,19 @@ fun AppNavGraph(
             )
         }
 
-        composable("forgot_password") {
-            AdminForgotPasswordScreen(
-                onBack = { navController.popBackStack() },
-                onAccountFound = { emailOrPhone, method ->
-                    navController.navigate(
-                        "reset_password/${method}/${
-                            java.net.URLEncoder.encode(
-                                emailOrPhone,
-                                "UTF-8"
-                            )
-                        }"
-                    ) {
-                        popUpTo("forgot_password") { inclusive = true }
+        composable("doctor_login") {
+            DoctorLoginScreen(
+                onLoginSuccess = { userId, userName, userPhone ->
+                    currentUserId = userId
+                    currentUserName = userName
+                    currentUserPhone = userPhone
+                    currentUserRole = "doctor"
+                    CurrentSession.saveSession(context, userId, "doctor", userName, userPhone)
+                    navController.navigate("doctor") {
+                        popUpTo("login") { inclusive = true }
                     }
-                }
-            )
-        }
-
-        composable(
-            route = "reset_password/{method}/{emailOrPhone}",
-            arguments = listOf(
-                navArgument("method") { type = NavType.StringType },
-                navArgument("emailOrPhone") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val method = backStackEntry.arguments?.getString("method") ?: "email"
-            val emailOrPhone = java.net.URLDecoder.decode(
-                backStackEntry.arguments?.getString("emailOrPhone") ?: "",
-                "UTF-8"
-            )
-
-            AdminResetPasswordScreen(
-                emailOrPhone = emailOrPhone,
-                method = method,
-                onBack = { navController.popBackStack() },
-                onPasswordReset = {
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
 
@@ -292,17 +258,6 @@ fun AppNavGraph(
                 patientId = currentUserId,
                 startAtProfile = startAtProfile,
                 onBack = { navController.popBackStack() },
-                onSwitchAccount = {
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    currentUserName = ""
-                    currentUserPhone = ""
-                    CurrentSession.clearSession(context)
-                    // Navigate to patient login directly
-                    navController.navigate("patient_login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
                 onLogout = {
                     currentUserId = 0
                     currentUserRole = "patient"
@@ -820,6 +775,8 @@ fun AppNavGraph(
                                 time = System.currentTimeMillis().toString()
                             )
 
+                            createPayment(payment)
+
                             navController.navigate(
                                 "chat_with_expiry/${conversation.id}/${conversation.doctorId}/${conversation.patientId}/$chatExpiryTime"
                             )
@@ -934,10 +891,9 @@ fun AppNavGraph(
         }
 
         composable("doctor") {
-            currentUserRole = "doctor"
-            currentUserId=2
             DoctorDashboardScreen(
-                onPatientClick = { pId, conv ->
+                doctorId = currentUserId,
+                onPatientClick = { pId, _ ->
                     navController.navigate("adherence_statistics/$pId")
                 },
                 onListClick = { navController.navigate("patient_list") },
@@ -966,17 +922,6 @@ fun AppNavGraph(
             DoctorSettingScreen(
                 doctorId = currentUserId,
                 onBack = { navController.popBackStack() },
-                onSwitchAccount = {
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    currentUserName = ""
-                    currentUserPhone = ""
-                    CurrentSession.clearSession(context)
-                    // Go back to login (Role Selection) for doctor switch
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
                 onLogout = {
                     currentUserId = 0
                     currentUserRole = "patient"
@@ -1022,17 +967,6 @@ fun AppNavGraph(
                     currentUserId = 0
                     currentUserRole = "patient"
                     CurrentSession.clearSession(context)
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-                onSwitchAccount = {
-                    loggedInAdminUsername = ""
-                    currentUserId = 0
-                    currentUserRole = "patient"
-                    CurrentSession.clearSession(context)
-                    // Go back to login screen but tell it to show Admin form immediately
-                    navController.currentBackStackEntry?.savedStateHandle?.set("start_role", "admin")
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }

@@ -51,8 +51,7 @@ fun AdminLoginScreen(
     initialRole: String? = null,
     onAdminLoginSuccess: (AdminUser) -> Unit,
     onPatientLoginClick: () -> Unit = {},
-    onForgotPassword: () -> Unit = {},
-    onDoctorSuccessClick : ()->Unit  ={}
+    onDoctorLoginClick : ()->Unit  ={}
 ) {
     var selectedRole by remember { mutableStateOf<String?>(initialRole) }
     var loginMethod by remember { mutableStateOf("email") }
@@ -101,7 +100,7 @@ fun AdminLoginScreen(
                 RoleSelectionContent(
                     onAdminClick = { selectedRole = "admin" },
                     onPatientClick = { onPatientLoginClick() },
-                    onDoctorClick = {onDoctorSuccessClick()  }
+                    onDoctorClick = { onDoctorLoginClick() }
                 )
             } else {
                 AdminAuthContent(
@@ -122,7 +121,6 @@ fun AdminLoginScreen(
                         phone = ""
                         password = ""
                     },
-                    onForgotPassword = onForgotPassword,
                     onSubmit = {
                         scope.launch {
                             handleSignIn(
@@ -336,7 +334,6 @@ private fun AdminAuthContent(
     onTogglePassword: () -> Unit,
     onLoginMethodChange: (String) -> Unit,
     onBack: () -> Unit,
-    onForgotPassword: () -> Unit,
     onSubmit: () -> Unit
 ) {
     Column(
@@ -481,17 +478,7 @@ private fun AdminAuthContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "Forgot Password?",
-            color = AppBlue,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable { onForgotPassword() }
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = "Back to role selection",

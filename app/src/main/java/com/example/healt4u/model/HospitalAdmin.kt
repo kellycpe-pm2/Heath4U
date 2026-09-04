@@ -17,6 +17,7 @@ data class Doctor(
     val id: Int = 0,
     val name: String,
     val ic: String,
+    val password: String = "",
     val phone: String,
     val email: String,
     @SerialName("consultation_fee") val consultationFee: Double,

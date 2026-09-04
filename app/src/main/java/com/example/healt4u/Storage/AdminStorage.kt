@@ -241,3 +241,94 @@ suspend fun updateDoctorStatusInSupabase(doctorId: Int, newStatus: String) {
             }
     }
 }
+
+suspend fun doctorSignIn(
+    emailOrPhone: String,
+    password: String,
+    loginMethod: String
+): Result<Doctor> {
+    return try {
+        withContext(Dispatchers.IO) {
+            Log.d("DoctorAuth", "Signing in with $loginMethod: $emailOrPhone")
+            val doctors = SupabaseClient.supabase
+                .from("doctors")
+                .select()
+                .decodeList<Doctor>()
+
+            val matched = doctors.find { d ->
+                val credentialMatch = when (loginMethod) {
+                    "email" -> d.email == emailOrPhone
+                    "phone" -> d.phone == emailOrPhone
+                    else -> false
+                }
+                credentialMatch && d.password == password
+            }
+
+            if (matched != null) {
+                Log.d("DoctorAuth", "Login successful for: ${matched.name}")
+                Result.success(matched)
+            } else {
+                Result.failure(Exception("Invalid credentials or password"))
+            }
+        }
+    } catch (e: Exception) {
+        Log.e("DoctorAuth", "doctorSignIn failed", e)
+        Result.failure(Exception("Login failed: ${e.message}"))
+    }
+}
+
+suspend fun doctorSignUp(
+    name: String,
+    password: String,
+    email: String?,
+    phone: String?
+): Result<Doctor> {
+    return try {
+        withContext(Dispatchers.IO) {
+            Log.d("DoctorAuth", "Registering doctor: $name")
+
+            if (!email.isNullOrBlank()) {
+                val existing = SupabaseClient.supabase.from("doctors").select {
+                    filter { eq("email", email) }
+                }.decodeList<Doctor>()
+                if (existing.isNotEmpty()) return@withContext Result.failure(Exception("Email already registered"))
+            }
+
+            if (!phone.isNullOrBlank()) {
+                val existing = SupabaseClient.supabase.from("doctors").select {
+                    filter { eq("phone", phone) }
+                }.decodeList<Doctor>()
+                if (existing.isNotEmpty()) return@withContext Result.failure(Exception("Phone already registered"))
+            }
+
+            val doctor = Doctor(
+                id = 0, // Auto-gen
+                name = name,
+                ic = "DOC_${System.currentTimeMillis()}",
+                password = password,
+                email = email ?: "",
+                phone = phone ?: "",
+                specialization = "General Physician", // Default
+                consultationFee = 50.0,
+                status = "available",
+                hospitalId = null,
+                verificationStatus = "verified"
+            )
+
+            SupabaseClient.supabase.from("doctors").insert(doctor)
+
+            val inserted = SupabaseClient.supabase.from("doctors").select {
+                filter {
+                    if (!email.isNullOrBlank()) eq("email", email)
+                    else eq("phone", phone!!)
+                }
+            }.decodeList<Doctor>().firstOrNull()
+
+            if (inserted != null) Result.success(inserted)
+            else Result.failure(Exception("Failed to retrieve doctor after registration"))
+        }
+    } catch (e: Exception) {
+        Log.e("DoctorAuth", "doctorSignUp failed", e)
+        Result.failure(Exception("Registration failed: ${e.message}"))
+    }
+}

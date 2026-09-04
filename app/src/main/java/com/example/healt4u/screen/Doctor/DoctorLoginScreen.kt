@@ -1,4 +1,4 @@
-package com.example.healt4u.screen.Patient
+package com.example.healt4u.screen.Doctor
 
 import android.util.Patterns
 import androidx.compose.foundation.BorderStroke
@@ -27,9 +27,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.healt4u.Storage.patientSignIn
-import com.example.healt4u.Storage.patientSignUp
-import com.example.healt4u.model.PatientUser
+import com.example.healt4u.Storage.doctorSignIn
+import com.example.healt4u.Storage.doctorSignUp
+import com.example.healt4u.model.Doctor
 import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import kotlinx.coroutines.launch
 
@@ -50,7 +50,7 @@ private fun isValidPassword(password: String): Boolean {
 }
 
 @Composable
-fun PatientLoginScreen(
+fun DoctorLoginScreen(
     onLoginSuccess: (userId: Int, userName: String, userPhone: String) -> Unit,
     onBack: () -> Unit = {}
 ) {
@@ -111,7 +111,7 @@ fun PatientLoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            PatientAuthContent(
+            DoctorAuthContent(
                 isSignUp = isSignUp,
                 loginMethod = loginMethod,
                 name = name,
@@ -138,11 +138,10 @@ fun PatientLoginScreen(
                     password = ""
                     confirmPassword = ""
                 },
-                onBack = onBack,
                 onSubmit = {
                     scope.launch {
                         if (isSignUp) {
-                            handlePatientSignUp(
+                            handleDoctorSignUp(
                                 name = name,
                                 loginMethod = loginMethod,
                                 email = email,
@@ -152,11 +151,11 @@ fun PatientLoginScreen(
                                 snackbarHostState = snackbarHostState,
                                 isLoading = { isLoading = it },
                                 onSuccess = { user ->
-                                    onLoginSuccess(user.id, user.name, user.phone ?: "")
+                                    onLoginSuccess(user.id, user.name, user.phone)
                                 }
                             )
                         } else {
-                            handlePatientSignIn(
+                            handleDoctorSignIn(
                                 loginMethod = loginMethod,
                                 email = email,
                                 phone = phone,
@@ -164,7 +163,7 @@ fun PatientLoginScreen(
                                 snackbarHostState = snackbarHostState,
                                 isLoading = { isLoading = it },
                                 onSuccess = { user ->
-                                    onLoginSuccess(user.id, user.name, user.phone ?: "")
+                                    onLoginSuccess(user.id, user.name, user.phone)
                                 }
                             )
                         }
@@ -182,7 +181,7 @@ fun PatientLoginScreen(
     }
 }
 
-private suspend fun handlePatientSignUp(
+private suspend fun handleDoctorSignUp(
     name: String,
     loginMethod: String,
     email: String,
@@ -191,14 +190,10 @@ private suspend fun handlePatientSignUp(
     confirmPassword: String,
     snackbarHostState: SnackbarHostState,
     isLoading: (Boolean) -> Unit,
-    onSuccess: (PatientUser) -> Unit
+    onSuccess: (Doctor) -> Unit
 ) {
     if (name.isBlank()) {
         snackbarHostState.showSnackbar("Please enter your name")
-        return
-    }
-    if (name.length < 3) {
-        snackbarHostState.showSnackbar("Name must be at least 3 characters")
         return
     }
     if (loginMethod == "email") {
@@ -216,7 +211,7 @@ private suspend fun handlePatientSignUp(
             return
         }
         if (!isValidPhone(phone)) {
-            snackbarHostState.showSnackbar("Please enter a valid phone number (10-15 digits)")
+            snackbarHostState.showSnackbar("Please enter a valid phone number")
             return
         }
     }
@@ -234,7 +229,7 @@ private suspend fun handlePatientSignUp(
     }
 
     isLoading(true)
-    val signUpResult = patientSignUp(
+    val signUpResult = doctorSignUp(
         name = name,
         password = password,
         email = if (loginMethod == "email") email else null,
@@ -243,7 +238,7 @@ private suspend fun handlePatientSignUp(
     isLoading(false)
     signUpResult.fold(
         onSuccess = { user ->
-            snackbarHostState.showSnackbar("Account created! Logging you in...")
+            snackbarHostState.showSnackbar("Doctor account created! Logging you in...")
             onSuccess(user)
         },
         onFailure = { e ->
@@ -252,14 +247,14 @@ private suspend fun handlePatientSignUp(
     )
 }
 
-private suspend fun handlePatientSignIn(
+private suspend fun handleDoctorSignIn(
     loginMethod: String,
     email: String,
     phone: String,
     password: String,
     snackbarHostState: SnackbarHostState,
     isLoading: (Boolean) -> Unit,
-    onSuccess: (PatientUser) -> Unit
+    onSuccess: (Doctor) -> Unit
 ) {
     val credential = if (loginMethod == "email") email else phone
     if (credential.isBlank()) {
@@ -268,21 +263,13 @@ private suspend fun handlePatientSignIn(
         )
         return
     }
-    if (loginMethod == "email" && !isValidEmail(email)) {
-        snackbarHostState.showSnackbar("Please enter a valid email address")
-        return
-    }
-    if (loginMethod == "phone" && !isValidPhone(phone)) {
-        snackbarHostState.showSnackbar("Please enter a valid phone number")
-        return
-    }
     if (password.isBlank()) {
         snackbarHostState.showSnackbar("Please enter a password")
         return
     }
 
     isLoading(true)
-    val result = patientSignIn(credential, password, loginMethod)
+    val result = doctorSignIn(credential, password, loginMethod)
     isLoading(false)
     result.fold(
         onSuccess = { user -> onSuccess(user) },
@@ -293,7 +280,7 @@ private suspend fun handlePatientSignIn(
 }
 
 @Composable
-private fun PatientAuthContent(
+private fun DoctorAuthContent(
     isSignUp: Boolean,
     loginMethod: String,
     name: String,
@@ -313,7 +300,6 @@ private fun PatientAuthContent(
     onToggleConfirmPassword: () -> Unit,
     onLoginMethodChange: (String) -> Unit,
     onToggleMode: () -> Unit,
-    onBack: () -> Unit,
     onSubmit: () -> Unit
 ) {
     Column(
@@ -330,7 +316,7 @@ private fun PatientAuthContent(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = if (isSignUp) "Create Patient\nAccount" else "Patient\nLogin",
+                text = if (isSignUp) "Create Doctor\nAccount" else "Doctor\nLogin",
                 color = Color.White,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
@@ -346,17 +332,14 @@ private fun PatientAuthContent(
                 value = name,
                 onValueChange = onNameChange,
                 placeholder = { Text("Full Name", color = Color(0xFF9E9E9E)) },
-                leadingIcon = {
-                    Icon(Icons.Default.Person, contentDescription = null, tint = AppBlue)
-                },
+                leadingIcon = { Icon(Icons.Default.Person, null, tint = AppBlue) },
                 singleLine = true,
                 shape = RoundedCornerShape(50.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
                     focusedIndicatorColor = AppBlue,
-                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
-                    cursorColor = AppBlue
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD)
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -367,17 +350,9 @@ private fun PatientAuthContent(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
-            MethodChip(
-                label = "Email",
-                selected = loginMethod == "email",
-                onClick = { onLoginMethodChange("email") }
-            )
+            MethodChip(label = "Email", selected = loginMethod == "email", onClick = { onLoginMethodChange("email") })
             Spacer(Modifier.width(12.dp))
-            MethodChip(
-                label = "Phone",
-                selected = loginMethod == "phone",
-                onClick = { onLoginMethodChange("phone") }
-            )
+            MethodChip(label = "Phone", selected = loginMethod == "phone", onClick = { onLoginMethodChange("phone") })
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -387,17 +362,14 @@ private fun PatientAuthContent(
                 value = email,
                 onValueChange = onEmailChange,
                 placeholder = { Text("Email Address", color = Color(0xFF9E9E9E)) },
-                leadingIcon = {
-                    Icon(Icons.Default.Email, contentDescription = null, tint = AppBlue)
-                },
+                leadingIcon = { Icon(Icons.Default.Email, null, tint = AppBlue) },
                 singleLine = true,
                 shape = RoundedCornerShape(50.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
                     focusedIndicatorColor = AppBlue,
-                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
-                    cursorColor = AppBlue
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD)
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -406,17 +378,14 @@ private fun PatientAuthContent(
                 value = phone,
                 onValueChange = onPhoneChange,
                 placeholder = { Text("Phone Number", color = Color(0xFF9E9E9E)) },
-                leadingIcon = {
-                    Icon(Icons.Default.Phone, contentDescription = null, tint = AppBlue)
-                },
+                leadingIcon = { Icon(Icons.Default.Phone, null, tint = AppBlue) },
                 singleLine = true,
                 shape = RoundedCornerShape(50.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
                     focusedIndicatorColor = AppBlue,
-                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
-                    cursorColor = AppBlue
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD)
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -428,16 +397,10 @@ private fun PatientAuthContent(
             value = password,
             onValueChange = onPasswordChange,
             placeholder = { Text("Password", color = Color(0xFF9E9E9E)) },
-            leadingIcon = {
-                Icon(Icons.Default.Lock, contentDescription = null, tint = AppBlue)
-            },
+            leadingIcon = { Icon(Icons.Default.Lock, null, tint = AppBlue) },
             trailingIcon = {
                 IconButton(onClick = onTogglePassword) {
-                    Icon(
-                        if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                        contentDescription = "Toggle password",
-                        tint = AppBlue
-                    )
+                    Icon(if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null, tint = AppBlue)
                 }
             },
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -447,29 +410,21 @@ private fun PatientAuthContent(
                 focusedContainerColor = Color.White,
                 unfocusedContainerColor = Color.White,
                 focusedIndicatorColor = AppBlue,
-                unfocusedIndicatorColor = Color(0xFFBDBDBD),
-                cursorColor = AppBlue
+                unfocusedIndicatorColor = Color(0xFFBDBDBD)
             ),
             modifier = Modifier.fillMaxWidth()
         )
 
         if (isSignUp) {
             Spacer(modifier = Modifier.height(12.dp))
-
             OutlinedTextField(
                 value = confirmPassword,
                 onValueChange = onConfirmPasswordChange,
                 placeholder = { Text("Confirm Password", color = Color(0xFF9E9E9E)) },
-                leadingIcon = {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = AppBlue)
-                },
+                leadingIcon = { Icon(Icons.Default.Lock, null, tint = AppBlue) },
                 trailingIcon = {
                     IconButton(onClick = onToggleConfirmPassword) {
-                        Icon(
-                            if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
-                            contentDescription = "Toggle confirm password",
-                            tint = AppBlue
-                        )
+                        Icon(if (confirmPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null, tint = AppBlue)
                     }
                 },
                 visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -479,8 +434,7 @@ private fun PatientAuthContent(
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White,
                     focusedIndicatorColor = AppBlue,
-                    unfocusedIndicatorColor = Color(0xFFBDBDBD),
-                    cursorColor = AppBlue
+                    unfocusedIndicatorColor = Color(0xFFBDBDBD)
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -493,23 +447,12 @@ private fun PatientAuthContent(
             enabled = !isLoading,
             shape = RoundedCornerShape(50.dp),
             colors = ButtonDefaults.buttonColors(containerColor = AppBlue),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
+            modifier = Modifier.fillMaxWidth().height(52.dp)
         ) {
             if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
-                )
+                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
-                Text(
-                    if (isSignUp) "REGISTER" else "LOGIN",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(if (isSignUp) "REGISTER" else "LOGIN", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -520,54 +463,23 @@ private fun PatientAuthContent(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                if (isSignUp) "Already have an account? " else "Don't have an account? ",
-                color = Color(0xFF61717D),
-                fontSize = 12.sp
-            )
-            Text(
-                if (isSignUp) "Login Here" else "Register Here",
-                color = AppBlue,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.clickable { onToggleMode() }
-            )
+            Text(if (isSignUp) "Already have an account? " else "Don't have an account? ", color = Color(0xFF61717D), fontSize = 12.sp)
+            Text(if (isSignUp) "Login Here" else "Register Here", color = AppBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onToggleMode() })
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = "Back to role selection",
-            color = AppBlue,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.clickable { onBack() }
-        )
     }
 }
 
 @Composable
-private fun MethodChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
+private fun MethodChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val bgColor = if (selected) AppBlue else Color.White
     val textColor = if (selected) Color.White else AppBlue
     val borderColor = if (selected) AppBlue else Color(0xFFBDBDBD)
-
     Surface(
         modifier = Modifier.clickable { onClick() },
         shape = RoundedCornerShape(50.dp),
         color = bgColor,
         border = BorderStroke(1.dp, borderColor)
     ) {
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
-        )
+        Text(text = label, color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp))
     }
 }

@@ -212,8 +212,7 @@ fun ScannerContent(
 
                         scanResult = result
 
-                        // IMPORTANT:
-                        // Only call this ONCE.
+
                         onScanResult(result)
 
                     } else {

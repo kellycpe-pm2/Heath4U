@@ -28,13 +28,6 @@ class NPRADataService @Inject constructor(
 
     private var cachedMedicines: List<NPRAMedicine>? = null
 
-    /**
-     * Load NPRA medicines.
-     *
-     * First tries the official online CSV.
-     * If downloading fails, falls back to the local CSV
-     * stored in app/src/main/assets/.
-     */
     suspend fun fetchAllMedicines(): List<NPRAMedicine> {
 
         return withContext(Dispatchers.IO) {
@@ -104,11 +97,7 @@ class NPRADataService @Inject constructor(
         }
     }
 
-    /**
-     * Load the NPRA CSV bundled inside:
-     *
-     * app/src/main/assets/pharmaceutical_products (4).csv
-     */
+
     suspend fun loadFromAssets(
         fileName: String = "pharmaceutical_products (4).csv"
     ): List<NPRAMedicine> {
@@ -154,13 +143,6 @@ class NPRADataService @Inject constructor(
         }
     }
 
-    /**
-     * Find medicine by NPRA MAL registration number.
-     *
-     * Example:
-     *
-     * MAL12035013X
-     */
     suspend fun searchByRegNo(
         regNo: String
     ): NPRAMedicine? {
@@ -181,10 +163,7 @@ class NPRADataService @Inject constructor(
         }
     }
 
-    /**
-     * Search medicines by product name,
-     * generic name or active ingredient.
-     */
+
     suspend fun searchByProductName(
         query: String
     ): List<NPRAMedicine> {
@@ -226,16 +205,12 @@ class NPRADataService @Inject constructor(
         return getLoadedMedicines()
     }
 
-    /**
-     * Number of NPRA records currently loaded.
-     */
+
     suspend fun getProductCount(): Int {
         return getLoadedMedicines().size
     }
 
-    /**
-     * Makes sure the CSV has been loaded.
-     */
+
     private suspend fun getLoadedMedicines():
             List<NPRAMedicine> {
 
@@ -256,12 +231,6 @@ class NPRADataService @Inject constructor(
             .replace("\\s+".toRegex(), "")
     }
 
-    /**
-     * Parse the NPRA CSV.
-     *
-     * Column names are read from the CSV header,
-     * so the order of columns does not have to be hard-coded.
-     */
     private fun parseCSV(
         csvContent: String
     ): List<NPRAMedicine> {
@@ -395,13 +364,7 @@ class NPRADataService @Inject constructor(
         return medicines
     }
 
-    /**
-     * CSV parser supporting quoted commas.
-     *
-     * Example:
-     *
-     * "Panadol Extra, Caplet",ABC
-     */
+
     private fun parseCSVLine(
         line: String
     ): List<String> {

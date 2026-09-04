@@ -140,12 +140,6 @@ class OpenFDAService @Inject constructor() {
                         e
                     )
 
-                    /*
-                     * FDA is supplementary.
-                     *
-                     * If FDA fails, NPRA should
-                     * continue working normally.
-                     */
 
                     null
                 }

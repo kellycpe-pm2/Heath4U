@@ -268,11 +268,6 @@ class BarcodeLookUpService @Inject constructor(
 
     companion object {
 
-        /*
-         * The NPRA CSV doesn't contain EAN/UPC barcode data.
-         *
-         * Therefore normal barcodes need a verified mapping.
-         */
         private val VERIFIED_BARCODE_TO_MAL =
             mapOf(
 

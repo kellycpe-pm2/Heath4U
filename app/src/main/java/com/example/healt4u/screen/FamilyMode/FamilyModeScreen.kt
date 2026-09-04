@@ -109,7 +109,9 @@ fun FamilyModeScreen(
     // alerts are already scoped by caregiverUserId when loaded from Supabase.
     val patientAlerts = alerts.filter { it.patientUserId == currentUserId }
     val pendingAlerts = patientAlerts.filter { it.status == "PENDING" }
-    val resolvedAlerts = (patientAlerts + caregiverAlerts.filter { it.status == "RESOLVED" })
+    val resolvedAlerts = (patientAlerts.filter { it.status == "RESOLVED" } + caregiverAlerts.filter {
+        it.status == "RESOLVED" && it.patientUserId == currentUserId
+    })
         .distinctBy { it.id }
         .sortedByDescending { it.resolvedAt ?: 0L }
 

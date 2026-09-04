@@ -61,7 +61,9 @@ fun AllResolvedAlertsScreen(
     }
 
     val patientAlerts = alerts.filter { it.patientUserId == currentUserId }
-    val resolvedAlerts = (patientAlerts + caregiverAlerts.filter { it.status == "RESOLVED" })
+    val resolvedAlerts = (patientAlerts.filter { it.status == "RESOLVED" } + caregiverAlerts.filter {
+        it.status == "RESOLVED" && it.patientUserId == currentUserId
+    })
         .distinctBy { it.id }
         .sortedByDescending { it.resolvedAt ?: 0L }
 

@@ -283,13 +283,16 @@ fun ManualInputDialog(
                             onClick = {
                                 if (inputText.isNotBlank()) {
                                     // Simple validation
-                                    val isValid = inputText.matches(Regex("^MAL\\d{9}[A-Z]$"))
+                                    val cleanInput = inputText.trim().uppercase()
+                                    val isValid = cleanInput.matches(Regex("^MAL\\d{6,12}[A-Z]{0,2}$"))
+
                                     if (!isValid) {
                                         isError = true
-                                        errorMessage = "Invalid format. Use MAL123456789X"
+                                        errorMessage = "Invalid format.\nValid formats: MAL123456789X"
                                         return@Button
                                     }
-                                    onSearch(inputText)
+
+                                    onSearch(cleanInput)
                                     onDismiss()
                                 } else {
                                     isError = true

@@ -12,6 +12,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -105,7 +106,7 @@ fun DoctorDashboardScreen(
                         )
                     )
             ) {
-                // ===== Enhanced Top Bar with Secondary Color =====
+                // ===== Top Bar =====
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.secondary,
@@ -122,20 +123,6 @@ fun DoctorDashboardScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = Color.White.copy(alpha = 0.2f),
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Filled.MedicalServices,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
                             Text(
                                 text = "Health4U",
                                 style = MaterialTheme.typography.headlineMedium.copy(
@@ -183,7 +170,7 @@ fun DoctorDashboardScreen(
                     }
                 }
 
-                // ===== Main Content with LazyColumn =====
+                // ===== Main Content =====
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
@@ -193,8 +180,6 @@ fun DoctorDashboardScreen(
                 ) {
                     // ===== Patient List Card =====
                     item {
-
-                        // ===== Animated Greeting =====
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -231,7 +216,6 @@ fun DoctorDashboardScreen(
                                 }
                             }
                         }
-
 
                         Card(
                             modifier = Modifier
@@ -363,100 +347,66 @@ fun DoctorDashboardScreen(
                         }
                     }
 
-                    // ===== Availability Status Card =====
                     item {
                         Card(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
                             shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color.White
+                                containerColor = MaterialTheme.colorScheme.onPrimary
                             ),
-                            elevation = CardDefaults.cardElevation(4.dp)
+                            border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Filled.Circle,
-                                            contentDescription = null,
-                                            tint = when (selectedStatus) {
-                                                "available" -> Color(0xFF4CAF50)
-                                                "busy" -> Color(0xFFFF5722)
-                                                else -> Color(0xFF9E9E9E)
-                                            },
-                                            modifier = Modifier.size(12.dp)
-                                        )
-                                        Text(
-                                            text = "Availability Status",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onBackground
-                                        )
-                                    }
-                                    Surface(
-                                        shape = RoundedCornerShape(16.dp),
-                                        color = when (selectedStatus) {
-                                            "available" -> Color(0xFF4CAF50).copy(alpha = 0.1f)
-                                            "busy" -> Color(0xFFFF5722).copy(alpha = 0.1f)
-                                            else -> Color(0xFF9E9E9E).copy(alpha = 0.1f)
-                                        }
-                                    ) {
-                                        Text(
-                                            text = selectedStatus.uppercase(),
-                                            color = when (selectedStatus) {
-                                                "available" -> Color(0xFF4CAF50)
-                                                "busy" -> Color(0xFFFF5722)
-                                                else -> Color(0xFF9E9E9E)
-                                            },
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(Modifier.height(12.dp))
+                            Column(modifier = Modifier.padding(15.dp)) {
+                                Text(
+                                    text = "Availability Status",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontSize = 20.sp,
+                                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                                )
+                                Spacer(Modifier.height(10.dp))
+
+                                val statusPairs = listOf(
+                                    "available" to Color(0xFF4CAF50),
+                                    "busy" to Color(0xFFFF5722),
+                                    "offline" to Color(0xFF9E9E9E)
+                                )
 
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceEvenly
                                 ) {
-                                    StatusOption(
-                                        label = "Available",
-                                        statusValue = "available",
-                                        selectedStatus = selectedStatus,
-                                        color = Color(0xFF4CAF50),
-                                        onChangeStatus = {
-                                            selectedStatus = it
-                                            onChangeStatus(it)
+                                    statusPairs.forEach { (statusValue, statusColor) ->
+                                        Row(
+                                            modifier = Modifier.selectable(
+                                                selected = selectedStatus == statusValue,
+                                                onClick = {
+                                                    selectedStatus = statusValue
+                                                    onChangeStatus(statusValue)
+                                                },
+                                                role = Role.RadioButton
+                                            ),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            RadioButton(
+                                                selected = selectedStatus == statusValue,
+                                                onClick = {
+                                                    selectedStatus = statusValue
+                                                    onChangeStatus(statusValue)
+                                                },
+                                                colors = RadioButtonDefaults.colors(
+                                                    selectedColor = statusColor,
+                                                    unselectedColor = statusColor.copy(alpha = 0.4f)
+                                                )
+                                            )
+                                            Text(
+                                                text = statusValue.uppercase(),
+                                                color = statusColor,
+                                                fontSize = 12.sp
+                                            )
                                         }
-                                    )
-                                    StatusOption(
-                                        label = "Busy",
-                                        statusValue = "busy",
-                                        selectedStatus = selectedStatus,
-                                        color = Color(0xFFFF5722),
-                                        onChangeStatus = {
-                                            selectedStatus = it
-                                            onChangeStatus(it)
-                                        }
-                                    )
-                                    StatusOption(
-                                        label = "Offline",
-                                        statusValue = "offline",
-                                        selectedStatus = selectedStatus,
-                                        color = Color(0xFF9E9E9E),
-                                        onChangeStatus = {
-                                            selectedStatus = it
-                                            onChangeStatus(it)
-                                        }
-                                    )
+                                    }
                                 }
                             }
                         }
@@ -513,7 +463,7 @@ fun DoctorDashboardScreen(
                 }
             }
 
-            // ===== Enhanced Bottom Navigation =====
+            // ===== Bottom Navigation =====
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -565,36 +515,7 @@ fun DoctorDashboardScreen(
     }
 }
 
-@Composable
-private fun StatusOption(
-    label: String,
-    statusValue: String,
-    selectedStatus: String,
-    color: Color,
-    onChangeStatus: (String) -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable { onChangeStatus(statusValue) }
-            .padding(horizontal = 4.dp)
-    ) {
-        RadioButton(
-            selected = selectedStatus == statusValue,
-            onClick = { onChangeStatus(statusValue) },
-            colors = RadioButtonDefaults.colors(
-                selectedColor = color,
-                unselectedColor = color.copy(alpha = 0.4f)
-            )
-        )
-        Text(
-            text = label,
-            fontSize = 12.sp,
-            fontWeight = if (selectedStatus == statusValue) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (selectedStatus == statusValue) color else Color(0xFFBDBDBD)
-        )
-    }
-}
+// ===== Helper Composables =====
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable

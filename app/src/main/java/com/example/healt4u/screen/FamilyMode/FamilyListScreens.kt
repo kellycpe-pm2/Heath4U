@@ -1,6 +1,9 @@
 package com.example.healt4u.screen.FamilyMode
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -155,6 +158,7 @@ private fun ResolvedListCard(alert: FamilyAlert) {
 
 @Composable
 private fun PatientListCard(patient: CaregiverLink, pendingCount: Int) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         shape = RoundedCornerShape(16.dp),
@@ -165,7 +169,16 @@ private fun PatientListCard(patient: CaregiverLink, pendingCount: Int) {
             Icon(Icons.Default.Groups, null, tint = ListResolvedGreen, modifier = Modifier.size(30.dp))
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(patient.patientName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(patient.patientPhone, color = Color.Gray, fontSize = 13.sp)
+                Text(
+                    patient.patientPhone,
+                    color = ListAppBlue,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable(enabled = patient.patientPhone.isNotBlank()) {
+                        context.startActivity(
+                            Intent(Intent.ACTION_DIAL, Uri.parse("tel:${patient.patientPhone}"))
+                        )
+                    }
+                )
             }
             if (pendingCount > 0) {
                 Text("$pendingCount pending", color = Color(0xFFD32F2F), fontSize = 12.sp)

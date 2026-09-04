@@ -65,7 +65,7 @@ fun ScanResult(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.onSecondary
+                    containerColor = MaterialTheme.colorScheme.secondary
                 )
             )
         },
@@ -95,7 +95,7 @@ fun ScanResult(
                                     .height(52.dp),
                                 shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.onSecondary
+                                    containerColor = MaterialTheme.colorScheme.secondary
                                 )
                             ) {
                                 Icon(
@@ -171,8 +171,8 @@ private fun LoadingMedicineScreen() {
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.05f),
-                        Color.White
+                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.05f),
+                        MaterialTheme.colorScheme.secondary
                     )
                 )
             )
@@ -189,22 +189,22 @@ private fun LoadingMedicineScreen() {
                     .size(100.dp)
                     .rotate(rotation),
                 shape = RoundedCornerShape(50.dp),
-                color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Medication,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.onSecondary
+                        tint = MaterialTheme.colorScheme.secondary
                     )
                 }
             }
             CircularProgressIndicator(
                 modifier = Modifier.size(80.dp),
-                color = MaterialTheme.colorScheme.onSecondary,
+                color = MaterialTheme.colorScheme.secondary,
                 strokeWidth = 4.dp,
-                trackColor = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.1f)
+                trackColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
             )
         }
 
@@ -214,7 +214,7 @@ private fun LoadingMedicineScreen() {
             text = "Searching for Medicine",
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.secondary
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -237,7 +237,7 @@ private fun LoadingMedicineScreen() {
         Text(
             text = ".".repeat(dotCount),
             fontSize = 24.sp,
-            color = MaterialTheme.colorScheme.onSecondary
+            color = MaterialTheme.colorScheme.secondary
         )
     }
 }
@@ -319,7 +319,8 @@ private fun ErrorMedicineScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
-            shape = RoundedCornerShape(14.dp)
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary )
         ) {
             Icon(Icons.Default.ArrowBack, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
@@ -344,14 +345,14 @@ private fun EmptyMedicineScreen() {
         Surface(
             modifier = Modifier.size(100.dp),
             shape = RoundedCornerShape(50.dp),
-            color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.1f)
+            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Default.Medication,
                     contentDescription = null,
                     modifier = Modifier.size(56.dp),
-                    tint = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.5f)
+                    tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
                 )
             }
         }
@@ -409,7 +410,7 @@ private fun MedicineResultContent(
                         .shadow(elevation = 4.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.onSecondary
+                        containerColor = MaterialTheme.colorScheme.secondary
                     )
                 ) {
                     Column(
@@ -418,8 +419,8 @@ private fun MedicineResultContent(
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        MaterialTheme.colorScheme.onSecondary,
-                                        MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.85f)
+                                        MaterialTheme.colorScheme.secondary,
+                                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.85f)
                                     )
                                 )
                             )
@@ -797,7 +798,7 @@ private fun QuickInfoItem(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.onSecondary
+                tint = MaterialTheme.colorScheme.secondary
             )
             Text(
                 label,
@@ -844,7 +845,7 @@ private fun DetailCard(
                 text = title,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSecondary
+                color = MaterialTheme.colorScheme.secondary
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(

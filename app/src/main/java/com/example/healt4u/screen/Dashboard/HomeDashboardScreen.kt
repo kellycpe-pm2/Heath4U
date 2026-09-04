@@ -33,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.ReminderViewModel
 import com.example.healt4u.model.ReminderLog
+import com.example.healt4u.screen.componentUI.AppLogo
 import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
 import kotlinx.coroutines.launch
@@ -116,20 +117,7 @@ fun HomeDashboardScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(14.dp),
-                                color = Color.White.copy(alpha = 0.2f),
-                                modifier = Modifier.size(48.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        Icons.Filled.MedicalServices,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(28.dp)
-                                    )
-                                }
-                            }
+                            AppLogo(modifier = Modifier.size(42.dp))
                             Text(
                                 text = "Health4U",
                                 style = MaterialTheme.typography.headlineMedium.copy(

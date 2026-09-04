@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.doctorSignIn
 import com.example.healt4u.model.Doctor
+import com.example.healt4u.screen.componentUI.AppLogo
 import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import kotlinx.coroutines.launch
 
@@ -80,14 +81,7 @@ fun DoctorLoginScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(AppBlue, RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("+", color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold)
-            }
+            AppLogo(modifier = Modifier.size(90.dp))
 
             Spacer(modifier = Modifier.height(12.dp))
 

@@ -108,9 +108,9 @@ fun ManualInputDialog(
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
-                                            imageVector = Icons.Default.QrCodeScanner,
-                                            contentDescription = "Manual Input",
-                                            tint = MaterialTheme.colorScheme.primary,
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = "Search",
+                                            tint = MaterialTheme.colorScheme.onSecondary,
                                             modifier = Modifier.size(28.dp)
                                         )
                                     }
@@ -194,7 +194,7 @@ fun ManualInputDialog(
                             label = {
                                 Text(
                                     "Enter MAL Number",
-                                    color = if (isFocused) MaterialTheme.colorScheme.primary else Color(0xFF757575)
+                                    color = if (isFocused) MaterialTheme.colorScheme.onSecondary else Color(0xFF757575)
                                 )
                             },
                             placeholder = {
@@ -214,12 +214,12 @@ fun ManualInputDialog(
                                 ),
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedBorderColor = MaterialTheme.colorScheme.onSecondary,
                                 unfocusedBorderColor = Color(0xFFE0E0E0),
                                 focusedTextColor = Color(0xFF1A1A2E),
                                 unfocusedTextColor = Color(0xFF1A1A2E),
-                                cursorColor = MaterialTheme.colorScheme.primary,
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                cursorColor = MaterialTheme.colorScheme.onSecondary,
+                                focusedLabelColor = MaterialTheme.colorScheme.onSecondary,
                                 unfocusedLabelColor = Color(0xFF757575)
                             ),
                             singleLine = true
@@ -228,47 +228,6 @@ fun ManualInputDialog(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-
-                    // ===== QUICK ACTION EXAMPLES =====
-                    Text(
-                        text = "Quick examples:",
-                        fontSize = 12.sp,
-                        color = Color(0xFF757575),
-                        fontWeight = FontWeight.Medium
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("MAL123456789X", "MAL987654321A", "MAL456789123B").forEach { example ->
-                            Surface(
-                                onClick = {
-                                    inputText = example
-                                    isError = false
-                                    errorMessage = null
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                color = Color(0xFFF5F5F5),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text(
-                                    text = example,
-                                    fontSize = 11.sp,
-                                    color = Color(0xFF616161),
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                                    textAlign = TextAlign.Center,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
 
                     // ===== ACTION BUTTONS =====
                     Row(
@@ -283,13 +242,14 @@ fun ManualInputDialog(
                                 .height(48.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFF757575)
+                                contentColor = MaterialTheme.colorScheme.onSecondary
                             )
                         ) {
                             Text(
                                 "Cancel",
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                color =MaterialTheme.colorScheme.onSecondary
                             )
                         }
 
@@ -321,12 +281,6 @@ fun ManualInputDialog(
                                 disabledContainerColor = Color(0xFFE0E0E0)
                             )
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 "Search",
                                 fontSize = 15.sp,

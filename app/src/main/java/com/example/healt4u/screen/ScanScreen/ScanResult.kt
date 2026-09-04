@@ -40,17 +40,19 @@ fun ScanResult(
     errorMessage: String?,
     onBack: () -> Unit,
     onAddMedicine: ((UnifiedMedicineResult) -> Unit)? = null,
-    onAddToReminder: ((NPRAMedicine) -> Unit)? = null
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "💊 Medicine Details",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        text = "Medicine Details",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .wrapContentWidth(Alignment.CenterHorizontally)
+                            .padding(end=48.dp)
                     )
                 },
                 navigationIcon = {
@@ -63,7 +65,7 @@ fun ScanResult(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
+                    containerColor = MaterialTheme.colorScheme.onSecondary
                 )
             )
         },
@@ -93,7 +95,7 @@ fun ScanResult(
                                     .height(52.dp),
                                 shape = RoundedCornerShape(14.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
+                                    containerColor = MaterialTheme.colorScheme.onSecondary
                                 )
                             ) {
                                 Icon(
@@ -110,28 +112,24 @@ fun ScanResult(
                             }
                         }
 
-                        onAddToReminder?.let { callback ->
                             OutlinedButton(
-                                onClick = { callback(result.medicine) },
+                                onClick = { onBack()},
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(48.dp),
                                 shape = RoundedCornerShape(14.dp)
                             ) {
-                                Icon(
-                                    Icons.Outlined.Notifications,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
+
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Set Reminder",
+                                    text = "Back",
                                     fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onBackground
                                 )
                             }
                         }
-                    }
+
                 }
             }
         }
@@ -173,7 +171,7 @@ private fun LoadingMedicineScreen() {
             .background(
                 Brush.verticalGradient(
                     colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                        MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.05f),
                         Color.White
                     )
                 )
@@ -191,22 +189,22 @@ private fun LoadingMedicineScreen() {
                     .size(100.dp)
                     .rotate(rotation),
                 shape = RoundedCornerShape(50.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.1f)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Medication,
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.onSecondary
                     )
                 }
             }
             CircularProgressIndicator(
                 modifier = Modifier.size(80.dp),
-                color = MaterialTheme.colorScheme.primary,
+                color = MaterialTheme.colorScheme.onSecondary,
                 strokeWidth = 4.dp,
-                trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                trackColor = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.1f)
             )
         }
 
@@ -239,7 +237,7 @@ private fun LoadingMedicineScreen() {
         Text(
             text = ".".repeat(dotCount),
             fontSize = 24.sp,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.onSecondary
         )
     }
 }
@@ -346,14 +344,14 @@ private fun EmptyMedicineScreen() {
         Surface(
             modifier = Modifier.size(100.dp),
             shape = RoundedCornerShape(50.dp),
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+            color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.1f)
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Default.Medication,
                     contentDescription = null,
                     modifier = Modifier.size(56.dp),
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    tint = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.5f)
                 )
             }
         }
@@ -411,7 +409,7 @@ private fun MedicineResultContent(
                         .shadow(elevation = 4.dp, shape = RoundedCornerShape(16.dp)),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.onSecondary
                     )
                 ) {
                     Column(
@@ -420,8 +418,8 @@ private fun MedicineResultContent(
                             .background(
                                 Brush.horizontalGradient(
                                     colors = listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
+                                        MaterialTheme.colorScheme.onSecondary,
+                                        MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.85f)
                                     )
                                 )
                             )
@@ -799,7 +797,7 @@ private fun QuickInfoItem(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.onSecondary
             )
             Text(
                 label,
@@ -846,7 +844,7 @@ private fun DetailCard(
                 text = title,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.onSecondary
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(

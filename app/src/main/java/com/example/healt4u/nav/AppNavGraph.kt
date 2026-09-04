@@ -591,220 +591,66 @@ fun AppNavGraph(
 
                 onAddMedicine = { scanResult ->
 
+                    val medicine = Medicine(
+                        id = 0,
 
-                    /*
-                     * Create a Medicine using information
-                     * obtained from NPRA + parser + MAL category.
-                     */
+                        name_medicine = scanResult.parsedName.ifBlank {
+                            scanResult.medicine.product.trim()
+                        },
 
-                    val medicine =
-                        Medicine(
+                        category = scanResult.category.ifBlank {
+                            "Other"
+                        },
 
-                            id = 0,
+                        dosage = scanResult.parsedDosage,
 
+                        quantity = 1,
 
-                            // ------------------------------------------------
-                            // NAME
-                            // ------------------------------------------------
+                        quantityLeft = 1,
 
-                            name_medicine =
-                                scanResult
-                                    .parsedName
-                                    .ifBlank {
+                        remark = buildString {
+                            append("MAL: ")
+                            append(scanResult.resolvedMal)
 
-                                        scanResult
-                                            .medicine
-                                            .product
-                                            .trim()
-                                    },
+                            scanResult.medicine.activeIngredient
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let {
+                                    append("\nActive ingredient: ")
+                                    append(it)
+                                }
 
+                            scanResult.fdaInfo?.brandName
+                                ?.takeIf { it.isNotBlank() }
+                                ?.let {
+                                    append("\nFDA brand: ")
+                                    append(it)
+                                }
+                        },
 
-                            // ------------------------------------------------
-                            // CATEGORY
-                            // ------------------------------------------------
+                        expiredDate = System.currentTimeMillis() +
+                                (365L * 24L * 60L * 60L * 1000L),
 
-                            category =
-                                scanResult
-                                    .category
-                                    .ifBlank {
+                        afterEat = true,
 
-                                        "Other"
-                                    },
+                        createDate = System.currentTimeMillis(),
 
+                        priority = 0f,
 
-                            // ------------------------------------------------
-                            // DOSAGE
-                            // ------------------------------------------------
+                        reminderTime = "08:00",
 
-                            dosage =
-                                scanResult
-                                    .parsedDosage,
+                        timesPerDay = 1,
 
-
-                            // ------------------------------------------------
-                            // DEFAULT QUANTITY
-                            // ------------------------------------------------
-
-                            quantity =
-                                1,
-
-                            quantityLeft =
-                                1,
-
-
-                            // ------------------------------------------------
-                            // REMARK
-                            // ------------------------------------------------
-
-                            remark =
-                                buildString {
-
-                                    append(
-                                        "MAL: "
-                                    )
-
-                                    append(
-                                        scanResult
-                                            .resolvedMal
-                                    )
-
-
-                                    scanResult
-                                        .medicine
-                                        .activeIngredient
-                                        ?.takeIf {
-                                            it.isNotBlank()
-                                        }
-                                        ?.let {
-
-                                            append(
-                                                "\nActive ingredient: "
-                                            )
-
-                                            append(
-                                                it
-                                            )
-                                        }
-
-
-                                    scanResult
-                                        .fdaInfo
-                                        ?.brandName
-                                        ?.takeIf {
-                                            it.isNotBlank()
-                                        }
-                                        ?.let {
-
-                                            append(
-                                                "\nFDA brand: "
-                                            )
-
-                                            append(
-                                                it
-                                            )
-                                        }
-                                },
-
-
-                            // ------------------------------------------------
-                            // DEFAULT EXPIRY
-                            // ------------------------------------------------
-
-                            expiredDate =
-                                System.currentTimeMillis() +
-                                        (
-                                                365L *
-                                                        24L *
-                                                        60L *
-                                                        60L *
-                                                        1000L
-                                                ),
-
-
-                            // ------------------------------------------------
-                            // DEFAULT SETTINGS
-                            // ------------------------------------------------
-
-                            afterEat =
-                                true,
-
-                            createDate =
-                                System.currentTimeMillis(),
-
-                            priority =
-                                0f,
-
-                            reminderTime =
-                                "08:00",
-
-                            timesPerDay =
-                                1,
-
-
-                            // ------------------------------------------------
-                            // CURRENT PATIENT
-                            // ------------------------------------------------
-
-                            patientId =
-                                CurrentSession.patientId
-                        )
-
-
-                    // ========================================================
-                    // SAVE MEDICINE
-                    // ========================================================
-
-                    vm_med.addScannedMedicine(
-
-                        medicine =
-                            medicine,
-
-                        context =
-                            context
-
-                    ) { medicineId ->
-
-
-                        // ====================================================
-                        // OPEN EXISTING EDIT SCREEN
-                        // ====================================================
-
-                        navController.navigate(
-                            "edit/$medicineId"
-                        )
-                    }
-                },
-
-
-                // ============================================================
-                // ADD TO REMINDER
-                // ============================================================
-
-                onAddToReminder = { _ ->
-
-                    val medicineCode =
-                        barcode.trim()
-
-
-                    if (
-                        medicineCode.isBlank()
-                    ) {
-
-                        return@ScanResult
-                    }
-
-
-                    val encodedMedicineCode =
-                        Uri.encode(
-                            medicineCode
-                        )
-
-
-                    navController.navigate(
-                        "add_reminder/$encodedMedicineCode"
+                        patientId = CurrentSession.patientId
                     )
+
+                    // IMPORTANT:
+                    // Do NOT save yet.
+                    vm_med.setScannedMedicine(medicine)
+
+                    // Go to Add Medicine screen
+                    navController.navigate("add")
                 }
-            )
+                )
         }
 
 

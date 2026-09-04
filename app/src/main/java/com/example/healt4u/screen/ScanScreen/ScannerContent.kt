@@ -1437,7 +1437,7 @@ fun BottomControls(
                 )
 
                 Text(
-                    "Manual Entry"
+                    "Search"
                 )
             }
 

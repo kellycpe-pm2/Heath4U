@@ -402,7 +402,12 @@ fun AppNavGraph(
                 onAddClick = {
                     vm_med.addMedicineWithValidation(context)
                 },
-                onBack = { navController.popBackStack() }
+                onBack = { vm_med.clearForm()
+                    vm_med.clearSuccessState()
+                    vm_med.clearError()
+                    vm_med.clearValidationErrors()
+                    vm_med.clearSuccess()
+                    navController.popBackStack() }
             )
         }
 
@@ -483,7 +488,8 @@ fun AppNavGraph(
                 },
                 onGalleryPick = {
                     Log.d("SCAN_NAV", "Gallery opened")
-                }
+                },
+                onBackClick = {navController.popBackStack()}
             )
 
             if (showManualDialog) {
@@ -577,9 +583,11 @@ fun AppNavGraph(
                 // ============================================================
 
                 onBack = {
-
-                    viewModel.clearResult()
-
+                    vm_med.clearForm()
+                    vm_med.clearSuccessState()
+                    vm_med.clearError()
+                    vm_med.clearValidationErrors()
+                    vm_med.clearSuccess()
                     navController.popBackStack()
                 },
 
@@ -644,7 +652,7 @@ fun AppNavGraph(
 
                     // IMPORTANT:
                     // Do NOT save yet.
-                    vm_med.setScannedMedicine(medicine)
+                    vm_med.setScannedMedicine(medicine.name_medicine, medicine.category,medicine.dosage,medicine.remark,medicine.expiredDate)
 
                     // Go to Add Medicine screen
                     navController.navigate("add")

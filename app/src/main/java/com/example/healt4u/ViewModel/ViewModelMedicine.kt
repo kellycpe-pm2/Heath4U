@@ -1,13 +1,10 @@
 package com.example.healt4u.ViewModel
 
 import android.app.Application
-import android.bluetooth.le.ScanResult
 import android.content.Context
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healt4u.Storage.delete_Medicine
-import com.example.healt4u.Storage.getAllMedicines
 import com.example.healt4u.Storage.getMedicinesByPatientId
 import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.Storage.insertSingleMedicine
@@ -15,14 +12,11 @@ import com.example.healt4u.Storage.update_Medicine
 import com.example.healt4u.data.MedicineData
 import com.example.healt4u.data.local.*
 import com.example.healt4u.model.Medicine
-import com.example.healt4u.model.UnifiedMedicineResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ViewModelMedicine(
     private val application: Application
@@ -670,54 +664,8 @@ class ViewModelMedicine(
         }
     }
 
-    // ========== ADD MEDICINE FORM ==========
-    fun addMedicineForm(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val name = _input_med_name.value.trim()
-            val category = _input_category.value.trim()
-            val dosage = _input_dosage.value
-            val quantity = _input_quantity.value
-            val priority = _input_priority.value
 
-            if (name.isEmpty() || dosage <= 0 || quantity <= 0 || priority < 0f || priority > 5f) {
-                _error.value = "Please fill in all fields correctly"
-                _success.value = false
-                _isLoading.value = false
-                return@launch
-            }
-
-            if (isMedicineNameDuplicate(name)) {
-                _error.value = "Medicine '$name' already exists!"
-                _success.value = false
-                _isLoading.value = false
-                return@launch
-            }
-
-            val patientId = CurrentSession.patientId ?: 0
-            val nextId = getNextMedicineId(context, patientId)
-            val medicine = Medicine(
-                id = nextId,
-                name_medicine = name,
-                category = category.ifEmpty { "General" },
-                dosage = dosage,
-                quantity = quantity,
-                quantityLeft = quantity,
-                remark = _input_remark.value,
-                expiredDate = _input_ExpiredDate.value,
-                afterEat = _input_afterEat.value,
-                createDate = System.currentTimeMillis(),
-                priority = priority,
-                reminderTime = _input_reminderTime.value,
-                timesPerDay = _input_timesPerDay.value,
-                patientId = CurrentSession.patientId
-            )
-
-            addMedicineBoth(medicine, context)
-        }
-    }
-
-    // ========== CLEAR FORM ==========
-    private fun clearForm() {
+    fun clearForm() {
         _input_med_name.value = ""
         _input_category.value = ""
         _input_dosage.value = 0
@@ -939,87 +887,6 @@ class ViewModelMedicine(
         }
     }
 
-    // ========== QUERY FUNCTIONS ==========
-    fun searchMedicines(query: String, context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
-            try {
-                val patientId = CurrentSession.patientId ?: 0
-                val results = searchMedicines(context, patientId, query)
-                _medicines.value = results
-            } catch (e: Exception) {
-                _error.value = "Search failed: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun get_ExpiredMedicines(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
-            try {
-                val patientId = CurrentSession.patientId ?: 0
-                val results = getExpiredMedicines(context, patientId)
-                _medicines.value = results
-            } catch (e: Exception) {
-                _error.value = "Failed to get expired: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun getLowStockMedicines(threshold: Int = 10, context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
-            try {
-                val patientId = CurrentSession.patientId ?: 0
-                val results = getLowStockMedicines(context, patientId, threshold)
-                _medicines.value = results
-            } catch (e: Exception) {
-                _error.value = "Failed to get low stock: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun getMedicinesByCategory(category: String, context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
-            try {
-                val patientId = CurrentSession.patientId ?: 0
-                val results = getMedicinesByCategory(context, patientId, category)
-                _medicines.value = results
-            } catch (e: Exception) {
-                _error.value = "Filter failed: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun getMedicinesByPatientID(patientId: Int, context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
-            try {
-                val results = getMedicines_ByPatientId(context, patientId)
-                _medicines.value = results
-            } catch (e: Exception) {
-                _error.value = "Failed to get by IC: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun get_MedicineById(medicineId: Int, context: Context): Medicine? {
-        val patientId = CurrentSession.patientId ?: 0
-        val medicines = load_Medicines(context, patientId)
-        return medicines.find { it.id == medicineId }
-    }
-
     // ========== CLEAR FUNCTIONS ==========
     fun clearError() {
         _error.value = null
@@ -1033,41 +900,46 @@ class ViewModelMedicine(
         _success.value = null
     }
 
-    fun clearStockUpdateResult() {
-        _stockUpdateResult.value = null
-    }
 
-    fun resetToLocal(context: Context) {
-        loadFromLocal(context)
-    }
 
-    fun resetToCloud() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _isLoading.value = true
-            try {
-                val serverMedicines = getMedicinesByPatientId(CurrentSession.patientId)
-                _medicines.value = serverMedicines
-                _successMessage.value = "Loaded from cloud!"
-            } catch (e: Exception) {
-                _error.value = "Failed to load from cloud: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
 
     // ================================================================
 // ADD MEDICINE FROM SCAN
 // ================================================================
 
-    private val _scannedMedicine = MutableStateFlow<Medicine?>(null)
-    val scannedMedicine: StateFlow<Medicine?> = _scannedMedicine
+    fun setScannedMedicine(
+        name: String,
+        category: String,
+        dosage: Int,
+        remark: String?,
+        expiredDate: Long? = null
+    ) {
+        _input_med_name.value = name
+        _input_category.value = category
+        _input_dosage.value = dosage
+        _input_quantity.value = 1
+        if (remark != null) {
+            _input_remark.value = remark
+        }
 
-    fun setScannedMedicine(medicine: Medicine) {
-        _scannedMedicine.value = medicine
+        // Use scanned expiry if you have one,
+        // otherwise keep your normal default.
+        _input_ExpiredDate.value =
+            expiredDate ?: (
+                    System.currentTimeMillis() +
+                            365L * 24L * 60L * 60L * 1000L
+                    )
+
+        // Defaults for the fields that aren't from scanning
+        _input_afterEat.value = true
+        _input_priority.value = 0f
+        _input_reminderTime.value = "08:00"
+        _input_timesPerDay.value = 1
+
+        // Clear old validation/error state
+        clearError()
+        clearValidationErrors()
     }
 
-    fun clearScannedMedicine() {
-        _scannedMedicine.value = null
-    }
+
 }

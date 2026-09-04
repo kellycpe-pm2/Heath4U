@@ -16,6 +16,7 @@ fun ScannerScreen(
     onManualInput: () -> Unit = {},
     onFlashToggle: (Boolean) -> Unit = {},
     onGalleryPick: () -> Unit = {}
+    ,onBackClick : ()-> Unit ={}
 ) {
 
     val cameraPermissionState =
@@ -48,7 +49,7 @@ fun ScannerScreen(
                 onGalleryPick =
                     onGalleryPick,
 
-                onBackClick = {}
+                onBackClick = onBackClick
             )
         }
 

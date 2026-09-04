@@ -102,13 +102,14 @@ fun AdminDashboardScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            IconButton(onClick = onSettingsClick) {
                                 Icon(
                                     Icons.Outlined.Settings,
                                     contentDescription = "Settings",
                                     tint = Color.White,
                                     modifier = Modifier.size(26.dp)
                                 )
-
+                            }
                         }
                     }
                 }
@@ -233,84 +234,6 @@ fun AdminDashboardScreen(
                         )
                     }
 
-                    // ===== Quick Actions =====
-                    item {
-                        Text(
-                            text = "Quick Actions",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            QuickActionTile(
-                                label = "Add Doctor",
-                                icon = Icons.Filled.PersonAdd,
-                                iconColor = Color(0xFF2196F3),
-                                modifier = Modifier.weight(1f),
-                                onClick = onDoctorsClick
-                            )
-                            QuickActionTile(
-                                label = "Add Hospital",
-                                icon = Icons.Filled.AddBusiness,
-                                iconColor = Color(0xFF4CAF50),
-                                modifier = Modifier.weight(1f),
-                                onClick = onHospitalsClick
-                            )
-                        }
-                    }
-
-                    item {
-                        Spacer(Modifier.height(80.dp))
-                    }
-                }
-            }
-
-            // ===== Enhanced Bottom Navigation =====
-            Surface(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
-                color = Color.White,
-                shadowElevation = 16.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    BottomNavItem(
-                        label = "Dashboard",
-                        icon = Icons.Filled.Dashboard,
-                        selected = true,
-                        onClick = {}
-                    )
-                    BottomNavItem(
-                        label = "Doctors",
-                        icon = Icons.Filled.Person,
-                        selected = false,
-                        onClick = onDoctorsClick
-                    )
-                    BottomNavItem(
-                        label = "Hospitals",
-                        icon = Icons.Filled.Business,
-                        selected = false,
-                        onClick = onHospitalsClick
-                    )
-                    BottomNavItem(
-                        label = "Settings",
-                        icon = Icons.Filled.Settings,
-                        selected = false,
-                        onClick = onSettingsClick
-                    )
                 }
             }
         }
@@ -431,90 +354,6 @@ private fun DashboardCard(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun QuickActionTile(
-    label: String,
-    icon: ImageVector,
-    iconColor: Color,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier.clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.White
-        ),
-        elevation = CardDefaults.cardElevation(2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = iconColor.copy(alpha = 0.12f),
-                modifier = Modifier.size(44.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        icon,
-                        contentDescription = label,
-                        tint = iconColor,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 12.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun BottomNavItem(
-    label: String,
-    icon: ImageVector,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clickable { onClick() }
-            .padding(vertical = 4.dp)
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = if (selected) MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f) else Color.Transparent,
-            modifier = Modifier.size(36.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    icon,
-                    contentDescription = label,
-                    tint = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-        Text(
-            text = label,
-            fontSize = 10.sp,
-            color = if (selected) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
-        )
     }
 }
 

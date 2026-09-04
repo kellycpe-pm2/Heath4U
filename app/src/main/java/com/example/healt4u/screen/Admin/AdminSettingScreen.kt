@@ -53,7 +53,6 @@ private fun isValidPhone(phone: String): Boolean {
 @Composable
 fun AdminSettingsScreen(
     onBack: () -> Unit,
-    onSwitchAccount: () -> Unit = {},
     onLogout: () -> Unit = onBack,
     adminUsername: String = ""
 ) {
@@ -150,19 +149,6 @@ fun AdminSettingsScreen(
         }
 
         Spacer(Modifier.height(24.dp))
-
-        OutlinedButton(
-            onClick = onSwitchAccount,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppBlue)
-        ) {
-            Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Switch Account", fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
-        }
-
-        Spacer(Modifier.height(12.dp))
 
         Button(
             onClick = onLogout,

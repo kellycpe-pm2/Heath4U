@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.SupportAgent
-import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -53,7 +52,6 @@ fun PatientSettingsScreen(
     patientId: Int,
     startAtProfile: Boolean = false,
     onBack: () -> Unit,
-    onSwitchAccount: () -> Unit,
     onLogout: () -> Unit
 ) {
     var showProfile by remember { mutableStateOf(startAtProfile) }
@@ -137,19 +135,6 @@ fun PatientSettingsScreen(
         }
 
         Spacer(Modifier.height(24.dp))
-
-        OutlinedButton(
-            onClick = onSwitchAccount,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = AppBlue)
-        ) {
-            Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Switch Account", fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
-        }
-
-        Spacer(Modifier.height(12.dp))
 
         Button(
             onClick = onLogout,

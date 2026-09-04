@@ -52,7 +52,7 @@ fun AdminLoginScreen(
     onAdminLoginSuccess: (AdminUser) -> Unit,
     onPatientLoginClick: () -> Unit = {},
     onForgotPassword: () -> Unit = {},
-    onDoctorSuccessClick : ()->Unit  ={}
+    onDoctorLoginClick : ()->Unit  ={}
 ) {
     var selectedRole by remember { mutableStateOf<String?>(initialRole) }
     var loginMethod by remember { mutableStateOf("email") }
@@ -101,7 +101,7 @@ fun AdminLoginScreen(
                 RoleSelectionContent(
                     onAdminClick = { selectedRole = "admin" },
                     onPatientClick = { onPatientLoginClick() },
-                    onDoctorClick = {onDoctorSuccessClick()  }
+                    onDoctorClick = {onDoctorLoginClick()  }
                 )
             } else {
                 AdminAuthContent(

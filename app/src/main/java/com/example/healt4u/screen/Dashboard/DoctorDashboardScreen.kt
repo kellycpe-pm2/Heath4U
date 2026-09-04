@@ -223,8 +223,7 @@ fun DoctorDashboardScreen(
                             )
 
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             ) {
                                 statusPairs.forEach { (statusValue, statusColor) ->
                                     Row(
@@ -294,7 +293,6 @@ fun DoctorDashboardScreen(
             ) {
                 BottomNavItem("Home", Icons.Filled.Home, true, {})
                 BottomNavItem("Chat", Icons.Filled.Message, false, onChatClick)
-                Spacer(Modifier.width(56.dp))
                 BottomNavItem("Statistic", Icons.Filled.QueryStats, false, onStatisticClick)
                 BottomNavItem("Settings", Icons.Filled.Settings, false, onSettingClick)
             }

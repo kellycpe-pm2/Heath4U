@@ -10,7 +10,6 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -83,28 +81,25 @@ import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.Storage.updateDoctorStatusInSupabase
 import com.example.healt4u.ViewModel.FindMedicineViewModel
 import com.example.healt4u.model.Hospital
-import com.example.healt4u.model.PatientUser
 import com.example.healt4u.model.Payment
 import com.example.healt4u.screen.AppointmentScreen
-import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
 import com.example.healt4u.notification.Notification
 import com.example.healt4u.screen.PatientListScreen
 import com.example.healt4u.screen.Payment.PaymentScreen
-import com.example.healt4u.screen.ScanScreen.AddReminderScreen
-import com.example.healt4u.screen.ScanScreen.HistoryScreen
 import com.example.healt4u.screen.ScanScreen.ScanResult
 import com.example.healt4u.screen.ScanScreen.getCurrentDate
 import com.example.healt4u.screen.Statistics.AdherenceStatisticScreen
 import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import java.util.Locale
+import kotlinx.coroutines.runBlocking
 
 @SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.O)
-@androidx.camera.core.ExperimentalGetImage
+@ExperimentalGetImage
 @OptIn(ExperimentalGetImage::class, DelicateCoroutinesApi::class)
 @Composable
 fun AppNavGraph(
@@ -119,13 +114,11 @@ fun AppNavGraph(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ Load from persisted session if available
-    var currentUserId by remember { mutableStateOf(CurrentSession.getUserId(context)) }
+    var currentUserId by remember { mutableIntStateOf(CurrentSession.getUserId(context)) }
     var currentUserRole by remember { mutableStateOf(CurrentSession.getUserRole(context)) }
     var loggedInAdminUsername by remember { mutableStateOf(if (CurrentSession.getUserRole(context) == "admin") CurrentSession.getUserName(context) else "") }
     var currentUserName by remember { mutableStateOf(CurrentSession.getUserName(context)) }
     var currentUserPhone by remember { mutableStateOf(CurrentSession.getUserPhone(context)) }
-    val patient = remember { mutableStateOf<PatientUser?>(null) }
 
     val startDest = remember {
         if (CurrentSession.isLoggedIn(context)) {
@@ -810,6 +803,15 @@ fun AppNavGraph(
                         if (newState) mutedConversations.add(convId.toString())
                         else mutedConversations.remove(convId.toString())
                     },
+                    getDoctorStatus = { id ->
+                        runBlocking {
+                            try {
+                                getDoctorById(id)?.status ?: "offline"
+                            } catch (e: Exception) {
+                                "offline"
+                            }
+                        }
+                                      },
                     onClearAllMessages = {
                         GlobalScope.launch { clearMessagesByConversation(convId) }
                     }
@@ -828,6 +830,11 @@ fun AppNavGraph(
                 onChatClick = {
                     currentUserRole = "doctor"
                     navController.navigate("chat_list")
+                },
+                onChangeStatus = { newStatus ->
+                    coroutineScope.launch {
+                        updateDoctorStatusInSupabase(currentUserId, newStatus)
+                    }
                 },
                 onStatisticClick = {
                     navController.navigate("revenue_statistic/$currentUserId")

@@ -31,16 +31,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healt4u.Storage.getConversationsByDoctor
+import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.AppSnackbarHost
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
+import kotlinx.coroutines.launch
 
 @SuppressLint("ConfigurationScreenWidthHeight")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DoctorDashboardScreen(
-    currentDoctorId: Int = 2,
+    doctorId: Int = 2,
     onPatientClick: (patientId: Int, conversation: Conversation) -> Unit = { _, _ -> },
     onMedicineClick: () -> Unit = {},
     onListClick: () -> Unit = {},
@@ -54,17 +56,32 @@ fun DoctorDashboardScreen(
     val screenHeightDp = LocalConfiguration.current.screenHeightDp
     val scheduleCardMinHeight = (screenHeightDp * 0.45f).dp
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
-    var selectedStatus by remember { mutableStateOf("available") }
+    var selectedStatus by remember { mutableStateOf("loading") }
+
+    LaunchedEffect(doctorId) {
+        coroutineScope.launch {
+            try {
+                val doctor = getDoctorById(doctorId)
+                val savedStatus = doctor?.status?.lowercase() ?: "available"
+                selectedStatus = savedStatus
+                Log.d("DashboardStatus", "Loaded doctor $doctorId → status=$savedStatus")
+            } catch (e: Exception) {
+                Log.e("DashboardStatus", "Failed to load status", e)
+                selectedStatus = "available" // fallback
+            }
+        }
+    }
 
     var patients by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var isLoadingPatients by remember { mutableStateOf(true) }
     var reloadKey by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(currentDoctorId, reloadKey) {
+    LaunchedEffect(doctorId, reloadKey) {
         try {
             isLoadingPatients = true
-            patients = getConversationsByDoctor(currentDoctorId)
+            patients = getConversationsByDoctor(doctorId)
         } catch (e: Exception) {
             Log.e("Dashboard", "Load patients failed", e)
         } finally {
@@ -302,7 +319,9 @@ private fun DashboardDoctorItem(
     var realPatientName by remember { mutableStateOf(conversation.patientName ?: "") }
 
     LaunchedEffect(patientId) {
-        getPatientById(patientId)?.name?.let { realPatientName = it }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            getPatientById(patientId)?.name?.let { realPatientName = it }
+        }
     }
 
     Card(

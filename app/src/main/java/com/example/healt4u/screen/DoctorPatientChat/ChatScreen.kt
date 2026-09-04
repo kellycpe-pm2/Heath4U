@@ -62,7 +62,7 @@ fun ChatScreen(
     onClearAllMessages: () -> Unit,
     isMuted: Boolean = false,
     onMuteChanged: (Boolean) -> Unit = {},
-    getDoctorStatus: (Int) -> String = { "offline" },
+    getDoctorStatus: (Int) -> String,
     viewModel: ConversationViewModel = viewModel()
 ) {
     val displayName = chatName
@@ -84,8 +84,11 @@ fun ChatScreen(
     }
 
     LaunchedEffect(doctorId) {
-        doctorStatus = getDoctorStatus(doctorId)
-        Log.d("ChatStatus", "Doctor $doctorId status → $doctorStatus")
+        while (true) {
+            doctorStatus = getDoctorStatus(doctorId)
+            Log.d("ChatStatus", "Doctor $doctorId status → $doctorStatus")
+            delay(3000.milliseconds)
+        }
     }
 
     // Status colors
@@ -533,7 +536,8 @@ fun PreviewChatScreen() {
             onSendMessage = {},
             onDeleteMessage = {},
             onAvatarClick = {},
-            onClearAllMessages = {}
+            onClearAllMessages = {},
+            getDoctorStatus = {"available"}
         )
     }
 }

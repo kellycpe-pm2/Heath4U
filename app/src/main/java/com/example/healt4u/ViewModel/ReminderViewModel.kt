@@ -1,20 +1,21 @@
 package com.example.healt4u.ViewModel
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresPermission
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.Storage.getReminderLogsForDate
-import com.example.healt4u.Storage.update_Medicine
+import com.example.healt4u.Storage.getFamilyAlertsForDate
 import com.example.healt4u.Storage.upsertReminderLog
 import com.example.healt4u.Storage.upsertReminderLogs
 import com.example.healt4u.data.local.load_Medicines
 import com.example.healt4u.data.local.loadReminderLogsForDate
-import com.example.healt4u.data.local.updateMedicine
 import com.example.healt4u.data.local.upsertReminderLogLocal
 import com.example.healt4u.data.local.upsertReminderLogsLocal
 import com.example.healt4u.model.Medicine
@@ -65,7 +66,7 @@ class ReminderViewModel(
     // In ReminderViewModel.kt
     fun loadTodaySchedule(
         context: Context,
-        patientId: Int = 0,
+        patientId: Int,
         selectedDate: String = todayDate()  // Default = today, but OVERRIDE-able
     ) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -98,6 +99,26 @@ class ReminderViewModel(
                     upsertReminderLogsLocal(context, allItems)
                 }
 
+                // A caregiver resolves the family alert on their account. Use
+                // that shared state as an authoritative fallback for the
+                // patient's dose, even when the reminder log was local-only or
+                // its cloud update was rejected by row-level permissions.
+                val resolvedFamilyAlerts = getFamilyAlertsForDate(date).filter {
+                    it.patientUserId == patientId && it.status == "RESOLVED"
+                }
+                if (resolvedFamilyAlerts.isNotEmpty()) {
+                    val resolvedDoses = resolvedFamilyAlerts
+                        .map { "${it.medicineName}|${it.scheduledTime}" }
+                        .toSet()
+                    allItems = allItems.map { log ->
+                        if ("${log.medicineName}|${log.time}" in resolvedDoses) {
+                            log.copy(status = "TAKEN")
+                        } else log
+                    }
+                    _todaySchedule.value = allItems
+                    upsertReminderLogsLocal(context, allItems.filter { it.patientId == patientId })
+                }
+
                 scheduleAlarmsForPendingDoses(context, allItems.filter { it.medicineId != -1 })
                 checkMedicineAlerts(context, medicines)
             } catch (e: Exception) {
@@ -124,7 +145,7 @@ class ReminderViewModel(
     // 7 days before expiry, or stock at/under the low-stock threshold — posts a
     // notification once per app session per medicine, and always refreshes the
     // banner list shown on Dashboard/Schedule.
-    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    @SuppressLint("MissingPermission")
     private fun checkMedicineAlerts(context: Context, medicines: List<Medicine>) {
         val now = System.currentTimeMillis()
         val warningWindowMillis = EXPIRY_WARNING_DAYS * 24L * 60 * 60 * 1000
@@ -171,12 +192,20 @@ class ReminderViewModel(
 
         _medicineAlerts.value = alerts
 
+        val notificationsAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ActivityCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+
         for (alert in alerts) {
             val key = "${alert.medicineId}_${alert.kind}_${todayDate()}"
             if (key !in notifiedAlertKeys) {
                 notifiedAlertKeys.add(key)
-                val title = if (alert.kind == MedicineAlert.Kind.EXPIRING_SOON) "Medicine expiring soon" else "Medicine running low"
-                NotificationHelper.showStockAlert(context, key.hashCode(), title, alert.message)
+                if (notificationsAllowed) {
+                    val title = if (alert.kind == MedicineAlert.Kind.EXPIRING_SOON) "Medicine expiring soon" else "Medicine running low"
+                    NotificationHelper.showStockAlert(context, key.hashCode(), title, alert.message)
+                }
             }
         }
     }
@@ -219,7 +248,12 @@ class ReminderViewModel(
         saved: List<ReminderLog>
     ): List<ReminderLog> {
         val savedById = saved.associateBy { it.id }
-        return generated.map { savedById[it.id] ?: it }
+        val savedByDose = saved.associateBy { "${it.medicineName}|${it.time}" }
+        return generated.map { generatedLog ->
+            savedById[generatedLog.id]
+                ?: savedByDose["${generatedLog.medicineName}|${generatedLog.time}"]
+                ?: generatedLog
+        }
     }
 
     // Anything still PENDING more than 30 minutes past its slot time is auto-flagged
@@ -264,184 +298,7 @@ class ReminderViewModel(
         }
     }
 
-    fun markTaken(
-        context: Context,
-        log: ReminderLog,
-        patientId: Int = CurrentSession.patientId ?: 0
-    ) {
-        viewModelScope.launch(Dispatchers.IO) {
-
-            try {
-                // =========================================================
-                // 1. Prevent taking the same dose twice
-                // =========================================================
-                if (log.status == "TAKEN") {
-                    return@launch
-                }
-
-                // =========================================================
-                // 2. Update medicine quantity
-                // =========================================================
-                if (log.medicineId != -1 && log.medicineId != null) {
-
-                    val medicines = load_Medicines(context, patientId)
-
-                    val medicine = medicines.firstOrNull {
-                        it.id == log.medicineId &&
-                                (it.patientId == null || it.patientId == patientId)
-                    }
-
-                    if (medicine == null) {
-                        Log.e(
-                            "ReminderViewModel",
-                            "Medicine not found. medicineId=${log.medicineId}, patientId=$patientId"
-                        )
-                        return@launch
-                    }
-
-                    val currentQuantityLeft =
-                        medicine.quantityLeft ?: medicine.quantity
-
-                    Log.d(
-                        "ReminderViewModel",
-                        "BEFORE TAKE: ${medicine.name_medicine}, " +
-                                "quantity=${medicine.quantity}, " +
-                                "quantityLeft=$currentQuantityLeft"
-                    )
-
-                    // Don't allow quantity to become negative
-                    if (currentQuantityLeft <= 0) {
-                        Log.d(
-                            "ReminderViewModel",
-                            "${medicine.name_medicine} has no stock left"
-                        )
-                        return@launch
-                    }
-
-                    val newQuantityLeft = currentQuantityLeft - 1
-
-                    val updatedMedicine = medicine.copy(
-                        quantityLeft = newQuantityLeft,
-                        patientId = patientId
-                    )
-
-                    // =====================================================
-                    // SAVE LOCAL
-                    // =====================================================
-                    val localSuccess = updateMedicine(
-                        context,
-                        patientId,
-                        updatedMedicine
-                    )
-
-                    Log.d(
-                        "ReminderViewModel",
-                        "LOCAL UPDATE: success=$localSuccess, " +
-                                "newQuantityLeft=$newQuantityLeft"
-                    )
-
-                    // =====================================================
-                    // SAVE CLOUD
-                    // =====================================================
-                    var cloudSuccess = false
-
-                    try {
-                        cloudSuccess = update_Medicine(updatedMedicine)
-
-                        Log.d(
-                            "ReminderViewModel",
-                            "CLOUD UPDATE: success=$cloudSuccess, " +
-                                    "newQuantityLeft=$newQuantityLeft"
-                        )
-
-                    } catch (e: Exception) {
-                        Log.e(
-                            "ReminderViewModel",
-                            "Cloud medicine stock update failed",
-                            e
-                        )
-                    }
-
-                    // =====================================================
-                    // UPDATE MEDICINE LIST IN MEMORY
-                    // =====================================================
-                    // If ReminderViewModel has a medicine list, update it here.
-                    // Otherwise the Medicine screen should reload its data.
-                    //
-                    // IMPORTANT:
-                    // The actual saved value is:
-                    //
-                    // quantityLeft = newQuantityLeft
-                    //
-                    // =====================================================
-
-                    Log.d(
-                        "ReminderViewModel",
-                        "Medicine ${medicine.name_medicine}: " +
-                                "$currentQuantityLeft -> $newQuantityLeft"
-                    )
-                }
-
-                // =========================================================
-                // 3. Mark reminder as TAKEN
-                // =========================================================
-                val updatedLog = log.copy(
-                    status = "TAKEN"
-                )
-
-                _todaySchedule.value =
-                    _todaySchedule.value.map {
-                        if (it.id == updatedLog.id) {
-                            updatedLog
-                        } else {
-                            it
-                        }
-                    }
-
-                // =========================================================
-                // 4. Cancel notification
-                // =========================================================
-                if (updatedLog.medicineId != -1) {
-                    ReminderScheduler.cancelAlarm(
-                        context,
-                        updatedLog
-                    )
-                }
-
-                // =========================================================
-                // 5. Save reminder locally
-                // =========================================================
-                upsertReminderLogLocal(
-                    context,
-                    updatedLog
-                )
-
-                // =========================================================
-                // 6. Save reminder to cloud
-                // =========================================================
-                try {
-                    upsertReminderLog(
-                        updatedLog
-                    )
-                } catch (e: Exception) {
-                    Log.e(
-                        "ReminderViewModel",
-                        "Cloud reminder update failed",
-                        e
-                    )
-                }
-
-            } catch (e: Exception) {
-
-                Log.e(
-                    "ReminderViewModel",
-                    "Failed to mark medicine as taken",
-                    e
-                )
-            }
-        }
-    }
-
+    fun markTaken(context: Context, log: ReminderLog) = markStatus(context, log, "TAKEN")
     fun markMissed(context: Context, log: ReminderLog) = markStatus(context, log, "MISSED")
 
     fun adherenceCount(): Pair<Int, Int> {

@@ -55,7 +55,12 @@ object NotificationHelper {
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun showDoseReminder(context: Context, notificationId: Int, medicineName: String, time: String) {
+    fun showDoseReminder(
+        context: Context,
+        notificationId: Int,
+        medicineName: String,
+        time: String
+    ) {
         if (!hasPermission(context)) return
 
         val notification = NotificationCompat.Builder(context, CHANNEL_DOSE)
@@ -87,7 +92,12 @@ object NotificationHelper {
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun showMissedDoseAlert(context: Context, notificationId: Int, medicineName: String, scheduledTime: String) {
+    fun showMissedDoseAlert(
+        context: Context,
+        notificationId: Int,
+        medicineName: String,
+        scheduledTime: String
+    ) {
         if (!hasPermission(context)) return
 
         val notification = NotificationCompat.Builder(context, CHANNEL_DOSE)
@@ -102,19 +112,28 @@ object NotificationHelper {
             .notify(notificationId, notification)
     }
 
-    // Add this inside NotificationHelper object
-    fun showChatMessage(context: Context, senderName: String, message: String) {
-        createChannels(context)
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
+    fun showChatMessage(
+        context: Context,
+        notificationId: Int,
+        senderName: String,
+        messageText: String
+    ) {
+        if (!hasPermission(context)) return
+
+        createChannels(context) // Ensure channel exists
+
+        val notification = NotificationCompat.Builder(context, Notification.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("Message from $senderName")
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setContentText(messageText)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(messageText))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
             .setAutoCancel(true)
-        with(NotificationManagerCompat.from(context)) {
-            notify(System.currentTimeMillis().toInt(), builder.build())
-        }
+            .build()
+
+        NotificationManagerCompat.from(context)
+            .notify(notificationId, notification)
     }
 }

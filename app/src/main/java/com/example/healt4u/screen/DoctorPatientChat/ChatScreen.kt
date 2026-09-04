@@ -1,6 +1,7 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -32,6 +33,8 @@ import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.refundPaymentIfEligible
 import com.example.healt4u.ViewModel.ConversationViewModel
 import com.example.healt4u.model.Message
+import com.example.healt4u.notification.ChatMessageReceiver
+import com.example.healt4u.notification.Notification
 import com.example.healt4u.screen.componentUI.DateHeader
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,7 +42,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 @SuppressLint("DefaultLocale")
@@ -64,9 +66,12 @@ fun ChatScreen(
     getDoctorStatus: (Int) -> String,
     viewModel: ConversationViewModel = viewModel()
 ) {
-    val displayName = chatName
+    val context = LocalContext.current
+
     var myName by remember { mutableStateOf("Me") }
     val coroutineScope = rememberCoroutineScope()
+
+    var lastNotifiedMessageId by remember { mutableStateOf<Int?>(null) }
 
     // Doctor status — auto-refresh every 3s
     var doctorStatus by remember { mutableStateOf("offline") }
@@ -144,6 +149,28 @@ fun ChatScreen(
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
+    LaunchedEffect(messages.size) {
+        val latest = messages.lastOrNull()
+        if (latest != null && latest.senderId != userId && !isMuted) {
+            // Only send if this message hasn't been notified before
+            if (latest.id != lastNotifiedMessageId) {
+                Notification.showSafely(
+                    context = context,
+                    title = "New message from ${latest.senderName}",
+                    message = latest.content.take(40)
+                )
+                showNewMessageNotification(
+                    context = context,
+                    senderName = latest.senderName,
+                    message = latest.content.take(40),
+                    conversationId = conversationId
+                )
+                // ✅ Mark as notified so we skip it next time
+                lastNotifiedMessageId = latest.id
+            }
+        }
+    }
+
     // Auto-scroll to bottom
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
@@ -213,7 +240,7 @@ fun ChatScreen(
                 title = {
                     Column {
                         Text(
-                            text = displayName,
+                            text = chatName,
                             style = MaterialTheme.typography.headlineMedium,
                             color = Color.White,
                             modifier = Modifier
@@ -221,7 +248,7 @@ fun ChatScreen(
                                 .wrapContentWidth(Alignment.CenterHorizontally)
                         )
 
-                        // ✅ SHOW COUNTDOWN TIMER
+                        // SHOW COUNTDOWN TIMER
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -239,7 +266,7 @@ fun ChatScreen(
                                 )
                             } else if (!hasDoctorReplied.value) {
                                 Text(
-                                    text = "✅ Refund Processed",
+                                    text = "Refund Processed",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFF4CAF50),
                                     fontSize = 11.sp,
@@ -247,7 +274,7 @@ fun ChatScreen(
                                 )
                             } else {
                                 Text(
-                                    text = "❌ Access Expired",
+                                    text = "Access Expired",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = Color(0xFFFFCC00),
                                     fontSize = 11.sp,
@@ -375,7 +402,7 @@ fun ChatScreen(
                         )
                         FloatingActionButton(
                             onClick = {
-                                if (textInput.isNotBlank() && canSend) {
+                                if (textInput.isNotBlank()) {
                                     val nowIso = Instant.now().toString()
                                     val newMessage = Message(
                                         id = Instant.now().toEpochMilli().toInt(),
@@ -388,15 +415,24 @@ fun ChatScreen(
                                     )
                                     messages = messages + newMessage
                                     onSendMessage(newMessage)
+
+                                    // Notify recipient — ALWAYS send when YOU send a message
+                                    showNewMessageNotification(
+                                        context = context,
+                                        senderName = myName,
+                                        message = textInput.take(40),
+                                        conversationId = conversationId
+                                    )
+
                                     textInput = ""
                                 }
                             },
-                            containerColor = if (textInput.isNotEmpty() && canSend) {
+                            containerColor = if (textInput.isNotEmpty()) {
                                 MaterialTheme.colorScheme.secondary
                             } else {
                                 MaterialTheme.colorScheme.onSurfaceVariant
                             },
-                            contentColor = if (textInput.isNotEmpty() && canSend) {
+                            contentColor = if (textInput.isNotEmpty()) {
                                 MaterialTheme.colorScheme.onSecondary
                             } else {
                                 MaterialTheme.colorScheme.surface
@@ -463,7 +499,7 @@ fun ChatScreen(
                                 message = message,
                                 isFromCurrentUser = isFromCurrentUser,
                                 userRole = userRole,
-                                otherPersonName = displayName,
+                                otherPersonName = chatName,
                                 onAvatarClick = onAvatarClick,
                                 onDeleteClick = { messageToDelete = message }
                             )
@@ -473,6 +509,22 @@ fun ChatScreen(
             }
         }
     }
+}
+
+// ✅ YOUR FUNCTION — placed at bottom of file
+fun showNewMessageNotification(
+    context: android.content.Context,
+    senderName: String,
+    message: String,
+    conversationId: Int
+) {
+    val intent = Intent(context, ChatMessageReceiver::class.java).apply {
+        setPackage(context.packageName)
+        putExtra("senderName", senderName)
+        putExtra("message", message)
+        putExtra("conversationId", conversationId)
+    }
+    context.sendBroadcast(intent)
 }
 
 // --- Helper Functions ---
@@ -525,8 +577,8 @@ fun PreviewChatScreen() {
             doctorId = 1,
             patientId = 2,
             initialMessages = listOf(
-                Message(1, 1, "Hello! How are you feeling today?", 1, "Dr. Sarah Tan", "2026-09-02 10:00:00Z", "text"),
-                Message(2, 1, "I am feeling much better, thank you doctor.", 2, "Yuki Chung", "2026-09-02 11:00:00Z", "text")
+                Message(1, 1, "Hello! How are you feeling today?", 1, "Dr. Sarah Tan", "2026-09-02T10:00:00Z", "text"),
+                Message(2, 1, "I am feeling much better, thank you doctor.", 2, "Yuki Chung", "2026-09-02T11:00:00Z", "text")
             ),
             onBack = {},
             onSendMessage = {},

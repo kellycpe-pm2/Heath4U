@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@RequiresApi(Build.VERSION_CODES.O)
 class ConversationViewModel : ViewModel() {
 
     private val _conversations = MutableStateFlow<List<Conversation>>(emptyList())
@@ -29,14 +30,13 @@ class ConversationViewModel : ViewModel() {
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun loadConversations(patientId: Int) {
+    fun loadConversationsForPatient(patientId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
                 val list = getConversationsByPatient(patientId)
-                _conversations.value = list
+                _conversations.update { list }
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Failed to load conversations"
             } finally {
@@ -45,14 +45,13 @@ class ConversationViewModel : ViewModel() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun loadConversationsForDoctor(doctorId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
                 val list = getConversationsByDoctor(doctorId)
-                _conversations.value = list
+                _conversations.update { list }
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Failed to load conversations"
             } finally {
@@ -61,14 +60,13 @@ class ConversationViewModel : ViewModel() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     fun loadMessages(conversationId: Int) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
             try {
                 val list = getMessagesByConversation(conversationId)
-                _messages.value = list
+                _messages.update { list }
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: "Failed to load messages"
             } finally {
@@ -77,53 +75,11 @@ class ConversationViewModel : ViewModel() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun sendMessage(message: Message, onSuccess: (() -> Unit)? = null) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
-            try {
-                // Optimistically add message to UI
-                _messages.update { currentList ->
-                    if (currentList.none { it.id == message.id }) {
-                        currentList + message
-                    } else {
-                        currentList
-                    }
-                }
-
-                val success = com.example.healt4u.Storage.sendMessage(message)
-                if (success) {
-                    // Reload fresh data from server to get correct IDs & timestamps
-                    loadMessages(message.conversationId)
-                    onSuccess?.invoke()
-                } else {
-                    // Remove failed message
-                    _messages.update { currentList ->
-                        currentList.filter { it.id != message.id }
-                    }
-                    _errorMessage.value = "Failed to send message"
-                }
-            } catch (e: Exception) {
-                _errorMessage.value = e.message ?: "Failed to send message"
-                _messages.update { currentList ->
-                    currentList.filter { it.id != message.id }
-                }
-            } finally {
-                _isLoading.value = false
-            }
-        }
+    fun clearMessages() {
+        _messages.update { emptyList() }
     }
 
     fun clearError() {
         _errorMessage.value = null
-    }
-
-    fun clearMessages() {
-        _messages.value = emptyList()
-    }
-
-    fun clearConversations() {
-        _conversations.value = emptyList()
     }
 }

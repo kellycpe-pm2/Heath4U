@@ -21,22 +21,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.healt4u.Storage.getConversationsByDoctor
+import com.example.healt4u.Storage.getConversationsByPatient
 import com.example.healt4u.Storage.getDoctorById
+import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
-import com.example.healt4u.ViewModel.ConversationViewModel
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.screen.componentUI.Theme.colorTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.util.*
+import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,22 +46,41 @@ import java.util.*
 fun ChatListScreen(
     userId: Int,
     userRole: String,
-    onConversationClick: (Conversation, String) -> Unit,
+    onConversationClick: (Conversation, Long) -> Unit,
     onNewChatClick: () -> Unit,
-    onBack: () -> Unit,
-    viewModel: ConversationViewModel = viewModel()
+    onBack: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+
+    var conversations by remember { mutableStateOf(emptyList<Conversation>()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(userId, userRole) {
-        if (userRole == "doctor") {
-            viewModel.loadConversationsForDoctor(userId)
-        } else {
-            viewModel.loadConversations(userId)
+        isLoading = true
+        errorMessage = null
+        scope.launch {
+            try {
+                conversations = if (userRole == "doctor") {
+                    getConversationsByDoctor(userId)
+                } else {
+                    getConversationsByPatient(userId)
+                }
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Failed to load"
+            }
+            isLoading = false
         }
     }
 
-    val conversations by viewModel.conversations.collectAsStateWithLifecycle()
-    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
-    val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    // ⏱️ TIMER — updates EVERY 30 SECONDS
+    var tickTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            tickTime = System.currentTimeMillis()
+            delay(30_000.milliseconds)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -90,7 +111,7 @@ fun ChatListScreen(
             )
         },
         floatingActionButton = {
-            if (userRole=="patient"){
+            if (userRole == "patient") {
                 FloatingActionButton(
                     onClick = onNewChatClick,
                     containerColor = MaterialTheme.colorScheme.secondary
@@ -134,10 +155,19 @@ fun ChatListScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = {
-                            if (userRole == "doctor") {
-                                viewModel.loadConversationsForDoctor(userId)
-                            } else {
-                                viewModel.loadConversations(userId)
+                            isLoading = true
+                            errorMessage = null
+                            scope.launch {
+                                try {
+                                    conversations = if (userRole == "doctor") {
+                                        getConversationsByDoctor(userId)
+                                    } else {
+                                        getConversationsByPatient(userId)
+                                    }
+                                } catch (e: Exception) {
+                                    errorMessage = e.message ?: "Failed to load"
+                                }
+                                isLoading = false
                             }
                         }) {
                             Text("Retry")
@@ -175,14 +205,20 @@ fun ChatListScreen(
                     ) {
                         items(
                             items = conversations,
-                            key = { it.id ?: 0 }
+                            // ✅ KEY INCLUDES tickTime → forces UI update every 30s
+                            key = { conversation ->
+                                (conversation.id ?: 0) to tickTime
+                            }
                         ) { conversation ->
                             ConversationItem(
                                 userId = userId,
                                 userRole = userRole,
                                 conversation = conversation,
-                                onClick = { chatName ->
-                                    onConversationClick(conversation, chatName)  // ✅ Pass loaded name directly
+                                doctorId = conversation.doctorId,
+                                patientId = conversation.patientId,
+                                currentTimeMs = tickTime,
+                                onConversationClick = { expiryTime ->
+                                    onConversationClick(conversation, expiryTime)
                                 }
                             )
                         }
@@ -199,10 +235,13 @@ fun ConversationItem(
     userId: Int,
     userRole: String,
     conversation: Conversation,
-    onClick: (String) -> Unit
+    doctorId: Int,
+    patientId: Int,
+    currentTimeMs: Long,
+    onConversationClick: (Long) -> Unit
 ) {
-    val doctorId = conversation.doctorId
-    val patientId = conversation.patientId
+    val conversationId = conversation.id ?: 0
+    val ONE_DAY_MS = 24 * 60 * 60 * 1000L
 
     var displayName by remember { mutableStateOf("Loading...") }
     val coroutineScope = rememberCoroutineScope()
@@ -210,15 +249,12 @@ fun ConversationItem(
     LaunchedEffect(doctorId, patientId, userId, userRole) {
         coroutineScope.launch {
             try {
-                // ✅ userRole FIRST — no ID overlap confusion!
                 displayName = if (userRole == "patient") {
                     getDoctorById(doctorId)?.name ?: "Doctor"
                 } else {
                     getPatientById(patientId)?.name ?: "Patient"
                 }
-                Log.d("ChatName", "userRole=$userRole → name=$displayName")
             } catch (e: Exception) {
-                Log.e("ChatName", "Failed to load name", e)
                 displayName = if (userRole == "patient") "Doctor" else "Patient"
             }
         }
@@ -228,20 +264,59 @@ fun ConversationItem(
         parseTimestampSafe(conversation.lastMessageTime)
     }
 
+    val createdTimeMs = remember(conversation.createdTime) {
+        parseTimestampSafe(conversation.createdTime)
+    }
+
+    val expiryTimeMs = remember(createdTimeMs) { createdTimeMs + ONE_DAY_MS }
+
+    var hasDoctorReplied by remember { mutableStateOf(false) }
+
+    LaunchedEffect(conversationId, doctorId) {
+        coroutineScope.launch {
+            hasDoctorReplied = checkIfDoctorReplied(conversationId, doctorId)
+        }
+    }
+
+    val remainingTime = expiryTimeMs - currentTimeMs
+    val isExpired = remainingTime <= 0L
+
+    val countdownText = when {
+        isExpired -> if (!hasDoctorReplied) "Refund Available" else "Expired"
+        else -> {
+            val hours = TimeUnit.MILLISECONDS.toHours(remainingTime)
+            val mins = TimeUnit.MILLISECONDS.toMinutes(remainingTime) % 60
+            val secs = TimeUnit.MILLISECONDS.toSeconds(remainingTime) % 60
+            when {
+                hours > 0 -> "⏳ ${hours}h ${mins}m remaining"
+                mins > 0 -> "⏳ ${mins}m ${secs}s remaining"
+                else -> "⏳ ${secs}s remaining"
+            }
+        }
+    }
+
+    val statusColor = when {
+        isExpired && !hasDoctorReplied -> Color(0xFF4CAF50)
+        isExpired -> Color(0xFFFF5722)
+        remainingTime < 60 * 60 * 1000 -> Color(0xFFFF9800)
+        else -> Color(0xFF2196F3)
+    }
+
+    val canOpen = !isExpired || hasDoctorReplied
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick(displayName) },  // ✅ Pass loaded name to chat
+            .clickable(enabled = canOpen) { onConversationClick(expiryTimeMs) },
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isExpired && !hasDoctorReplied)
+                Color(0xFFE8F5E9) else MaterialTheme.colorScheme.onPrimary
         ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -252,8 +327,7 @@ fun ConversationItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = displayName
-                        .split(" ")
+                    text = displayName.split(" ")
                         .mapNotNull { it.firstOrNull()?.toString() }
                         .take(2)
                         .joinToString("")
@@ -262,26 +336,19 @@ fun ConversationItem(
                     fontWeight = FontWeight.Bold
                 )
             }
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(
-                        text = displayName,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(text = displayName, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Text(
                         text = formatTime(timestampMillis),
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-
                 Text(
                     text = conversation.lastMessage.takeIf { it.isNotEmpty() } ?: "No messages yet",
                     fontSize = 14.sp,
@@ -289,16 +356,22 @@ fun ConversationItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-
+                Text(
+                    text = countdownText,
+                    fontSize = 12.sp,
+                    color = statusColor,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
                 if (userRole == "patient" && conversation.hospitalName.isNotEmpty()) {
                     Text(
                         text = conversation.hospitalName,
                         fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }
-
             if (conversation.unreadCount > 0) {
                 Box(
                     modifier = Modifier
@@ -307,21 +380,26 @@ fun ConversationItem(
                         .background(Color.Red),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "${conversation.unreadCount}",
-                        fontSize = 10.sp,
-                        color = Color.White
-                    )
+                    Text(text = "${conversation.unreadCount}", fontSize = 10.sp, color = Color.White)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
             }
-
             Icon(
                 Icons.Filled.ChevronRight,
-                contentDescription = "Open chat",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                "Open chat",
+                tint = if (canOpen) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFBDBDBD)
             )
         }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun checkIfDoctorReplied(conversationId: Int, doctorId: Int): Boolean {
+    return try {
+        getMessagesByConversation(conversationId).any { it.senderId == doctorId }
+    } catch (e: Exception) {
+        Log.w("DoctorReply", "Check failed", e)
+        false
     }
 }
 
@@ -334,7 +412,6 @@ private fun parseTimestampSafe(timestampStr: String): Long {
         try {
             Instant.parse(cleaned).toEpochMilli()
         } catch (e2: Exception) {
-            Log.w("DateParse", "Failed to parse time: $timestampStr", e2)
             System.currentTimeMillis()
         }
     }
@@ -342,48 +419,28 @@ private fun parseTimestampSafe(timestampStr: String): Long {
 
 @RequiresApi(Build.VERSION_CODES.O)
 private fun formatTime(timestamp: Long): String {
-    return try {
-        val date = Date(timestamp)
-        val now = Calendar.getInstance()
-        val cal = Calendar.getInstance().apply { time = date }
-
-        when {
-            isSameDay(cal, now) -> {
-                val format = android.icu.text.SimpleDateFormat("HH:mm", Locale.getDefault())
-                format.format(date)
-            }
-            isYesterday(cal, now) -> "Yesterday"
-            else -> {
-                val format = android.icu.text.SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                format.format(date)
-            }
-        }
-    } catch (e: Exception) {
-        "??:??"
+    val date = Date(timestamp)
+    val cal = Calendar.getInstance().apply { time = date }
+    val now = Calendar.getInstance()
+    return when {
+        isSameDay(cal, now) -> android.icu.text.SimpleDateFormat("HH:mm").format(date)
+        isYesterday(cal, now) -> "Yesterday"
+        else -> android.icu.text.SimpleDateFormat("dd/MM/yyyy").format(date)
     }
 }
 
-private fun isSameDay(cal1: Calendar, cal2: Calendar): Boolean {
-    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-            cal1.get(Calendar.DAY_OF_YEAR) == cal2.get(Calendar.DAY_OF_YEAR)
-}
+private fun isSameDay(c1: Calendar, c2: Calendar) =
+    c1.get(Calendar.YEAR) == c2.get(Calendar.YEAR) &&
+            c1.get(Calendar.DAY_OF_YEAR) == c2.get(Calendar.DAY_OF_YEAR)
 
-private fun isYesterday(cal1: Calendar, cal2: Calendar): Boolean {
-    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-    return isSameDay(cal1, yesterday)
-}
+private fun isYesterday(c1: Calendar, c2: Calendar) =
+    isSameDay(c1, Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) })
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun PreviewChatListScreen() {
     colorTheme {
-        ChatListScreen(
-            userId = 1,
-            userRole = "patient",
-            onConversationClick = { _, _ -> },
-            onNewChatClick = {},
-            onBack = {}
-        )
+        ChatListScreen(1, "patient", { _, _ -> }, {}, {})
     }
 }

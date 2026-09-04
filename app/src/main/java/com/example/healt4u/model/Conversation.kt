@@ -35,5 +35,8 @@ data class Conversation(
     val unreadCount: Int,
 
     @SerialName("is_active")
-    val isActive: Boolean
+    val isActive: Boolean,
+
+    @SerialName("created_time")
+    val createdTime: String
 )

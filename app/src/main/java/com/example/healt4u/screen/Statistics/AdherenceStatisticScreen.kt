@@ -69,7 +69,8 @@ fun AdherenceStatisticScreen(
                 title = {
                     Text(
                         text = "Adherence Statistics",
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 },
                 navigationIcon = {

@@ -87,16 +87,17 @@ fun PaymentScreen(
     doctorName: String,
     consultationFee: Double,
     patientId: Int,
-    onPaymentSuccess: (time: Long, method: String) -> Unit,
+    onPaymentSuccess: (paymentTimeMs: Long, method: String) -> Unit,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val amount = consultationFee
     var selectedMethod by remember { mutableStateOf("TnG") }
     var showSuccessDialog by remember { mutableStateOf(false) }
-    var showQrCode by remember { mutableStateOf(false) } // ✅ Show QR after Pay button click
+    var showQrCode by remember { mutableStateOf(false) }
     val date = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
     val time = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
+    val paymentTimeMs = remember { System.currentTimeMillis() }
 
     val tngDeepLink = "tngdwallet://client/dl/mp?mpid=123456789"
     val tngWebUrl = "https://www.touchngo.com.my"
@@ -113,7 +114,6 @@ fun PaymentScreen(
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tngDeepLink)).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
-
         if (intent.resolveActivity(context.packageManager) != null) {
             context.startActivity(intent)
             Toast.makeText(context, "Opening TNG eWallet...", Toast.LENGTH_SHORT).show()
@@ -162,12 +162,9 @@ fun PaymentScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ========== Fee Card ==========
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = BlueLight
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = BlueLight),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Column(
@@ -199,20 +196,13 @@ fun PaymentScreen(
                     }
                 }
 
-                // ========== Order Summary ==========
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    ),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
                     shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, Color.LightGray)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
                         Text(
                             text = "Order Summary",
                             style = MaterialTheme.typography.titleSmall,
@@ -255,7 +245,6 @@ fun PaymentScreen(
                     }
                 }
 
-                // ========== Payment Methods ==========
                 Text(
                     text = "Select Payment Method",
                     style = MaterialTheme.typography.titleMedium,
@@ -263,60 +252,47 @@ fun PaymentScreen(
                     fontWeight = FontWeight.SemiBold
                 )
 
-                // TNG Option
                 PaymentOptionCard(
                     icon = "📱",
                     title = "Touch 'n Go eWallet",
                     subtitle = "Pay with TNG eWallet",
                     isSelected = selectedMethod == "TnG",
-                    onClick = { selectedMethod = "TnG" }
+                    onClick = { selectedMethod = "TnG"; showQrCode = false }
                 )
 
-                // FPX Option
                 PaymentOptionCard(
                     icon = "🏦",
                     title = "FPX (Online Banking)",
                     subtitle = "Maybank, CIMB, Public Bank, etc.",
                     isSelected = selectedMethod == "FPX",
-                    onClick = { selectedMethod = "FPX" }
+                    onClick = { selectedMethod = "FPX"; showQrCode = false }
                 )
 
-                // DuitNow Option
                 PaymentOptionCard(
                     icon = "🏷️",
                     title = "DuitNow QR",
                     subtitle = "Scan DuitNow QR code",
                     isSelected = selectedMethod == "DuitNow",
-                    onClick = { selectedMethod = "DuitNow" }
+                    onClick = { selectedMethod = "DuitNow"; showQrCode = false }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // ========== Pay Button — ORIGINAL LOGIC UNCHANGED ==========
                 Button(
                     onClick = {
-                        // ✅ Show QR Card ONLY for DuitNow QR
-                        if (selectedMethod == "DuitNow") {
-                            showQrCode = true
-                        } else {
-                            showQrCode = false
-                        }
-
-                        // ✅ ALL ORIGINAL LOGIC REMAINS THE SAME
-                        if (selectedMethod == "TnG") {
-                            openTNG()
-                        } else {
-                            val url = when (selectedMethod) {
-                                "FPX" -> fpxWebUrl
-                                "GrabPay" -> "https://www.grab.com/my/pay/"
-                                "DuitNow" -> "https://www.duitnow.my/"
-                                else -> tngWebUrl
+                        when (selectedMethod) {
+                            "TnG" -> openTNG()
+                            "FPX" -> {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(fpxWebUrl)).apply {
+                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                }
+                                context.startActivity(intent)
+                                Toast.makeText(context, "Opening FPX...", Toast.LENGTH_SHORT).show()
                             }
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            "DuitNow" -> {
+                                showQrCode = true
+                                Toast.makeText(context, "Scan QR code to pay", Toast.LENGTH_SHORT).show()
                             }
-                            context.startActivity(intent)
-                            Toast.makeText(context, "Opening $selectedMethod...", Toast.LENGTH_SHORT).show()
                         }
 
                         val payment = Payment(
@@ -357,15 +333,12 @@ fun PaymentScreen(
                     }
                 }
 
-                // ✅ DUITNOW QR IMAGE CARD — APPEARS AFTER PAY BUTTON CLICK
                 if (showQrCode && selectedMethod == "DuitNow") {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = BlueLight
-                        ),
+                        colors = CardDefaults.cardColors(containerColor = BlueLight),
                         shape = RoundedCornerShape(16.dp),
                         border = BorderStroke(2.dp, BluePrimary)
                     ) {
@@ -414,7 +387,6 @@ fun PaymentScreen(
                     }
                 }
 
-                // ========== Confirm Payment Button — ORIGINAL LOGIC UNCHANGED ==========
                 OutlinedButton(
                     onClick = {
                         val payments = loadPayments(context).toMutableList()
@@ -429,12 +401,8 @@ fun PaymentScreen(
                             payments[payments.indexOf(latest)] = updated
                             savePayments(context, payments)
 
-                            val chatExpiryTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000
-                            val expireDate = Date(chatExpiryTime)
-                            val expireStr = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(expireDate)
-
                             showSuccessDialog = true
-                            onPaymentSuccess(chatExpiryTime, latest.paymentMethod)
+                            onPaymentSuccess(paymentTimeMs, latest.paymentMethod)
                         } else {
                             Toast.makeText(context, "No pending payment found", Toast.LENGTH_SHORT).show()
                         }
@@ -442,9 +410,7 @@ fun PaymentScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = BlueDark
-                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BlueDark),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Row(
@@ -456,11 +422,14 @@ fun PaymentScreen(
                             contentDescription = "Confirm",
                             modifier = Modifier.size(18.dp)
                         )
-                        Text("I Have Completed Payment", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.secondary)
+                        Text(
+                            "I Have Completed Payment",
+                            fontWeight = FontWeight.Medium,
+                            color = BluePrimary
+                        )
                     }
                 }
 
-                // ========== Security Note ==========
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Center,
@@ -481,16 +450,10 @@ fun PaymentScreen(
                 }
             }
 
-            // ========== Success Dialog ==========
             if (showSuccessDialog) {
                 AlertDialog(
                     onDismissRequest = { showSuccessDialog = false },
-                    icon = {
-                        Text(
-                            text = "✅",
-                            fontSize = 48.sp
-                        )
-                    },
+                    icon = { Text(text = "✅", fontSize = 48.sp) },
                     title = {
                         Text(
                             text = "Payment Successful!",
@@ -511,7 +474,7 @@ fun PaymentScreen(
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = "Expires: ${SimpleDateFormat("dd MMM yyyy HH:mm", LocalLocale.current.platformLocale).format(Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000))}",
+                                text = "Expires: ${SimpleDateFormat("dd MMM yyyy HH:mm", LocalLocale.current.platformLocale).format(Date(paymentTimeMs + 24 * 60 * 60 * 1000))}",
                                 fontSize = 12.sp,
                                 color = Color.Gray
                             )
@@ -523,9 +486,7 @@ fun PaymentScreen(
                                 showSuccessDialog = false
                                 onBack()
                             },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = GreenSuccess
-                            )
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess)
                         ) {
                             Text("Done", color = White)
                         }
@@ -558,9 +519,7 @@ fun PaymentOptionCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) BlueLight else Color.White
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = if (isSelected) 2.dp else 0.dp
-        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 0.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -569,10 +528,7 @@ fun PaymentOptionCard(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = icon,
-                fontSize = 28.sp
-            )
+            Text(text = icon, fontSize = 28.sp)
             Spacer(modifier = Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -612,9 +568,7 @@ fun PreviewPaymentScreen() {
             onPaymentSuccess = { time, method ->
                 println("Payment successful! Time: $time, Method: $method")
             },
-            onBack = {
-                println("Back pressed")
-            }
+            onBack = { println("Back pressed") }
         )
     }
 }
@@ -632,9 +586,7 @@ fun PreviewPaymentScreenHighFee() {
             onPaymentSuccess = { time, method ->
                 println("Payment successful! Time: $time, Method: $method")
             },
-            onBack = {
-                println("Back pressed")
-            }
+            onBack = { println("Back pressed") }
         )
     }
 }

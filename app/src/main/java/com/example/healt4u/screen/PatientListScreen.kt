@@ -70,7 +70,7 @@ import java.util.Locale
 @Composable
 fun PatientListScreen(
     doctorId: Int,
-    onPatientClick: (patientId: Int, conversation: Conversation) -> Unit,
+    onPatientClick: (patientId: Int) -> Unit,
     onBack: () -> Unit
 ) {
     var patients by remember { mutableStateOf<List<Conversation>>(emptyList()) }
@@ -197,7 +197,7 @@ fun PatientListScreen(
                             PatientItem(
                                 conversation = conversation,
                                 onClick = {
-                                    onPatientClick(conversation.patientId, conversation)
+                                    onPatientClick(conversation.patientId)
                                 }
                             )
                         }
@@ -216,7 +216,7 @@ fun PatientItem(
 ) {
     val patientId = conversation.patientId
 
-    var realPatientName by remember { mutableStateOf(conversation.patientName ?: "") }
+    var realPatientName by remember { mutableStateOf(conversation.patientName) }
 
     LaunchedEffect(patientId) {
         getPatientById(patientId)?.name?.let {
@@ -225,7 +225,7 @@ fun PatientItem(
     }
 
     val timestampMillis = try {
-        val str = conversation.lastMessageTime ?: ""
+        val str = conversation.lastMessageTime
         when {
             str.all { it.isDigit() } -> str.toLong()
             else -> {
@@ -278,7 +278,7 @@ fun PatientItem(
                 Text("ID: $patientId", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
                     Text(
-                        text = conversation.lastMessage ?: "",
+                        text = conversation.lastMessage,
                         fontSize = 14.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -334,7 +334,7 @@ fun PreviewPatientListScreen() {
     colorTheme {
         PatientListScreen(
             doctorId = 1,
-            onPatientClick = { _, _ -> },
+            onPatientClick = { _ -> },
             onBack = {}
         )
     }

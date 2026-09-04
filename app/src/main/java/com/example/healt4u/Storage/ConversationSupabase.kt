@@ -5,26 +5,42 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.example.healt4u.model.Conversation
 import com.example.healt4u.model.Message
+import com.example.healt4u.model.Payment
 import com.example.healt4u.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.realtime.RealtimeChannel
+import io.github.jan.supabase.realtime.channel
+import io.github.jan.supabase.realtime.realtime
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.Instant
+import java.time.OffsetDateTime
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val TAG = "SupabaseStorage"
+private const val REALTIME_TAG = "RealtimeChat"
+private var chatRealtimeChannel: RealtimeChannel? = null
 
+// ==============================================
+// SAFE TIMESTAMP PARSER — RETURNS EPOCH MILLIS
+// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 private fun parseTimestampToEpochMs(timestampStr: String): Long {
     return try {
-        java.time.OffsetDateTime.parse(timestampStr).toInstant().toEpochMilli()
+        val cleaned = timestampStr.replace(" ", "T")
+        OffsetDateTime.parse(cleaned).toInstant().toEpochMilli()
     } catch (e: Exception) {
         try {
             Instant.parse(timestampStr).toEpochMilli()
         } catch (e2: Exception) {
+            Log.w(TAG, "Failed to parse timestamp: $timestampStr")
             System.currentTimeMillis()
         }
     }
@@ -61,12 +77,12 @@ suspend fun getConversationsByPatient(patientId: Int): List<Conversation> {
                 lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
                     ?: Instant.now().toString(),
                 unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
-                isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
+                isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true,
+                createdTime = map["created_time"]?.jsonPrimitive?.content ?: Instant.now().toString()
             )
         }
 
         Log.d("SupabaseStorage", "Returning ${conversations.size} conversations")
-
         return conversations
 
     } catch (e: Exception) {
@@ -99,12 +115,12 @@ suspend fun getConversationsByDoctor(doctorId: Int): List<Conversation> {
                 lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
                     ?: Instant.now().toString(),
                 unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
-                isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
+                isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true,
+                createdTime = map["created_time"]?.jsonPrimitive?.content ?: Instant.now().toString()
             )
         }
 
         Log.d(TAG, "Loaded ${conversations.size} conversations")
-
         return conversations
 
     } catch (e: Exception) {
@@ -138,7 +154,8 @@ suspend fun getConversationById(conversationId: Int): Conversation? {
             lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content
                 ?: Instant.now().toString(),
             unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
-            isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
+            isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true,
+            createdTime = map["created_time"]?.jsonPrimitive?.content ?: Instant.now().toString()
         )
     } catch (e: Exception) {
         Log.e(TAG, "Error getting conversation: ${e.message}", e)
@@ -164,13 +181,13 @@ suspend fun upsertConversation(conversation: Conversation): Conversation? {
         val row = savedList.first()
         val realId = row["id"]?.jsonPrimitive?.int
 
-        Log.d(TAG, "✅ UPSERT RETURNED ID=$realId")
+        Log.d(TAG, "UPSERT RETURNED ID=$realId")
 
         if (realId == null || realId == 0) {
             Log.w(TAG, "ID still null/0 → re-querying by doctor+patient...")
             val found = getConversationByDoctorPatient(conversation.doctorId, conversation.patientId)
             if (found != null && found.id != null && found.id != 0) {
-                Log.d(TAG, "✅ FOUND REAL ID: ${found.id}")
+                Log.d(TAG, "FOUND REAL ID: ${found.id}")
                 return found
             }
         }
@@ -179,7 +196,8 @@ suspend fun upsertConversation(conversation: Conversation): Conversation? {
             id = realId,
             doctorName = row["doctor_name"]?.jsonPrimitive?.content ?: conversation.doctorName,
             patientName = row["patient_name"]?.jsonPrimitive?.content ?: conversation.patientName,
-            hospitalName = row["hospital_name"]?.jsonPrimitive?.content ?: conversation.hospitalName
+            hospitalName = row["hospital_name"]?.jsonPrimitive?.content ?: conversation.hospitalName,
+            createdTime = row["created_time"]?.jsonPrimitive?.content ?: conversation.createdTime
         )
     } catch (e: Exception) {
         Log.e(TAG, "Error upserting conversation: ${e.message}", e)
@@ -198,9 +216,9 @@ suspend fun updateConversationLastMessage(convId: Int, lastMsg: String, msgTime:
             }) {
                 filter { eq("id", convId) }
             }
-        Log.d("SupabaseStorage", "✅ Conversation updated: id=$convId")
+        Log.d("SupabaseStorage", "Conversation updated: id=$convId")
     } catch (e: Exception) {
-        Log.w("SupabaseStorage", "⚠️ Updated last_message skipped: ${e.message}")
+        Log.w("SupabaseStorage", "Updated last_message skipped: ${e.message}")
     }
 }
 
@@ -265,8 +283,9 @@ suspend fun createConversation(
             val existingDocName = existing["doctor_name"]?.jsonPrimitive?.content ?: "Dr. Unknown"
             val existingPatName = existing["patient_name"]?.jsonPrimitive?.content ?: "Patient"
             val existingHospName = existing["hospital_name"]?.jsonPrimitive?.content ?: "General Hospital"
+            val existingCreatedTime = existing["created_time"]?.jsonPrimitive?.content ?: Instant.now().toString()
 
-            Log.d(TAG, "✅ EXISTS: ID=$existingId, Dr=$existingDocName, Patient=$existingPatName, Hosp=$existingHospName")
+            Log.d(TAG, "EXISTS: ID=$existingId, Dr=$existingDocName, Patient=$existingPatName, Hosp=$existingHospName")
 
             return Conversation(
                 id = existingId,
@@ -279,7 +298,8 @@ suspend fun createConversation(
                 lastMessage = existing["last_message"]?.jsonPrimitive?.content ?: "",
                 lastMessageTime = existing["last_message_time"]?.jsonPrimitive?.content ?: Instant.now().toString(),
                 unreadCount = existing["unread_count"]?.jsonPrimitive?.int ?: 0,
-                isActive = existing["is_active"]?.jsonPrimitive?.boolean ?: true
+                isActive = existing["is_active"]?.jsonPrimitive?.boolean ?: true,
+                createdTime = existingCreatedTime
             )
         }
 
@@ -310,8 +330,9 @@ suspend fun createConversation(
         }
 
         val safeHospitalName = hospitalName.takeIf { it.isNotEmpty() } ?: "General Hospital"
+        val nowStr = Instant.now().toString()
 
-        Log.d(TAG, "✅ NEW: Dr=$realDoctorName, Patient=$realPatientName, Hosp=$safeHospitalName")
+        Log.d(TAG, "NEW: Dr=$realDoctorName, Patient=$realPatientName, Hosp=$safeHospitalName")
 
         val newConversation = Conversation(
             id = null,
@@ -322,23 +343,23 @@ suspend fun createConversation(
             hospitalId = hospitalId,
             hospitalName = safeHospitalName,
             lastMessage = "Start your conversation!",
-            lastMessageTime = Instant.now().toString(),
+            lastMessageTime = nowStr,
             unreadCount = 0,
-            isActive = true
+            isActive = true,
+            createdTime = nowStr
         )
 
         val savedConversation = upsertConversation(newConversation)
-
         if (savedConversation?.id == null || savedConversation.id == 0) {
             Log.w(TAG, "Upsert returned ID=null/0 → re-querying for real ID...")
             val found = getConversationByDoctorPatient(doctorId, patientId)
             if (found != null) {
-                Log.d(TAG, "✅ FOUND REAL ID: ${found.id}")
+                Log.d(TAG, "FOUND REAL ID: ${found.id}")
                 return found
             }
         }
 
-        Log.d(TAG, "✅ SAVED: ID=${savedConversation?.id}")
+        Log.d(TAG, "SAVED: ID=${savedConversation?.id}")
         return savedConversation
 
     } catch (e: Exception) {
@@ -373,7 +394,8 @@ suspend fun getConversationByDoctorPatient(doctorId: Int, patientId: Int): Conve
             lastMessage = map["last_message"]?.jsonPrimitive?.content ?: "",
             lastMessageTime = map["last_message_time"]?.jsonPrimitive?.content ?: Instant.now().toString(),
             unreadCount = map["unread_count"]?.jsonPrimitive?.int ?: 0,
-            isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true
+            isActive = map["is_active"]?.jsonPrimitive?.boolean ?: true,
+            createdTime = map["created_time"]?.jsonPrimitive?.content ?: Instant.now().toString()
         )
     } catch (e: Exception) {
         Log.e(TAG, "Error finding conversation: ${e.message}", e)
@@ -538,4 +560,184 @@ suspend fun clearMessagesByConversation(conversationId: Int): Boolean {
         Log.e(TAG, "Error clearing messages: ${e.message}", e)
         false
     }
+}
+
+// ==============================================
+// GET PAYMENT TIME FOR CONVERSATION → EPOCH MILLIS
+// ==============================================
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun getPaymentTimeForConversation(
+    conversationId: Int,
+    doctorId: Int,
+    patientId: Int
+): Long {
+    return try {
+        Log.d("PaymentTime", "Searching payment for conv=$conversationId, doc=$doctorId, patient=$patientId")
+
+        val allPayments = SupabaseClient.supabase
+            .from("payments")
+            .select()
+            .decodeList<Payment>()
+
+        Log.d("PaymentTime", "Total payments found: ${allPayments.size}")
+
+        val payment = allPayments.firstOrNull {
+            it.doctorId == doctorId && it.patientId == patientId
+        }
+
+        if (payment != null) {
+            Log.d("PaymentTime", "Found payment!")
+
+            val timeStr = when {
+                payment.time.isNotEmpty() -> payment.time
+                else -> {
+                    Log.w("PaymentTime", "No time field found on payment")
+                    return System.currentTimeMillis()
+                }
+            }
+
+            Log.d("PaymentTime", "Time string: $timeStr")
+            return parseTimestampToEpochMs(timeStr)
+        } else {
+            Log.w("PaymentTime", "No payment matched")
+            System.currentTimeMillis()
+        }
+    } catch (e: Exception) {
+        Log.e("PaymentTime", "Error fetching payment time", e)
+        System.currentTimeMillis()
+    }
+}
+
+// ==============================================
+// REFUND PAYMENT IF ELIGIBLE
+// ==============================================
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun refundPaymentIfEligible(
+    patientId: Int,
+    doctorId: Int
+): Boolean {
+    return try {
+        val payments = SupabaseClient.supabase
+            .from("payments")
+            .select()
+            .decodeList<Payment>()
+
+        val payment = payments.firstOrNull {
+            it.patientId == patientId && it.doctorId == doctorId
+        }
+
+        if (payment == null) {
+            Log.w("Refund", "No payment found — cannot refund")
+            return false
+        }
+
+        if (payment.status == "refunded") {
+            Log.d("Refund", "Already refunded — skipping")
+            return false
+        }
+
+        SupabaseClient.supabase
+            .from("payments")
+            .update(
+                mapOf(
+                    "status" to "refunded",
+                    "refunded_at" to getCurrentTimestamp()
+                )
+            ) {
+                filter { eq("id", payment.id) }
+            }
+
+        Log.d("Refund", "Payment refunded! ID=${payment.id}")
+        true
+    } catch (e: Exception) {
+        Log.e("Refund", "Failed to refund", e)
+        false
+    }
+}
+
+// ==============================================
+// REALTIME LISTENER (POLLING EVERY 30s)
+// ==============================================
+@OptIn(DelicateCoroutinesApi::class)
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun startChatRealtimeListener(
+    currentUserId: Int,
+    appContext: android.content.Context,
+    onNewMessage: (Message) -> Unit
+) {
+    Log.d(REALTIME_TAG, "Starting listener for user $currentUserId")
+
+    try {
+        val channel = SupabaseClient.supabase.realtime.channel("public:messages")
+        channel.subscribe(true)
+
+        kotlinx.coroutines.GlobalScope.launch {
+            var lastCheckTime = System.currentTimeMillis()
+
+            while (true) {
+                delay(30_000.milliseconds)
+
+                try {
+                    val allMessages = SupabaseClient.supabase
+                        .from("message")
+                        .select()
+                        .decodeList<Message>()
+
+                    val newMessages = allMessages.filter { msg ->
+                        val msgTime = try {
+                            parseTimestampToEpochMs(msg.timestamp)
+                        } catch (e: Exception) {
+                            0L
+                        }
+                        msgTime > lastCheckTime && msg.senderId != currentUserId
+                    }
+
+                    newMessages.forEach { msg ->
+                        Log.d(REALTIME_TAG, "New message from senderId=${msg.senderId}")
+                        onNewMessage(msg)
+                    }
+
+                    if (newMessages.isNotEmpty()) {
+                        lastCheckTime = System.currentTimeMillis()
+                    }
+                } catch (e: Exception) {
+                    Log.e(REALTIME_TAG, "Polling error", e)
+                }
+            }
+        }
+    } catch (e: Exception) {
+        Log.e(REALTIME_TAG, "Listener failed", e)
+    }
+}
+
+// ==============================================
+// HELPER: GET NEW MESSAGES
+// ==============================================
+@RequiresApi(Build.VERSION_CODES.O)
+suspend fun getMessagesNewerThan(timestampMs: Long): List<Message> {
+    return try {
+        val allMessages = SupabaseClient.supabase
+            .from("message")
+            .select()
+            .decodeList<Message>()
+
+        allMessages.filter { msg ->
+            val msgTime = try {
+                parseTimestampToEpochMs(msg.timestamp)
+            } catch (e: Exception) {
+                0L
+            }
+            msgTime > timestampMs
+        }
+    } catch (e: Exception) {
+        emptyList()
+    }
+}
+
+// ==============================================
+// TIMESTAMP HELPER
+// ==============================================
+@RequiresApi(Build.VERSION_CODES.O)
+private fun getCurrentTimestamp(): String {
+    return OffsetDateTime.now().toString()
 }

@@ -1,5 +1,6 @@
 package com.example.healt4u.screen.DoctorPatientChat
 
+import android.annotation.SuppressLint
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -19,18 +20,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.healt4u.Storage.getConversationById
 import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getPatientById
+import com.example.healt4u.Storage.refundPaymentIfEligible
+import com.example.healt4u.ViewModel.ConversationViewModel
 import com.example.healt4u.model.Message
 import com.example.healt4u.screen.componentUI.DateHeader
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
+@SuppressLint("DefaultLocale")
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,12 +61,17 @@ fun ChatScreen(
     onAvatarClick: (Int) -> Unit,
     onClearAllMessages: () -> Unit,
     isMuted: Boolean = false,
-    onMuteChanged: (Boolean) -> Unit = {}
+    onMuteChanged: (Boolean) -> Unit = {},
+    getDoctorStatus: (Int) -> String = { "offline" },
+    viewModel: ConversationViewModel = viewModel()
 ) {
     val displayName = chatName
-
     var myName by remember { mutableStateOf("Me") }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Doctor status
+    var doctorStatus by remember { mutableStateOf("offline") }
 
     LaunchedEffect(userId, userRole) {
         coroutineScope.launch {
@@ -66,25 +83,84 @@ fun ChatScreen(
         }
     }
 
+    LaunchedEffect(doctorId) {
+        doctorStatus = getDoctorStatus(doctorId)
+        Log.d("ChatStatus", "Doctor $doctorId status → $doctorStatus")
+    }
+
+    // Status colors
+    val statusColor = when (doctorStatus) {
+        "available" -> Color(0xFF4CAF50)
+        "busy" -> Color(0xFFFF5722)
+        else -> Color(0xFF9E9E9E)
+    }
+    val statusText = doctorStatus.uppercase()
+
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var lockedExpiryTime by remember { mutableLongStateOf(0L) }
+    val ONE_DAY_MS = 24 * 60 * 60 * 1000L
+
+    LaunchedEffect(conversationId) {
+        coroutineScope.launch {
+            val conv = getConversationById(conversationId)
+            val createdMs = parseTimestampSafe(conv?.createdTime ?: "").toEpochMilli()
+            lockedExpiryTime = createdMs + ONE_DAY_MS
+        }
+        while (true) {
+            currentTime = System.currentTimeMillis()
+            delay(1000.milliseconds)
+        }
+    }
+
+    val remainingMs = lockedExpiryTime - currentTime
+    val totalSeconds = (remainingMs / 1000).coerceAtLeast(0)
+    val hours = (totalSeconds / 3600).toInt()
+    val minutes = ((totalSeconds % 3600) / 60).toInt()
+    val seconds = (totalSeconds % 60).toInt()
+    val timeText = String.format("%02d:%02d:%02d", hours, minutes, seconds)
+    val isChatExpired = lockedExpiryTime > 0 && totalSeconds <= 0L
+
+    // Check if doctor has ever replied
+    val hasDoctorReplied = remember(initialMessages) {
+        derivedStateOf { initialMessages.any { it.senderId == doctorId } }
+    }
+
+    // Trigger refund if expired AND no reply
+    LaunchedEffect(isChatExpired, hasDoctorReplied.value) {
+        if (isChatExpired && !hasDoctorReplied.value) {
+            Log.d("Refund", "Chat expired with no reply — processing refund")
+            coroutineScope.launch {
+                refundPaymentIfEligible(patientId, doctorId)
+            }
+        }
+    }
+
+    // Can send messages? Only if NOT expired OR doctor already replied
+    val canSend = !isChatExpired || hasDoctorReplied.value
+
+    // Messages state
     var messages by remember { mutableStateOf(initialMessages) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    var showMenu by remember { mutableStateOf(false) }
-    var showClearAllDialog by remember { mutableStateOf(false) }
-    var messageToDelete by remember { mutableStateOf<Message?>(null) }
-    var mutedState by remember { mutableStateOf(isMuted) }
-
+    // Auto-scroll to bottom
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 
+    // Menu & dialog state
+    var showMenu by remember { mutableStateOf(false) }
+    var showClearAllDialog by remember { mutableStateOf(false) }
+    var messageToDelete by remember { mutableStateOf<Message?>(null) }
+    var mutedState by remember { mutableStateOf(isMuted) }
+
     LaunchedEffect(isMuted) {
         mutedState = isMuted
     }
 
+    // --- Dialogs ---
     if (messageToDelete != null) {
         AlertDialog(
             title = { Text("Delete Message") },
@@ -129,6 +205,7 @@ fun ChatScreen(
         )
     }
 
+    // --- UI ---
     Scaffold(
         topBar = {
             TopAppBar(
@@ -142,24 +219,55 @@ fun ChatScreen(
                                 .fillMaxWidth()
                                 .wrapContentWidth(Alignment.CenterHorizontally)
                         )
+
+                        // ✅ SHOW COUNTDOWN TIMER
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .wrapContentWidth(Alignment.CenterHorizontally)
-                                .padding(end=12.dp)
-                            ,
-                            verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .background(Color(0xFF4CAF50), CircleShape)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Online",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = Color.White,
-                            )
+                                .wrapContentWidth(Alignment.CenterHorizontally),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (!isChatExpired) {
+                                Text(
+                                    text = "⏳ Time: $timeText",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (hours < 1) Color(0xFFFFCC00) else Color.White,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            } else if (!hasDoctorReplied.value) {
+                                Text(
+                                    text = "✅ Refund Processed",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFF4CAF50),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            } else {
+                                Text(
+                                    text = "❌ Access Expired",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFFFFCC00),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
+                            // Doctor status (only for patient)
+                            if (userRole == "patient") {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(statusColor, CircleShape)
+                                )
+                                Text(
+                                    text = statusText,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = Color.White,
+                                    fontSize = 11.sp
+                                )
+                            }
                         }
                     }
                 },
@@ -209,69 +317,97 @@ fun ChatScreen(
             )
         },
         bottomBar = {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surface,
-                shadowElevation = 8.dp
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            if (isChatExpired && !canSend) {
+                // CHAT EXPIRED — Show BLOCKED bar
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFFFFE0E0),
+                    shadowElevation = 4.dp
                 ) {
-                    OutlinedTextField(
-                        value = textInput,
-                        onValueChange = { textInput = it },
-                        placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onBackground) },
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .background(Color.White, shape = RoundedCornerShape(28.dp)),
-                        shape = RoundedCornerShape(28.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.onBackground,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White
-                        )
-                    )
-                    FloatingActionButton(
-                        onClick = {
-                            if (textInput.isNotBlank()) {
-                                val nowIso = Instant.now().toString()
-                                val newMessage = Message(
-                                    id = Instant.now().toEpochMilli().toInt(),
-                                    conversationId = conversationId,
-                                    content = textInput,
-                                    senderId = userId,
-                                    senderName = myName,
-                                    timestamp = nowIso,
-                                    type = "text"
-                                )
-                                messages = messages + newMessage
-                                onSendMessage(newMessage)
-                                textInput = ""
-                            }
-                        },
-                        containerColor = if (textInput.isNotEmpty()) {
-                            MaterialTheme.colorScheme.secondary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                        contentColor = if (textInput.isNotEmpty()) {
-                            MaterialTheme.colorScheme.onSecondary
-                        } else {
-                            MaterialTheme.colorScheme.surface
-                        },
-                        modifier = Modifier.size(48.dp)
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Send,
-                            contentDescription = "Send",
-                            modifier = Modifier.size(24.dp)
+                        Text(
+                            text = if (!hasDoctorReplied.value) {
+                                "⏰ Chat expired — No reply received. Payment refunded."
+                            } else {
+                                "⏰ Chat access expired (24h limit)"
+                            },
+                            color = Color(0xFFB71C1C),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 13.sp
                         )
+                    }
+                }
+            } else {
+                // NORMAL INPUT — Still within 24h OR doctor replied
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = textInput,
+                            onValueChange = { textInput = it },
+                            placeholder = { Text("Type here...", color = MaterialTheme.colorScheme.onBackground) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(Color.White, shape = RoundedCornerShape(28.dp)),
+                            shape = RoundedCornerShape(28.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.secondary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onBackground,
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White
+                            )
+                        )
+                        FloatingActionButton(
+                            onClick = {
+                                if (textInput.isNotBlank()) {
+                                    val nowIso = Instant.now().toString()
+                                    val newMessage = Message(
+                                        id = Instant.now().toEpochMilli().toInt(),
+                                        conversationId = conversationId,
+                                        content = textInput,
+                                        senderId = userId,
+                                        senderName = myName,
+                                        timestamp = nowIso,
+                                        type = "text"
+                                    )
+                                    messages = messages + newMessage
+                                    onSendMessage(newMessage)
+                                    textInput = ""
+                                }
+                            },
+                            containerColor = if (textInput.isNotEmpty()) {
+                                MaterialTheme.colorScheme.secondary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                            contentColor = if (textInput.isNotEmpty()) {
+                                MaterialTheme.colorScheme.onSecondary
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Send,
+                                contentDescription = "Send",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -296,6 +432,14 @@ fun ChatScreen(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    if (!isChatExpired && userRole == "patient") {
+                        Text(
+                            text = "Waiting for doctor's reply...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color(0xFFFFCC00),
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
@@ -330,6 +474,8 @@ fun ChatScreen(
     }
 }
 
+// --- Helper Functions ---
+
 @RequiresApi(Build.VERSION_CODES.O)
 private fun parseTimestampSafe(timestampStr: String): Instant {
     return try {
@@ -347,11 +493,7 @@ private fun parseTimestampSafe(timestampStr: String): Instant {
 @RequiresApi(Build.VERSION_CODES.O)
 private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
     if (messages.isEmpty()) return emptyList()
-
-    val groups = messages.groupBy { message ->
-        getMessageDayKey(message.timestamp)
-    }
-
+    val groups = messages.groupBy { getMessageDayKey(it.timestamp) }
     return groups.entries
         .sortedBy { it.key }
         .map { entry ->
@@ -365,14 +507,10 @@ private fun groupMessagesByDate(messages: List<Message>): List<MessageGroup> {
 
 @RequiresApi(Build.VERSION_CODES.O)
 private fun getMessageDayKey(timestamp: String): LocalDate {
-    val instant = parseTimestampSafe(timestamp)
-    return instant.atZone(ZoneId.systemDefault()).toLocalDate()
+    return parseTimestampSafe(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
 }
 
-private data class MessageGroup(
-    val dateMillis: Long,
-    val messages: List<Message>
-)
+private data class MessageGroup(val dateMillis: Long, val messages: List<Message>)
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true, showSystemUi = true)
@@ -386,25 +524,10 @@ fun PreviewChatScreen() {
             conversationId = 1,
             doctorId = 1,
             patientId = 2,
+            chatExpiryTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000,
             initialMessages = listOf(
-                com.example.healt4u.model.Message(
-                    id = 1,
-                    conversationId = 1,
-                    content = "Hello! How are you feeling today?",
-                    senderId = 1,
-                    senderName = "Dr. Sarah Tan",
-                    timestamp = "2026-09-02 10:00:00Z",
-                    type = "text"
-                ),
-                com.example.healt4u.model.Message(
-                    id = 2,
-                    conversationId = 1,
-                    content = "I am feeling much better, thank you doctor.",
-                    senderId = 2,
-                    senderName = "Yuki Chung",
-                    timestamp = "2026-09-02 11:00:00Z",
-                    type = "text"
-                )
+                Message(1, 1, "Hello! How are you feeling today?", 1, "Dr. Sarah Tan", "2026-09-02 10:00:00Z", "text"),
+                Message(2, 1, "I am feeling much better, thank you doctor.", 2, "Yuki Chung", "2026-09-02 11:00:00Z", "text")
             ),
             onBack = {},
             onSendMessage = {},

@@ -142,7 +142,7 @@ fun AdherenceStatisticScreen(
                     }
                 } else {
                     Text(
-                        "Dose Logs",
+                        "Medicine Logs",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)

@@ -9,46 +9,15 @@ import com.example.healt4u.model.Payment
 import com.example.healt4u.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.realtime.RealtimeChannel
-import io.github.jan.supabase.realtime.channel
-import io.github.jan.supabase.realtime.realtime
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.Instant
 import java.time.OffsetDateTime
-import kotlin.time.Duration.Companion.milliseconds
 
 private const val TAG = "SupabaseStorage"
-private const val REALTIME_TAG = "RealtimeChat"
-private var chatRealtimeChannel: RealtimeChannel? = null
 
-// ==============================================
-// SAFE TIMESTAMP PARSER — RETURNS EPOCH MILLIS
-// ==============================================
-@RequiresApi(Build.VERSION_CODES.O)
-private fun parseTimestampToEpochMs(timestampStr: String): Long {
-    return try {
-        val cleaned = timestampStr.replace(" ", "T")
-        OffsetDateTime.parse(cleaned).toInstant().toEpochMilli()
-    } catch (e: Exception) {
-        try {
-            Instant.parse(timestampStr).toEpochMilli()
-        } catch (e2: Exception) {
-            Log.w(TAG, "Failed to parse timestamp: $timestampStr")
-            System.currentTimeMillis()
-        }
-    }
-}
-
-// ==============================================
-// GET CONVERSATIONS — PATIENT
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun getConversationsByPatient(patientId: Int): List<Conversation> {
     return try {
@@ -93,9 +62,6 @@ suspend fun getConversationsByPatient(patientId: Int): List<Conversation> {
     }
 }
 
-// ==============================================
-// GET CONVERSATIONS — DOCTOR
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun getConversationsByDoctor(doctorId: Int): List<Conversation> {
     return try {
@@ -135,9 +101,6 @@ suspend fun getConversationsByDoctor(doctorId: Int): List<Conversation> {
     }
 }
 
-// ==============================================
-// GET SINGLE CONVERSATION BY ID
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun getConversationById(conversationId: Int): Conversation? {
     return try {
@@ -171,9 +134,6 @@ suspend fun getConversationById(conversationId: Int): Conversation? {
     }
 }
 
-// ==============================================
-// UPSERT CONVERSATION
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun upsertConversation(conversation: Conversation): Conversation? {
     return try {
@@ -216,9 +176,6 @@ suspend fun upsertConversation(conversation: Conversation): Conversation? {
     }
 }
 
-// ==============================================
-// UPDATE LAST MESSAGE
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun updateConversationLastMessage(convId: Int, lastMsg: String, msgTime: String) {
     try {
@@ -236,45 +193,6 @@ suspend fun updateConversationLastMessage(convId: Int, lastMsg: String, msgTime:
     }
 }
 
-// ==============================================
-// MARK AS READ
-// ==============================================
-suspend fun markConversationAsRead(conversationId: Int): Boolean {
-    return try {
-        SupabaseClient.supabase
-            .from("conversation")
-            .update(mapOf("unread_count" to 0)) {
-                filter { eq("id", conversationId) }
-            }
-        Log.d(TAG, "Marked as read: id=$conversationId")
-        true
-    } catch (e: Exception) {
-        Log.e(TAG, "Error marking read: ${e.message}", e)
-        false
-    }
-}
-
-// ==============================================
-// DELETE / DEACTIVATE CONVERSATION
-// ==============================================
-suspend fun deleteConversation(conversationId: Int): Boolean {
-    return try {
-        SupabaseClient.supabase
-            .from("conversation")
-            .update(mapOf("is_active" to false)) {
-                filter { eq("id", conversationId) }
-            }
-        Log.d(TAG, "Deactivated conversation: id=$conversationId")
-        true
-    } catch (e: Exception) {
-        Log.e(TAG, "Error deactivating: ${e.message}", e)
-        false
-    }
-}
-
-// ==============================================
-// CREATE CONVERSATION
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun createConversation(
     doctorId: Int,
@@ -354,9 +272,6 @@ suspend fun createConversation(
     }
 }
 
-// ==============================================
-// FIND CONVERSATION BY DOCTOR+PATIENT
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun getConversationByDoctorPatient(doctorId: Int, patientId: Int): Conversation? {
     return try {
@@ -391,9 +306,6 @@ suspend fun getConversationByDoctorPatient(doctorId: Int, patientId: Int): Conve
     }
 }
 
-// ==============================================
-// SEND MESSAGE
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun sendMessage(message: Message): Boolean {
     return try {
@@ -417,9 +329,6 @@ suspend fun sendMessage(message: Message): Boolean {
     }
 }
 
-// ==============================================
-// GET MESSAGES BY CONVERSATION
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun getMessagesByConversation(conversationId: Int): List<Message> {
     return try {
@@ -456,50 +365,6 @@ suspend fun getMessagesByConversation(conversationId: Int): List<Message> {
     }
 }
 
-// ==============================================
-// GET LAST MESSAGE
-// ==============================================
-@RequiresApi(Build.VERSION_CODES.O)
-suspend fun getLastMessage(conversationId: Int): Message? {
-    return try {
-        val rawList = SupabaseClient.supabase
-            .from("message")
-            .select { filter { eq("conversation_id", conversationId) } }
-            .decodeList<Map<String, JsonElement>>()
-
-        if (rawList.isEmpty()) return null
-
-        var newestMap: Map<String, JsonElement>? = null
-        var newestTime = -1L
-
-        for (map in rawList) {
-            val time = parseTimestampToEpochMs(map["timestamp"]?.jsonPrimitive?.content ?: "")
-            if (time > newestTime) {
-                newestTime = time
-                newestMap = map
-            }
-        }
-
-        val map = newestMap ?: return null
-
-        return Message(
-            id = map["id"]?.jsonPrimitive?.int ?: 0,
-            conversationId = map["conversation_id"]?.jsonPrimitive?.int ?: 0,
-            content = map["content"]?.jsonPrimitive?.content ?: "",
-            senderId = map["sender_id"]?.jsonPrimitive?.int ?: 0,
-            senderName = map["sender_name"]?.jsonPrimitive?.content ?: "",
-            timestamp = map["timestamp"]?.jsonPrimitive?.content ?: Instant.now().toString(),
-            type = map["type"]?.jsonPrimitive?.content ?: "text"
-        )
-    } catch (e: Exception) {
-        Log.e(TAG, "Error getting last message: ${e.message}", e)
-        null
-    }
-}
-
-// ==============================================
-// DELETE MESSAGE
-// ==============================================
 suspend fun deleteMessage(messageId: Int): Boolean {
     return try {
         SupabaseClient.supabase
@@ -513,9 +378,6 @@ suspend fun deleteMessage(messageId: Int): Boolean {
     }
 }
 
-// ==============================================
-// CLEAR ALL MESSAGES IN CONVERSATION
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun clearMessagesByConversation(conversationId: Int): Boolean {
     return try {
@@ -543,45 +405,6 @@ suspend fun clearMessagesByConversation(conversationId: Int): Boolean {
     }
 }
 
-// ==============================================
-// GET PAYMENT TIME FOR CONVERSATION
-// ==============================================
-@RequiresApi(Build.VERSION_CODES.O)
-suspend fun getPaymentTimeForConversation(
-    conversationId: Int,
-    doctorId: Int,
-    patientId: Int
-): Long {
-    return try {
-        Log.d("PaymentTime", "Looking up payment: doc=$doctorId, patient=$patientId")
-
-        val payment = SupabaseClient.supabase
-            .from("payments")
-            .select {
-                filter {
-                    eq("doctor_id", doctorId)
-                    eq("patient_id", patientId)
-                }
-            }
-            .decodeList<Payment>()
-            .firstOrNull()
-
-        if (payment != null) {
-            Log.d("PaymentTime", "Payment found! time=${payment.time}")
-            return parseTimestampToEpochMs(payment.time)
-        } else {
-            Log.w("PaymentTime", "No payment found")
-            return System.currentTimeMillis()
-        }
-    } catch (e: Exception) {
-        Log.e("PaymentTime", "Error: ${e.message}", e)
-        System.currentTimeMillis()
-    }
-}
-
-// ==============================================
-// REFUND PAYMENT IF ELIGIBLE
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 suspend fun refundPaymentIfEligible(
     patientId: Int,
@@ -611,7 +434,7 @@ suspend fun refundPaymentIfEligible(
             return false
         }
 
-        // ✅ UPDATE STATUS TO REFUNDED IN SUPABASE
+        // update to supabase
         SupabaseClient.supabase
             .from("payments")
             .update(
@@ -623,97 +446,13 @@ suspend fun refundPaymentIfEligible(
                 filter { eq("id", payment.id) }
             }
 
-        Log.d("Refund", "✅ REFUNDED: Payment ID=${payment.id}")
         return true
 
     } catch (e: Exception) {
-        Log.e("Refund", "Failed to refund: ${e.message}", e)
         false
     }
 }
 
-// ==============================================
-// REALTIME LISTENER (POLLING EVERY 30s)
-// ==============================================
-@OptIn(DelicateCoroutinesApi::class)
-@RequiresApi(Build.VERSION_CODES.O)
-suspend fun startChatRealtimeListener(
-    currentUserId: Int,
-    appContext: android.content.Context,
-    onNewMessage: (Message) -> Unit
-) {
-    Log.d(REALTIME_TAG, "Starting listener for user $currentUserId")
-
-    try {
-        val channel = SupabaseClient.supabase.realtime.channel("public:messages")
-        channel.subscribe(true)
-
-        kotlinx.coroutines.GlobalScope.launch {
-            var lastCheckTime = System.currentTimeMillis()
-
-            while (true) {
-                delay(30_000.milliseconds)
-
-                try {
-                    val allMessages = SupabaseClient.supabase
-                        .from("message")
-                        .select()
-                        .decodeList<Message>()
-
-                    val newMessages = allMessages.filter { msg ->
-                        val msgTime = try {
-                            parseTimestampToEpochMs(msg.timestamp)
-                        } catch (e: Exception) {
-                            0L
-                        }
-                        msgTime > lastCheckTime && msg.senderId != currentUserId
-                    }
-
-                    newMessages.forEach { msg ->
-                        Log.d(REALTIME_TAG, "New message from senderId=${msg.senderId}")
-                        onNewMessage(msg)
-                    }
-
-                    if (newMessages.isNotEmpty()) {
-                        lastCheckTime = System.currentTimeMillis()
-                    }
-                } catch (e: Exception) {
-                    Log.e(REALTIME_TAG, "Polling error: ${e.message}", e)
-                }
-            }
-        }
-    } catch (e: Exception) {
-        Log.e(REALTIME_TAG, "Listener failed: ${e.message}", e)
-    }
-}
-
-// ==============================================
-// GET MESSAGES NEWER THAN TIMESTAMP
-// ==============================================
-@RequiresApi(Build.VERSION_CODES.O)
-suspend fun getMessagesNewerThan(timestampMs: Long): List<Message> {
-    return try {
-        val allMessages = SupabaseClient.supabase
-            .from("message")
-            .select()
-            .decodeList<Message>()
-
-        allMessages.filter { msg ->
-            val msgTime = try {
-                parseTimestampToEpochMs(msg.timestamp)
-            } catch (e: Exception) {
-                0L
-            }
-            msgTime > timestampMs
-        }
-    } catch (e: Exception) {
-        emptyList()
-    }
-}
-
-// ==============================================
-// HELPER: CURRENT TIMESTAMP
-// ==============================================
 @RequiresApi(Build.VERSION_CODES.O)
 private fun getCurrentTimestamp(): String {
     return OffsetDateTime.now().toString()

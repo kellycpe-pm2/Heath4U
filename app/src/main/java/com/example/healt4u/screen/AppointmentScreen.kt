@@ -41,6 +41,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlin.time.Duration.Companion.milliseconds
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -451,7 +452,7 @@ fun AppointmentScreen(
                             )
 
                             coroutineScope.launch {
-                                delay(1500)
+                                delay(1500.milliseconds)
                                 isSaving = false
                             }
                         } else {
@@ -551,7 +552,6 @@ fun AppointmentScreen(
     if (showDoctorDropdown && selectedHospital != null) {
         DoctorDropdownDialog(
             doctors = doctors,
-            hospitalId = selectedHospital!!.id,
             isLoading = isLoadingData,
             onDismiss = { showDoctorDropdown = false },
             onSelect = { doctor ->
@@ -656,7 +656,6 @@ fun HospitalItem(hospital: Hospital, onClick: () -> Unit) {
 @Composable
 fun DoctorDropdownDialog(
     doctors: List<Doctor>,
-    hospitalId: Int,
     isLoading: Boolean,
     onDismiss: () -> Unit,
     onSelect: (Doctor) -> Unit

@@ -39,7 +39,7 @@ fun RevenueStatisticScreen(
         loading = false
     }
 
-    // ✅ ONLY COUNT COMPLETED — EXCLUDE REFUNDED
+    //only count completed payments
     val completedPayments = remember(payments) {
         payments.filter { it.status.equals("completed", ignoreCase = true) }
     }
@@ -59,7 +59,7 @@ fun RevenueStatisticScreen(
         completedPayments.filter { it.date.orEmpty().startsWith(thisMonth) }.sumOf { it.amount }
     }
 
-    // ✅ COUNT REFUNDS
+    // count refund payments
     val refundedPayments = remember(payments) {
         payments.filter { it.status.equals("refunded", ignoreCase = true) }
     }

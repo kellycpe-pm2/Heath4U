@@ -26,12 +26,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.healt4u.Storage.getConversationById
 import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.refundPaymentIfEligible
-import com.example.healt4u.ViewModel.ConversationViewModel
 import com.example.healt4u.model.Message
 import com.example.healt4u.notification.ChatMessageReceiver
 import com.example.healt4u.notification.Notification
@@ -64,7 +62,6 @@ fun ChatScreen(
     isMuted: Boolean = false,
     onMuteChanged: (Boolean) -> Unit = {},
     getDoctorStatus: (Int) -> String,
-    viewModel: ConversationViewModel = viewModel()
 ) {
     val context = LocalContext.current
 
@@ -73,7 +70,6 @@ fun ChatScreen(
 
     var lastNotifiedMessageId by remember { mutableStateOf<Int?>(null) }
 
-    // Doctor status — auto-refresh every 3s
     var doctorStatus by remember { mutableStateOf("offline") }
 
     LaunchedEffect(userId, userRole) {
@@ -86,6 +82,7 @@ fun ChatScreen(
         }
     }
 
+    // refresh doctor status every 3s
     LaunchedEffect(doctorId) {
         while (true) {
             doctorStatus = getDoctorStatus(doctorId)
@@ -94,7 +91,6 @@ fun ChatScreen(
         }
     }
 
-    // Status colors
     val statusColor = when (doctorStatus) {
         "available" -> Color(0xFF4CAF50)
         "busy" -> Color(0xFFFF5722)
@@ -107,6 +103,7 @@ fun ChatScreen(
 
     val ONE_DAY_MS = 24 * 60 * 60 * 1000L
 
+    // calculate and update expiry time
     LaunchedEffect(conversationId) {
         coroutineScope.launch {
             val conv = getConversationById(conversationId)
@@ -132,6 +129,7 @@ fun ChatScreen(
         derivedStateOf { initialMessages.any { it.senderId == doctorId } }
     }
 
+    // if doctor not replied in 24 hours, process refund
     LaunchedEffect(isChatExpired, hasDoctorReplied.value) {
         if (isChatExpired) {
             if (!hasDoctorReplied.value) {
@@ -149,10 +147,11 @@ fun ChatScreen(
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
+    // send notification when received new message
     LaunchedEffect(messages.size) {
         val latest = messages.lastOrNull()
         if (latest != null && latest.senderId != userId && !isMuted) {
-            // Only send if this message hasn't been notified before
+            // only send if this message hasn't been notified before
             if (latest.id != lastNotifiedMessageId) {
                 Notification.showSafely(
                     context = context,
@@ -165,7 +164,7 @@ fun ChatScreen(
                     message = latest.content.take(40),
                     conversationId = conversationId
                 )
-                // ✅ Mark as notified so we skip it next time
+                // mark as notified so we skip it next time
                 lastNotifiedMessageId = latest.id
             }
         }
@@ -178,7 +177,7 @@ fun ChatScreen(
         }
     }
 
-    // Menu & dialog state
+    // menu & dialog state
     var showMenu by remember { mutableStateOf(false) }
     var showClearAllDialog by remember { mutableStateOf(false) }
     var messageToDelete by remember { mutableStateOf<Message?>(null) }
@@ -188,7 +187,7 @@ fun ChatScreen(
         mutedState = isMuted
     }
 
-    // --- Dialogs ---
+    // delete confirmation
     if (messageToDelete != null) {
         AlertDialog(
             title = { Text("Delete Message") },
@@ -211,6 +210,7 @@ fun ChatScreen(
         )
     }
 
+    // clear all message confirmation
     if (showClearAllDialog) {
         AlertDialog(
             title = { Text("Clear All Messages") },
@@ -233,7 +233,6 @@ fun ChatScreen(
         )
     }
 
-    // --- UI ---
     Scaffold(
         topBar = {
             TopAppBar(
@@ -248,7 +247,7 @@ fun ChatScreen(
                                 .wrapContentWidth(Alignment.CenterHorizontally)
                         )
 
-                        // SHOW COUNTDOWN TIMER
+                        // countdown timer
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -346,7 +345,7 @@ fun ChatScreen(
         },
         bottomBar = {
             if (isChatExpired && !canSend) {
-                // CHAT EXPIRED — Show BLOCKED bar
+                // block the chat
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = Color(0xFFFFE0E0),
@@ -371,7 +370,6 @@ fun ChatScreen(
                     }
                 }
             } else {
-                // NORMAL INPUT — Still within 24h OR doctor replied
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surface,
@@ -416,7 +414,6 @@ fun ChatScreen(
                                     messages = messages + newMessage
                                     onSendMessage(newMessage)
 
-                                    // Notify recipient — ALWAYS send when YOU send a message
                                     showNewMessageNotification(
                                         context = context,
                                         senderName = myName,
@@ -469,14 +466,6 @@ fun ChatScreen(
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    if (!isChatExpired && userRole == "patient") {
-                        Text(
-                            text = "Waiting for doctor's reply...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFFFFCC00),
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
                 }
             } else {
                 LazyColumn(
@@ -511,7 +500,6 @@ fun ChatScreen(
     }
 }
 
-// ✅ YOUR FUNCTION — placed at bottom of file
 fun showNewMessageNotification(
     context: android.content.Context,
     senderName: String,
@@ -527,7 +515,6 @@ fun showNewMessageNotification(
     context.sendBroadcast(intent)
 }
 
-// --- Helper Functions ---
 @RequiresApi(Build.VERSION_CODES.O)
 private fun parseTimestampSafe(timestampStr: String): Instant {
     return try {

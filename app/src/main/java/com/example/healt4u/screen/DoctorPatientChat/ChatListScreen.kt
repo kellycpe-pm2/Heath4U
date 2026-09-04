@@ -74,7 +74,7 @@ fun ChatListScreen(
         }
     }
 
-    // ⏱️ TIMER — updates EVERY 30 SECONDS for live countdown
+    // timer — updates every 30s
     var tickTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -242,7 +242,6 @@ fun ConversationItem(
 ) {
     val conversationId = conversation.id ?: 0
     val ONE_DAY_MS = 24 * 60 * 60 * 1000L
-    // val ONE_DAY_MS = 60 * 1000L  // ⏰ TEST MODE: 60 seconds
 
     var displayName by remember { mutableStateOf("Loading...") }
     val coroutineScope = rememberCoroutineScope()
@@ -286,7 +285,7 @@ fun ConversationItem(
     val isExpired = remainingTime <= 0L
 
     val countdownText = when {
-        isExpired -> if (!hasDoctorReplied) "✅ Refund Available" else "❌ Expired"
+        isExpired -> if (!hasDoctorReplied) "Refund Available" else "Expired"
         else -> {
             val hours = TimeUnit.MILLISECONDS.toHours(remainingTime)
             val mins = TimeUnit.MILLISECONDS.toMinutes(remainingTime) % 60
@@ -301,13 +300,12 @@ fun ConversationItem(
 
     // Status colors
     val statusColor = when {
-        isExpired && !hasDoctorReplied -> Color(0xFF4CAF50)  // Green = refund
-        isExpired -> Color(0xFFFF5722)                         // Orange = expired
-        remainingTime < 60 * 60 * 1000 -> Color(0xFFFF9800)    // Orange = <1h left
-        else -> Color(0xFF2196F3)                               // Blue = active
+        isExpired && !hasDoctorReplied -> Color(0xFF4CAF50)
+        isExpired -> Color(0xFFFF5722)
+        remainingTime < 60 * 60 * 1000 -> Color(0xFFFF9800)
+        else -> Color(0xFF2196F3)
     }
 
-    // ✅ CAN OPEN? Only if NOT expired OR doctor already replied
     val canOpen = !isExpired || hasDoctorReplied
 
     Card(
@@ -315,11 +313,7 @@ fun ConversationItem(
             .fillMaxWidth()
             .clickable(enabled = canOpen) { onConversationClick(expiryTimeMs) },
         colors = CardDefaults.cardColors(
-            containerColor = when {
-                isExpired && !hasDoctorReplied -> Color(0xFFE8F5E9)  // Light green bg
-                isExpired -> Color(0xFFFFF3E0)                         // Light orange bg
-                else -> MaterialTheme.colorScheme.onPrimary
-            }
+            containerColor = MaterialTheme.colorScheme.onPrimary
         ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -337,6 +331,7 @@ fun ConversationItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
+                    // first 2 alphabet as avatar
                     text = displayName.split(" ")
                         .mapNotNull { it.firstOrNull()?.toString() }
                         .take(2)
@@ -349,7 +344,6 @@ fun ConversationItem(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // Info
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -389,21 +383,7 @@ fun ConversationItem(
                 }
             }
 
-            // Unread badge
-            if (conversation.unreadCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clip(CircleShape)
-                        .background(Color.Red),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(text = "${conversation.unreadCount}", fontSize = 10.sp, color = Color.White)
-                }
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-
-            // Arrow — dimmed if blocked
+            // Arrow
             Icon(
                 Icons.Filled.ChevronRight,
                 "Open chat",
@@ -411,7 +391,6 @@ fun ConversationItem(
             )
         }
 
-        // 🔒 BLOCKED OVERLAY
         if (isExpired && !canOpen) {
             Box(
                 modifier = Modifier
@@ -421,7 +400,7 @@ fun ConversationItem(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "🔒 CHAT CLOSED — No reply received",
+                    text = "CHAT CLOSED — No reply received",
                     color = Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,

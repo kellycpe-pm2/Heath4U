@@ -67,7 +67,6 @@ import com.example.healt4u.screen.Patient.PatientLoginScreen
 import com.example.healt4u.screen.Patient.PatientSettingsScreen
 import com.example.healt4u.notification.DailyRefreshScheduler
 import com.example.healt4u.Session.CurrentSession
-import com.example.healt4u.Storage.createPayment
 import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getHospitalById
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
@@ -90,7 +89,7 @@ import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.notification.Notification
 import com.example.healt4u.screen.Medicine.getCurrentDate
 import com.example.healt4u.screen.PatientListScreen
-import com.example.healt4u.screen.Payment.PaymentScreen
+import com.example.healt4u.screen.PaymentScreen
 import com.example.healt4u.screen.ScanScreen.ScanResult
 import com.example.healt4u.screen.Statistics.AdherenceStatisticScreen
 import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
@@ -742,7 +741,6 @@ fun AppNavGraph(
             }
 
             val selectedHospital by vm_hospital.selectedHospital.collectAsState()
-            val doctors by vm_hospital.doctors.collectAsState()
 
             if (selectedHospital?.id == hospitalId) {
                 DoctorListScreen(
@@ -813,15 +811,6 @@ fun AppNavGraph(
                                 date = getCurrentDate(),
                                 time = System.currentTimeMillis().toString()
                             )
-
-                            Log.d("PAYMENT", "Saving payment: id=$paymentId, patient=$currentUserId, doctor=$doctorId")
-
-                            val saved = createPayment(payment)
-                            if (saved != null) {
-                                Log.d("PAYMENT", "✅ Payment saved! ID=${saved.id}")
-                            } else {
-                                Log.e("PAYMENT", "❌ Failed to save payment")
-                            }
 
                             navController.navigate(
                                 "chat_with_expiry/${conversation.id}/${conversation.doctorId}/${conversation.patientId}/$chatExpiryTime"

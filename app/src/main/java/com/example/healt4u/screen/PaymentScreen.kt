@@ -1,7 +1,7 @@
-package com.example.healt4u.screen.Payment
+package com.example.healt4u.screen
 
+import android.annotation.SuppressLint
 import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -15,7 +15,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payment
 import androidx.compose.material3.*
@@ -39,6 +38,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.platform.LocalLocale
 import com.example.healt4u.Storage.getHospitalById
+import androidx.core.net.toUri
 
 private const val PAYMENTS_FILE = "payments.json"
 
@@ -59,11 +59,13 @@ fun savePayments(context: android.content.Context, payments: List<Payment>) {
     } catch (e: Exception) { e.printStackTrace() }
 }
 
+private val json = Json { ignoreUnknownKeys = true }
+
 fun loadPayments(context: android.content.Context): List<Payment> {
     val file = File(context.filesDir, PAYMENTS_FILE)
     if (!file.exists()) return emptyList()
     return try {
-        Json { ignoreUnknownKeys = true }.decodeFromString<List<Payment>>(file.readText())
+        json.decodeFromString<List<Payment>>(file.readText())
     } catch (e: Exception) { emptyList() }
 }
 
@@ -91,7 +93,6 @@ fun PaymentScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val amount = consultationFee
     var selectedMethod by remember { mutableStateOf("TnG") }
     var showSuccessDialog by remember { mutableStateOf(false) }
     var showQrCode by remember { mutableStateOf(false) }
@@ -110,8 +111,9 @@ fun PaymentScreen(
         hospitalName = hospital?.name ?: "Hospital"
     }
 
+    @SuppressLint("QueryPermissionsNeeded")
     fun openTNG() {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(tngDeepLink)).apply {
+        val intent = Intent(Intent.ACTION_VIEW, tngDeepLink.toUri()).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         if (intent.resolveActivity(context.packageManager) != null) {
@@ -119,7 +121,7 @@ fun PaymentScreen(
             Toast.makeText(context, "Opening TNG eWallet...", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(context, "TNG App not installed. Opening website...", Toast.LENGTH_SHORT).show()
-            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(tngWebUrl))
+            val webIntent = Intent(Intent.ACTION_VIEW, tngWebUrl.toUri())
             context.startActivity(webIntent)
         }
     }
@@ -178,7 +180,7 @@ fun PaymentScreen(
                             color = BlueDark
                         )
                         Text(
-                            text = "RM %.2f".format(amount),
+                            text = "RM %.2f".format(consultationFee),
                             style = MaterialTheme.typography.headlineLarge,
                             color = BluePrimary,
                             fontWeight = FontWeight.Bold
@@ -215,7 +217,7 @@ fun PaymentScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Consultation", color = TextDark.copy(alpha = 0.7f))
-                            Text("RM %.2f".format(amount), color = TextDark)
+                            Text("RM %.2f".format(consultationFee), color = TextDark)
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -224,7 +226,7 @@ fun PaymentScreen(
                             Text("Service Fee", color = TextDark.copy(alpha = 0.7f))
                             Text("RM 0.00", color = TextDark)
                         }
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        HorizontalDivider()
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -236,7 +238,7 @@ fun PaymentScreen(
                                 color = TextDark
                             )
                             Text(
-                                "RM %.2f".format(amount),
+                                "RM %.2f".format(consultationFee),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = BluePrimary
@@ -283,7 +285,7 @@ fun PaymentScreen(
                         when (selectedMethod) {
                             "TnG" -> openTNG()
                             "FPX" -> {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(fpxWebUrl)).apply {
+                                val intent = Intent(Intent.ACTION_VIEW, fpxWebUrl.toUri()).apply {
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 }
                                 context.startActivity(intent)
@@ -300,7 +302,7 @@ fun PaymentScreen(
                             patientId = patientId,
                             doctorId = doctorId,
                             doctorName = doctorName,
-                            amount = amount,
+                            amount = consultationFee,
                             date = date,
                             time = time,
                             status = "PENDING",
@@ -327,7 +329,7 @@ fun PaymentScreen(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            "Pay with $selectedMethod — RM %.2f".format(amount),
+                            "Pay with $selectedMethod — RM %.2f".format(consultationFee),
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -356,7 +358,7 @@ fun PaymentScreen(
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Amount: RM %.2f".format(amount),
+                                text = "Amount: RM %.2f".format(consultationFee),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = BluePrimary,
                                 fontWeight = FontWeight.Medium
@@ -464,7 +466,9 @@ fun PaymentScreen(
                     text = {
                         Column {
                             Text(
-                                text = "Your payment of RM %.2f has been processed successfully.".format(amount),
+                                text = "Your payment of RM %.2f has been processed successfully.".format(
+                                    consultationFee
+                                ),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                             Spacer(modifier = Modifier.height(8.dp))

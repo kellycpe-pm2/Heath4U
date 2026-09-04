@@ -89,7 +89,7 @@ import com.example.healt4u.model.PatientUser
 import com.example.healt4u.model.Payment
 import com.example.healt4u.screen.AppointmentScreen
 import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
-import com.example.healt4u.screen.DoctorPatientChat.Notification
+import com.example.healt4u.notification.Notification
 import com.example.healt4u.screen.PatientListScreen
 import com.example.healt4u.screen.Payment.PaymentScreen
 import com.example.healt4u.screen.ScanScreen.AddReminderScreen
@@ -575,7 +575,7 @@ fun AppNavGraph(
         composable("patient_list") {
             PatientListScreen(
                 doctorId = currentUserId,
-                onPatientClick = { patientId, conversation ->
+                onPatientClick = { patientId ->
                     navController.navigate("adherence_statistics/$patientId")
                 },
                 onBack = { navController.popBackStack() }

@@ -11,6 +11,7 @@ import com.example.healt4u.Storage.getCaregiversForPatient
 import com.example.healt4u.Storage.getPatientsForCaregiver
 import com.example.healt4u.Storage.removeCaregiverLink
 import com.example.healt4u.Storage.getPatientByPhone
+import com.example.healt4u.Storage.patientUpdatePhone
 import com.example.healt4u.Storage.upsertFamilyAlertCloud
 import com.example.healt4u.Storage.upsertFamilyAlertsCloud
 import com.example.healt4u.Storage.getFamilyAlertsForCaregiver
@@ -25,6 +26,7 @@ import com.example.healt4u.Storage.upsertReminderLog
 import com.example.healt4u.notification.ReminderEngine
 import com.example.healt4u.notification.CaregiverAlertScheduler
 import com.example.healt4u.supabase.SupabaseClient
+import com.example.healt4u.Session.CurrentSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +78,17 @@ class FamilyModeViewModel(
         val prefs = context.getSharedPreferences("family_mode_prefs", Context.MODE_PRIVATE)
         prefs.edit { putString("patient_phone", phone) }
         _patientPhone.value = phone
+
+        // Keep the Family Mode value and the patient's account record in sync.
+        // The local value is updated immediately; the cloud update runs in the
+        // background so the screen remains responsive.
+        val patientId = CurrentSession.patientId
+        if (patientId > 0) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val result = patientUpdatePhone(patientId, phone)
+                result.onFailure { it.printStackTrace() }
+            }
+        }
     }
 
     fun refreshCaregivers(patientUserId: Int) {

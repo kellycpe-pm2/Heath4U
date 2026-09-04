@@ -261,7 +261,7 @@ suspend fun doctorSignIn(
                     "phone" -> d.phone == emailOrPhone
                     else -> false
                 }
-                credentialMatch && d.password == password
+                credentialMatch && d.password != null && d.password == password
             }
 
             if (matched != null) {

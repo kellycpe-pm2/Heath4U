@@ -1,4 +1,3 @@
-// com/example/healt4u/ViewModel/ViewModelMedicine.kt
 package com.example.healt4u.ViewModel
 
 import android.app.Application
@@ -84,7 +83,8 @@ class ViewModelMedicine(
             _error.value = null
 
             try {
-                val localMedicines = load_Medicines(context)
+                val patientId = CurrentSession.patientId ?: 0
+                val localMedicines = load_Medicines(context, patientId)
                 if (localMedicines.isNotEmpty()) {
                     _medicines.value = localMedicines
                 }
@@ -116,7 +116,6 @@ class ViewModelMedicine(
                 val validMedicines = localMedicines.filter { it.patientId == patientId }
 
                 _medicines.value = validMedicines
-
                 if (validMedicines.size != localMedicines.size) {
                     cleanUpOrphanedMedicines(context)
                 }
@@ -133,7 +132,7 @@ class ViewModelMedicine(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val patientId = CurrentSession.patientId ?: 0
-                val allMedicines = load_Medicines(context)
+                val allMedicines = load_Medicines(context, patientId)
 
                 val orphaned = allMedicines.filter {
                     it.patientId != null && it.patientId != patientId
@@ -153,14 +152,7 @@ class ViewModelMedicine(
         }
     }
 
-    // ========== ✅ DUPLICATE CHECK FUNCTIONS ==========
-
-    /**
-     * Check if a medicine name already exists for the current patient
-     * @param name The medicine name to check
-     * @param excludeId Optional medicine ID to exclude from check (for editing)
-     * @return true if duplicate exists, false otherwise
-     */
+    // ========== DUPLICATE CHECK FUNCTIONS ==========
     fun isMedicineNameDuplicate(name: String, excludeId: Int? = null): Boolean {
         val currentMedicines = _medicines.value
         val patientId = CurrentSession.patientId
@@ -172,9 +164,6 @@ class ViewModelMedicine(
         }
     }
 
-    /**
-     * Get duplicate medicine name error message
-     */
     fun getDuplicateNameError(name: String, excludeId: Int? = null): String? {
         return if (isMedicineNameDuplicate(name, excludeId)) {
             "Medicine '$name' already exists. Please use a different name."
@@ -191,7 +180,6 @@ class ViewModelMedicine(
             _success.value = null
 
             try {
-                // ✅ Check for duplicate name
                 if (isMedicineNameDuplicate(medicine.name_medicine)) {
                     _error.value = "Medicine '${medicine.name_medicine}' already exists!"
                     _success.value = false
@@ -199,7 +187,8 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                val success = insertMedicine(context, medicine)
+                val patientId = CurrentSession.patientId ?: 0
+                val success = insertMedicine(context, patientId, medicine)
                 if (success) {
                     _medicines.update { current -> current + medicine }
                     _success.value = true
@@ -224,7 +213,8 @@ class ViewModelMedicine(
             _success.value = null
 
             try {
-                val success = deleteMedicine(context, medicine.id)
+                val patientId = CurrentSession.patientId ?: 0
+                val success = deleteMedicine(context, patientId, medicine.id)
                 if (success) {
                     _medicines.update { current ->
                         current.filter { it.id != medicine.id }
@@ -251,7 +241,6 @@ class ViewModelMedicine(
             _success.value = null
 
             try {
-                // ✅ Check for duplicate name (excluding current medicine)
                 if (isMedicineNameDuplicate(medicine.name_medicine, medicine.id)) {
                     _error.value = "Medicine '${medicine.name_medicine}' already exists!"
                     _success.value = false
@@ -259,7 +248,8 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                val success = updateMedicine(context, medicine)
+                val patientId = CurrentSession.patientId ?: 0
+                val success = updateMedicine(context, patientId, medicine)
                 if (success) {
                     _medicines.update { current ->
                         current.map { if (it.id == medicine.id) medicine else it }
@@ -375,7 +365,6 @@ class ViewModelMedicine(
                     medicine
                 }
 
-                // ✅ Check for duplicate name
                 if (isMedicineNameDuplicate(medicineWithPatientId.name_medicine)) {
                     _error.value = "Medicine '${medicineWithPatientId.name_medicine}' already exists!"
                     _success.value = false
@@ -383,7 +372,7 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                val localSuccess = insertMedicine(context, medicineWithPatientId)
+                val localSuccess = insertMedicine(context, patientId, medicineWithPatientId)
                 val cloudSuccess = insertSingleMedicine(medicineWithPatientId)
 
                 if (localSuccess && cloudSuccess) {
@@ -421,7 +410,8 @@ class ViewModelMedicine(
             _success.value = null
 
             try {
-                val localSuccess = deleteMedicine(context, medicine.id)
+                val patientId = CurrentSession.patientId ?: 0
+                val localSuccess = deleteMedicine(context, patientId, medicine.id)
                 val cloudSuccess = delete_Medicine(medicine.id)
 
                 if (localSuccess || cloudSuccess) {
@@ -450,7 +440,6 @@ class ViewModelMedicine(
             _success.value = null
 
             try {
-                // ✅ Check for duplicate name (excluding current medicine)
                 if (isMedicineNameDuplicate(medicine.name_medicine, medicine.id)) {
                     _error.value = "Medicine '${medicine.name_medicine}' already exists!"
                     _success.value = false
@@ -458,7 +447,8 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                val localSuccess = updateMedicine(context, medicine)
+                val patientId = CurrentSession.patientId ?: 0
+                val localSuccess = updateMedicine(context, patientId, medicine)
                 val cloudSuccess = update_Medicine(medicine)
 
                 if (localSuccess || cloudSuccess) {
@@ -481,7 +471,7 @@ class ViewModelMedicine(
         }
     }
 
-    // ========== ✅ UPDATED VALIDATION ==========
+    // ========== UPDATED VALIDATION ==========
     fun validateMedicine(
         name: String,
         category: String,
@@ -493,13 +483,11 @@ class ViewModelMedicine(
     ): Boolean {
         val errors = mutableMapOf<String, String>()
 
-        // ✅ Name validation with duplicate check
         when {
             name.isBlank() -> errors["name"] = "Medicine name is required"
             name.length < 2 -> errors["name"] = "Name must be at least 2 characters"
             name.length > 100 -> errors["name"] = "Name must be less than 100 characters"
             else -> {
-                // ✅ Check for duplicate name
                 val duplicateError = getDuplicateNameError(name, excludeId)
                 if (duplicateError != null) {
                     errors["name"] = duplicateError
@@ -517,7 +505,6 @@ class ViewModelMedicine(
             dosage > 10000 -> errors["dosage"] = "Dosage must be less than 10000"
         }
 
-        // ✅ Updated quantity validation - cannot be 0
         when {
             quantity <= 0 -> errors["quantity"] = "Quantity must be greater than 0"
             quantity > 1000 -> errors["quantity"] = "Quantity must be less than 1000"
@@ -618,7 +605,6 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                // ✅ Check for duplicate before saving
                 if (isMedicineNameDuplicate(name)) {
                     _error.value = "Medicine '$name' already exists!"
                     _success.value = false
@@ -640,7 +626,8 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                val nextId = getNextMedicineId(context)
+                val patientId = CurrentSession.patientId ?: 0
+                val nextId = getNextMedicineId(context, patientId)
                 val medicine = Medicine(
                     id = nextId,
                     name_medicine = name,
@@ -658,8 +645,7 @@ class ViewModelMedicine(
                     patientId = CurrentSession.patientId
                 )
 
-                val success = insertMedicine(context, medicine)
-
+                val success = insertMedicine(context, patientId, medicine)
                 if (success) {
                     _medicines.update { current -> current + medicine }
                     _success.value = true
@@ -695,7 +681,6 @@ class ViewModelMedicine(
                 return@launch
             }
 
-            // ✅ Check for duplicate before saving
             if (isMedicineNameDuplicate(name)) {
                 _error.value = "Medicine '$name' already exists!"
                 _success.value = false
@@ -703,7 +688,8 @@ class ViewModelMedicine(
                 return@launch
             }
 
-            val nextId = getNextMedicineId(context)
+            val patientId = CurrentSession.patientId ?: 0
+            val nextId = getNextMedicineId(context, patientId)
             val medicine = Medicine(
                 id = nextId,
                 name_medicine = name,
@@ -743,7 +729,6 @@ class ViewModelMedicine(
     // ========== FORM FUNCTIONS ==========
     fun on_Med_Name_Change(value: String) {
         _input_med_name.value = value
-        // Clear name error when user types
         clearFieldError("name")
     }
 
@@ -777,6 +762,7 @@ class ViewModelMedicine(
     fun syncWithServer(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val patientId = CurrentSession.patientId ?: 0
                 val serverMedicines = getMedicinesByPatientId(CurrentSession.patientId)
                 if (serverMedicines.isNotEmpty()) {
                     saveMedicines(context, serverMedicines)
@@ -784,7 +770,6 @@ class ViewModelMedicine(
                     _successMessage.value = "Synced with server!"
                 }
             } catch (e: Exception) {
-                // Silent fail
             }
         }
     }
@@ -795,7 +780,7 @@ class ViewModelMedicine(
             try {
                 val patientId = CurrentSession.patientId ?: 0
 
-                val localMedicines = load_Medicines(context)
+                val localMedicines = load_Medicines(context, patientId)
                     .filter { it.patientId == patientId || it.patientId == null }
                     .map {
                         if (it.patientId == null) {
@@ -825,7 +810,6 @@ class ViewModelMedicine(
                 updateExistingInCloud(context, patientId)
 
                 _successMessage.value = "Uploaded $successCount medicines to cloud! (Failed: $failedCount)"
-
             } catch (e: Exception) {
                 _error.value = "Upload failed: ${e.message}"
             } finally {
@@ -842,7 +826,7 @@ class ViewModelMedicine(
             try {
                 val targetPatientId = patientId ?: CurrentSession.patientId ?: return@launch
 
-                val localMedicines = load_Medicines(context)
+                val localMedicines = load_Medicines(context, targetPatientId)
                     .filter { it.patientId == targetPatientId }
 
                 if (localMedicines.isEmpty()) {
@@ -880,7 +864,6 @@ class ViewModelMedicine(
                 }
 
                 _successMessage.value = "Updated $updatedCount medicines (Skipped $skippedCount unchanged, $notFoundCount not in cloud)"
-
             } catch (e: Exception) {
                 _error.value = "Update failed: ${e.message}"
             } finally {
@@ -902,7 +885,6 @@ class ViewModelMedicine(
             _stockUpdateResult.value = null
 
             try {
-                // Validate the new quantity
                 if (newQuantityLeft < 0) {
                     _error.value = "Quantity cannot be negative"
                     _stockUpdateResult.value = false
@@ -917,19 +899,16 @@ class ViewModelMedicine(
                     return@launch
                 }
 
-                // Create updated medicine with new quantity left
                 val updatedMedicine = medicine.copy(
                     quantityLeft = newQuantityLeft
                 )
 
-                // Update locally
-                val localSuccess = updateMedicine(context, updatedMedicine)
+                val patientId = CurrentSession.patientId ?: 0
+                val localSuccess = updateMedicine(context, patientId, updatedMedicine)
 
-                // Update cloud
                 val cloudSuccess = update_Medicine(updatedMedicine)
 
                 if (localSuccess || cloudSuccess) {
-                    // Update the state
                     _medicines.update { current ->
                         current.map {
                             if (it.id == updatedMedicine.id) updatedMedicine else it
@@ -960,7 +939,8 @@ class ViewModelMedicine(
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = searchMedicines(context, query)
+                val patientId = CurrentSession.patientId ?: 0
+                val results = searchMedicines(context, patientId, query)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Search failed: ${e.message}"
@@ -974,7 +954,8 @@ class ViewModelMedicine(
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = getExpiredMedicines(context)
+                val patientId = CurrentSession.patientId ?: 0
+                val results = getExpiredMedicines(context, patientId)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Failed to get expired: ${e.message}"
@@ -988,7 +969,8 @@ class ViewModelMedicine(
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = getLowStockMedicines(context, threshold)
+                val patientId = CurrentSession.patientId ?: 0
+                val results = getLowStockMedicines(context, patientId, threshold)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Failed to get low stock: ${e.message}"
@@ -1002,7 +984,8 @@ class ViewModelMedicine(
         viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             try {
-                val results = getMedicinesByCategory(context, category)
+                val patientId = CurrentSession.patientId ?: 0
+                val results = getMedicinesByCategory(context, patientId, category)
                 _medicines.value = results
             } catch (e: Exception) {
                 _error.value = "Filter failed: ${e.message}"
@@ -1027,7 +1010,9 @@ class ViewModelMedicine(
     }
 
     fun get_MedicineById(medicineId: Int, context: Context): Medicine? {
-        return _medicines.value.find { it.id == medicineId }
+        val patientId = CurrentSession.patientId ?: 0
+        val medicines = load_Medicines(context, patientId)
+        return medicines.find { it.id == medicineId }
     }
 
     // ========== CLEAR FUNCTIONS ==========

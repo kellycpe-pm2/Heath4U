@@ -1,19 +1,13 @@
-// com/example/healt4u/data/local/JsonMedicineStorage.kt
 package com.example.healt4u.data.local
 
 import android.content.Context
 import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.model.Medicine
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 
-// One file PER PATIENT (was a single shared "medicines.json" for the whole
-// device before — meaning every account saw whichever patient's data was
-// cached last). CurrentSession.patientId is set at login/switch-account.
 private fun fileName(): String = "medicines_${CurrentSession.patientId}.json"
 
-// Create Json instance with proper configuration
 private val json = Json {
     prettyPrint = true
     ignoreUnknownKeys = true
@@ -31,19 +25,20 @@ fun saveMedicines(context: Context, medicines: List<Medicine>) {
     }
 }
 
-fun load_Medicines(context: Context): List<Medicine> {
-    val file = File(context.filesDir, fileName())
-    if (!file.exists()) return emptyList() // first run — file not created yet
+fun load_Medicines(context: Context, patientId: Int): List<Medicine> {
+    val fileName = "medicines_${patientId}.json"
+    val file = File(context.filesDir, fileName)
+    if (!file.exists()) return emptyList()
     return try {
         Json.decodeFromString(file.readText())
     } catch (e: Exception) {
-        emptyList() 
+        emptyList()
     }
 }
 
-fun insertMedicine(context: Context, medicine: Medicine): Boolean {
+fun insertMedicine(context: Context, patientId: Int, medicine: Medicine): Boolean {
     return try {
-        val currentList = load_Medicines(context).toMutableList()
+        val currentList = load_Medicines(context, patientId).toMutableList()
         currentList.add(medicine)
         saveMedicines(context, currentList)
         true
@@ -53,9 +48,9 @@ fun insertMedicine(context: Context, medicine: Medicine): Boolean {
     }
 }
 
-fun insertMedicines(context: Context, medicines: List<Medicine>): Boolean {
+fun insertMedicines(context: Context, patientId: Int, medicines: List<Medicine>): Boolean {
     return try {
-        val currentList = load_Medicines(context).toMutableList()
+        val currentList = load_Medicines(context, patientId).toMutableList()
         currentList.addAll(medicines)
         saveMedicines(context, currentList)
         true
@@ -65,9 +60,9 @@ fun insertMedicines(context: Context, medicines: List<Medicine>): Boolean {
     }
 }
 
-fun updateMedicine(context: Context, updatedMedicine: Medicine): Boolean {
+fun updateMedicine(context: Context, patientId: Int, updatedMedicine: Medicine): Boolean {
     return try {
-        val currentList = load_Medicines(context).toMutableList()
+        val currentList = load_Medicines(context, patientId).toMutableList()
         val index = currentList.indexOfFirst { it.id == updatedMedicine.id }
         if (index != -1) {
             currentList[index] = updatedMedicine
@@ -82,9 +77,9 @@ fun updateMedicine(context: Context, updatedMedicine: Medicine): Boolean {
     }
 }
 
-fun deleteMedicine(context: Context, medicineId: Int): Boolean {
+fun deleteMedicine(context: Context, patientId: Int, medicineId: Int): Boolean {
     return try {
-        val currentList = load_Medicines(context).toMutableList()
+        val currentList = load_Medicines(context, patientId).toMutableList()
         val removed = currentList.removeAll { it.id == medicineId }
         if (removed) {
             saveMedicines(context, currentList)
@@ -98,20 +93,9 @@ fun deleteMedicine(context: Context, medicineId: Int): Boolean {
     }
 }
 
-fun deleteAllMedicines(context: Context): Boolean {
+fun getMedicineById(context: Context, patientId: Int, medicineId: Int): Medicine? {
     return try {
-        val file = File(context.filesDir, fileName())
-        file.delete()
-        true
-    } catch (e: Exception) {
-        e.printStackTrace()
-        false
-    }
-}
-
-fun getMedicineById(context: Context, medicineId: Int): Medicine? {
-    return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         medicines.find { it.id == medicineId }
     } catch (e: Exception) {
         e.printStackTrace()
@@ -119,9 +103,9 @@ fun getMedicineById(context: Context, medicineId: Int): Medicine? {
     }
 }
 
-fun searchMedicines(context: Context, query: String): List<Medicine> {
+fun searchMedicines(context: Context, patientId: Int, query: String): List<Medicine> {
     return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         medicines.filter {
             it.name_medicine.contains(query, ignoreCase = true) ||
                     it.category.contains(query, ignoreCase = true) ||
@@ -135,7 +119,7 @@ fun searchMedicines(context: Context, query: String): List<Medicine> {
 
 fun getMedicines_ByPatientId(context: Context, patientId: Int): List<Medicine> {
     return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         medicines.filter { it.patientId == patientId }
     } catch (e: Exception) {
         e.printStackTrace()
@@ -143,9 +127,9 @@ fun getMedicines_ByPatientId(context: Context, patientId: Int): List<Medicine> {
     }
 }
 
-fun getMedicinesByCategory(context: Context, category: String): List<Medicine> {
+fun getMedicinesByCategory(context: Context, patientId: Int, category: String): List<Medicine> {
     return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         medicines.filter { it.category == category }
     } catch (e: Exception) {
         e.printStackTrace()
@@ -153,9 +137,9 @@ fun getMedicinesByCategory(context: Context, category: String): List<Medicine> {
     }
 }
 
-fun getExpiredMedicines(context: Context): List<Medicine> {
+fun getExpiredMedicines(context: Context, patientId: Int): List<Medicine> {
     return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         val currentTime = System.currentTimeMillis()
         medicines.filter {
             it.expiredDate != null && it.expiredDate!! < currentTime
@@ -166,9 +150,9 @@ fun getExpiredMedicines(context: Context): List<Medicine> {
     }
 }
 
-fun getLowStockMedicines(context: Context, threshold: Int = 10): List<Medicine> {
+fun getLowStockMedicines(context: Context, patientId: Int, threshold: Int = 10): List<Medicine> {
     return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         medicines.filter {
             (it.quantityLeft ?: it.quantity) < threshold
         }
@@ -178,9 +162,9 @@ fun getLowStockMedicines(context: Context, threshold: Int = 10): List<Medicine> 
     }
 }
 
-fun getNextMedicineId(context: Context): Int {
+fun getNextMedicineId(context: Context, patientId: Int): Int {
     return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         (medicines.maxOfOrNull { it.id } ?: 0) + 1
     } catch (e: Exception) {
         e.printStackTrace()
@@ -188,9 +172,9 @@ fun getNextMedicineId(context: Context): Int {
     }
 }
 
-fun getMedicineCount(context: Context): Int {
+fun getMedicineCount(context: Context, patientId: Int): Int {
     return try {
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         medicines.size
     } catch (e: Exception) {
         e.printStackTrace()

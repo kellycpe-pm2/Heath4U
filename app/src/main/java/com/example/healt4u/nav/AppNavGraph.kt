@@ -565,7 +565,7 @@ fun AppNavGraph(
             route = "adherence_statistics/{patientId}",
             arguments = listOf(navArgument("patientId") { type = NavType.IntType })
         ) { backStack ->
-            val pid = backStack.arguments?.getInt("patientId") ?: 1
+            val pid = backStack.arguments?.getInt("patientId") ?: 0
             AdherenceStatisticScreen(
                 patientId = pid,
                 onBack = { navController.popBackStack() }
@@ -819,6 +819,7 @@ fun AppNavGraph(
 
         composable("doctor") {
             currentUserRole = "doctor"
+            currentUserId=2
             DoctorDashboardScreen(
                 onPatientClick = { pId, conv ->
                     navController.navigate("adherence_statistics/$pId")

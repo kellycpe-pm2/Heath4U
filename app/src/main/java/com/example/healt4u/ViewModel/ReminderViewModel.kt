@@ -62,7 +62,7 @@ class ReminderViewModel(
     // In ReminderViewModel.kt
     fun loadTodaySchedule(
         context: Context,
-        patientId: Int = 0,
+        patientId: Int,
         selectedDate: String = todayDate()  // Default = today, but OVERRIDE-able
     ) {
         viewModelScope.launch(Dispatchers.IO) {
@@ -73,7 +73,7 @@ class ReminderViewModel(
                 // USE THE PASSED DATE, NOT FORCE TODAY
                 val date = selectedDate  // ← CHANGED
 
-                val medicines = load_Medicines(context)
+                val medicines = load_Medicines(context,patientId)
                 val generated = generateSlotsFor(medicines, date, patientId)
 
                 val savedLocal = loadReminderLogsForDate(context, date)

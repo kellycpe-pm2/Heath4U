@@ -205,7 +205,6 @@ fun ChatListScreen(
                     ) {
                         items(
                             items = conversations,
-                            // ✅ KEY INCLUDES tickTime → forces UI update every 30s
                             key = { conversation ->
                                 (conversation.id ?: 0) to tickTime
                             }

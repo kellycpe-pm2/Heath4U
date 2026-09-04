@@ -14,7 +14,7 @@ suspend fun getReminderLogsForDate(date: String, patientId: Int): List<ReminderL
                 .select {
                     filter {
                         eq("date", date)
-                        eq("patient_id", patientId)
+                        eq("patientId", patientId)
                     }
                 }
                 .decodeList<ReminderLog>()

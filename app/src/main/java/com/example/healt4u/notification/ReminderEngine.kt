@@ -60,7 +60,7 @@ object ReminderEngine {
         NotificationHelper.createChannels(context)
 
         val date = todayDate()
-        val medicines = load_Medicines(context)
+        val medicines = load_Medicines(context, patientId)
         val generated = generateSlotsFor(medicines, date, patientId)
 
         val savedLocal = loadReminderLogsForDate(context, date)

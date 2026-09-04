@@ -161,10 +161,10 @@ fun AdherenceStatisticScreen(
 @Composable
 fun AdherenceStatsCard(stats: AdherenceStats) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.onPrimary),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.background(MaterialTheme.colorScheme.onPrimary).padding(16.dp)) {
             Text(
                 "Adherence Summary",
                 fontSize = 16.sp,

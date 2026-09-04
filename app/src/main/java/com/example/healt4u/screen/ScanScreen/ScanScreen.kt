@@ -49,7 +49,7 @@ fun ScannerScreen(
                 onGalleryPick =
                     onGalleryPick,
 
-                onBackClick = {}
+                onBackClick = onBackClick
             )
         }
 

@@ -93,47 +93,17 @@ fun PaymentScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    var selectedMethod by remember { mutableStateOf("TnG") }
+    val selectedMethod = "DuitNow"
     var showSuccessDialog by remember { mutableStateOf(false) }
-    var showQrCode by remember { mutableStateOf(false) }
     val date = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date()) }
     val time = remember { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date()) }
     val paymentTimeMs = remember { System.currentTimeMillis() }
-
-    val tngDeepLink = "tngdwallet://client/dl/mp?mpid=123456789"
-    val tngWebUrl = "https://www.touchngo.com.my"
-    val fpxWebUrl = "https://paynet.my/personal-solutions/fpx.html"
 
     var hospitalName by remember { mutableStateOf("Hospital") }
 
     LaunchedEffect(hospitalId) {
         val hospital = getHospitalById(hospitalId)
         hospitalName = hospital?.name ?: "Hospital"
-    }
-
-    @SuppressLint("QueryPermissionsNeeded", "UseKtx")
-    fun openTNG() {
-        // ✅ TNG eWallet 官方包名
-        val tngPackageName = "com.touchngo.tngwallet"
-        val pm = context.packageManager
-
-        try {
-            val launchIntent = pm.getLaunchIntentForPackage(tngPackageName)
-            if (launchIntent != null) {
-                launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(launchIntent)
-                Toast.makeText(context, "Opening TNG eWallet...", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(context, "TNG eWallet not installed. Opening website...", Toast.LENGTH_SHORT).show()
-                val webIntent = Intent(
-                    Intent.ACTION_VIEW,
-                    "https://www.touchngo.com.my".toUri()
-                ).apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
-                context.startActivity(webIntent)
-            }
-        } catch (e: Exception) {
-            Toast.makeText(context, "Failed to open TNG eWallet", Toast.LENGTH_SHORT).show()
-        }
     }
 
     Scaffold(
@@ -258,144 +228,71 @@ fun PaymentScreen(
                 }
 
                 Text(
-                    text = "Select Payment Method",
+                    text = "Payment Method",
                     style = MaterialTheme.typography.titleMedium,
                     color = BlueDark,
                     fontWeight = FontWeight.SemiBold
                 )
 
                 PaymentOptionCard(
-                    icon = "📱",
-                    title = "Touch 'n Go eWallet",
-                    subtitle = "Pay with TNG eWallet",
-                    isSelected = selectedMethod == "TnG",
-                    onClick = { selectedMethod = "TnG"; showQrCode = false }
-                )
-
-                PaymentOptionCard(
-                    icon = "🏦",
-                    title = "FPX (Online Banking)",
-                    subtitle = "Maybank, CIMB, Public Bank, etc.",
-                    isSelected = selectedMethod == "FPX",
-                    onClick = { selectedMethod = "FPX"; showQrCode = false }
-                )
-
-                PaymentOptionCard(
                     icon = "🏷️",
                     title = "DuitNow QR",
-                    subtitle = "Scan DuitNow QR code",
-                    isSelected = selectedMethod == "DuitNow",
-                    onClick = { selectedMethod = "DuitNow"; showQrCode = false }
+                    subtitle = "Scan QR code to pay",
+                    isSelected = true,
+                    onClick = { }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Button(
-                    onClick = {
-                        when (selectedMethod) {
-                            "TnG" -> openTNG()
-                            "FPX" -> {
-                                val intent = Intent(Intent.ACTION_VIEW, fpxWebUrl.toUri()).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                context.startActivity(intent)
-                                Toast.makeText(context, "Opening FPX...", Toast.LENGTH_SHORT).show()
-                            }
-                            "DuitNow" -> {
-                                showQrCode = true
-                                Toast.makeText(context, "Scan QR code to pay", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-
-                        val payment = Payment(
-                            id = "pay_${System.currentTimeMillis()}",
-                            patientId = patientId,
-                            doctorId = doctorId,
-                            doctorName = doctorName,
-                            amount = consultationFee,
-                            date = date,
-                            time = time,
-                            status = "PENDING",
-                            paymentMethod = selectedMethod
-                        )
-                        addPayment(context, payment)
-                    },
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = BluePrimary,
-                        contentColor = White
-                    ),
-                    shape = RoundedCornerShape(12.dp)
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = BlueLight),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(2.dp, BluePrimary)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Filled.Payment,
-                            contentDescription = "Pay",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            "Pay with $selectedMethod — RM %.2f".format(consultationFee),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (showQrCode && selectedMethod == "DuitNow") {
-                    Card(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        colors = CardDefaults.cardColors(containerColor = BlueLight),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(2.dp, BluePrimary)
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
+                        Text(
+                            text = "Scan DuitNow QR",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = BlueDark
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Amount: RM %.2f".format(consultationFee),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = BluePrimary,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Image(
+                            painter = painterResource(id = com.example.healt4u.R.drawable.duitnow_qr),
+                            contentDescription = "DuitNow QR Code",
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Scan DuitNow QR",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = BlueDark
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Amount: RM %.2f".format(consultationFee),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = BluePrimary,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
+                                .size(220.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(
+                                    BorderStroke(1.dp, Color.LightGray),
+                                    RoundedCornerShape(12.dp)
+                                ),
+                            contentScale = ContentScale.Fit
+                        )
 
-                            Image(
-                                painter = painterResource(id = com.example.healt4u.R.drawable.duitnow_qr),
-                                contentDescription = "DuitNow QR Code",
-                                modifier = Modifier
-                                    .size(220.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .border(
-                                        BorderStroke(1.dp, Color.LightGray),
-                                        RoundedCornerShape(12.dp)
-                                    ),
-                                contentScale = ContentScale.Fit
-                            )
+                        Spacer(modifier = Modifier.height(12.dp))
 
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Text(
-                                text = "Open your bank app or eWallet → Scan QR code above",
-                                fontSize = 13.sp,
-                                color = TextDark.copy(alpha = 0.7f)
-                            )
-                        }
+                        Text(
+                            text = "Open your bank app or eWallet → Scan QR code above",
+                            fontSize = 13.sp,
+                            color = TextDark.copy(alpha = 0.7f)
+                        )
                     }
                 }
 
@@ -408,16 +305,14 @@ fun PaymentScreen(
                                     it.doctorId == doctorId &&
                                     it.patientId == patientId
                         }
-                        if (latest != null) {
-                            val updated = latest.copy(status = "PAID")
-                            payments[payments.indexOf(latest)] = updated
-                            savePayments(context, payments)
 
-                            showSuccessDialog = true
-                            onPaymentSuccess(paymentTimeMs, latest.paymentMethod)
-                        } else {
-                            Toast.makeText(context, "No pending payment found", Toast.LENGTH_SHORT).show()
+                        if (latest != null) {
+                            payments[payments.indexOf(latest)] = latest.copy(status = "PAID")
+                            savePayments(context, payments)
                         }
+
+                        showSuccessDialog = true
+                        onPaymentSuccess(paymentTimeMs, selectedMethod)
                     },
                     modifier = Modifier
                         .fillMaxWidth()

@@ -103,14 +103,14 @@ fun ManualInputDialog(
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(14.dp),
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
                                     modifier = Modifier.size(48.dp)
                                 ) {
                                     Box(contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = Icons.Default.Search,
                                             contentDescription = "Search",
-                                            tint = MaterialTheme.colorScheme.onSecondary,
+                                            tint = MaterialTheme.colorScheme.secondary,
                                             modifier = Modifier.size(28.dp)
                                         )
                                     }
@@ -194,7 +194,7 @@ fun ManualInputDialog(
                             label = {
                                 Text(
                                     "Enter MAL Number",
-                                    color = if (isFocused) MaterialTheme.colorScheme.onSecondary else Color(0xFF757575)
+                                    color = if (isFocused) MaterialTheme.colorScheme.secondary else Color(0xFF757575)
                                 )
                             },
                             placeholder = {
@@ -203,7 +203,6 @@ fun ManualInputDialog(
                                     color = Color(0xFFBDBDBD)
                                 )
                             },
-
                             isError = isError,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -214,17 +213,43 @@ fun ManualInputDialog(
                                 ),
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.onSecondary,
+                                focusedBorderColor = MaterialTheme.colorScheme.secondary,
                                 unfocusedBorderColor = Color(0xFFE0E0E0),
                                 focusedTextColor = Color(0xFF1A1A2E),
                                 unfocusedTextColor = Color(0xFF1A1A2E),
-                                cursorColor = MaterialTheme.colorScheme.onSecondary,
-                                focusedLabelColor = MaterialTheme.colorScheme.onSecondary,
-                                unfocusedLabelColor = Color(0xFF757575)
+                                cursorColor = MaterialTheme.colorScheme.secondary,
+                                focusedLabelColor = MaterialTheme.colorScheme.secondary,
+                                unfocusedLabelColor = Color(0xFF757575),
+                                errorBorderColor = MaterialTheme.colorScheme.error,
+                                errorLabelColor = MaterialTheme.colorScheme.error
                             ),
                             singleLine = true
-
                         )
+
+                        // Error message below the text field
+                        if (isError && errorMessage != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 4.dp, top = 2.dp),
+                                horizontalArrangement = Arrangement.Start,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Error,
+                                    contentDescription = "Error",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = errorMessage!!,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -242,14 +267,14 @@ fun ManualInputDialog(
                                 .height(48.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = MaterialTheme.colorScheme.onSecondary
+                                contentColor = MaterialTheme.colorScheme.secondary
                             )
                         ) {
                             Text(
                                 "Cancel",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Medium,
-                                color =MaterialTheme.colorScheme.onSecondary
+                                color = MaterialTheme.colorScheme.secondary
                             )
                         }
 
@@ -277,7 +302,7 @@ fun ManualInputDialog(
                             shape = RoundedCornerShape(12.dp),
                             enabled = inputText.isNotBlank(),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
+                                containerColor = MaterialTheme.colorScheme.secondary,
                                 disabledContainerColor = Color(0xFFE0E0E0)
                             )
                         ) {

@@ -34,7 +34,10 @@ import com.example.healt4u.model.AdminUser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+import androidx.compose.ui.graphics.Brush
+
 private val AppBlue = Color(0xFF3779EE)
+private val AppBlueDark = Color(0xFF1E56C5)
 private val ScreenBlue = Color(0xFFE6F8FC)
 
 private fun isValidEmail(email: String): Boolean {
@@ -195,33 +198,35 @@ private suspend fun handleSignIn(
 private fun RoleSelectionContent(
     onAdminClick: () -> Unit,
     onPatientClick: () -> Unit,
-    onDoctorClick : ()->Unit
-
+    onDoctorClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 28.dp),
+            .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(AppBlue, RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp))
-                .padding(vertical = 28.dp),
+                .background(
+                    brush = Brush.verticalGradient(listOf(AppBlue, AppBlueDark)),
+                    shape = RoundedCornerShape(28.dp)
+                )
+                .padding(vertical = 32.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "Login To Your\nAccount",
                 color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 26.sp,
+                fontWeight = FontWeight.ExtraBold,
                 textAlign = TextAlign.Center,
-                lineHeight = 32.sp
+                lineHeight = 34.sp
             )
         }
 
-        Spacer(modifier = Modifier.height(36.dp))
+        Spacer(modifier = Modifier.height(40.dp))
 
         Text(
             text = "Choose your role",
@@ -232,89 +237,88 @@ private fun RoleSelectionContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Card(
+        RoleCard(
+            label = "Admin",
+            description = "Manage inventory, hospitals, and medical staff",
+            icon = Icons.Default.AdminPanelSettings,
+            iconColor = AppBlue,
+            onClick = onAdminClick
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        RoleCard(
+            label = "Patient",
+            description = "View schedules, medication, and chat with doctors",
+            icon = Icons.Default.LocalHospital,
+            iconColor = Color(0xFF4CAF50),
+            onClick = onPatientClick
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        RoleCard(
+            label = "Doctor",
+            description = "Manage consultations and view patient records",
+            icon = Icons.Filled.Emergency,
+            iconColor = Color(0xFFFF5722),
+            onClick = onDoctorClick
+        )
+    }
+}
+
+@Composable
+private fun RoleCard(
+    label: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onAdminClick() },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)
+                .padding(20.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = iconColor.copy(alpha = 0.12f),
+                modifier = Modifier.size(54.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(AppBlue, RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.AdminPanelSettings, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text("Admin", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                    Text("Manage inventory, hospitals, doctors", fontSize = 12.sp, color = Color(0xFF61717D))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.width(20.dp))
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onPatientClick() },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color(0xFF4CAF50), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.LocalHospital, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text("Patient", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                    Text("View medicine schedule & chat with doctors", fontSize = 12.sp, color = Color(0xFF61717D))
-                }
-            }
-        }
-
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onDoctorClick() },
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .background(Color(0xFF4CAF50), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Filled.Emergency, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                }
-                Spacer(Modifier.width(16.dp))
-                Column {
-                    Text("Doctor", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF101820))
-                }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF101820)
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF61717D),
+                    lineHeight = 18.sp
+                )
             }
         }
     }

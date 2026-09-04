@@ -11,6 +11,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.example.healt4u.R
+import com.example.healt4u.notification.Notification.CHANNEL_ID
 
 // Two channels: one for "time to take your medicine" alarms, one for the
 // less urgent expiry/low-stock heads-up. Kept separate so a user could mute
@@ -99,5 +100,21 @@ object NotificationHelper {
 
         NotificationManagerCompat.from(context)
             .notify(notificationId, notification)
+    }
+
+    // Add this inside NotificationHelper object
+    fun showChatMessage(context: Context, senderName: String, message: String) {
+        createChannels(context)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle("Message from $senderName")
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
+            .setAutoCancel(true)
+        with(NotificationManagerCompat.from(context)) {
+            notify(System.currentTimeMillis().toInt(), builder.build())
+        }
     }
 }

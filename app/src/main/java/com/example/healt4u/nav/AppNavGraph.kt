@@ -10,7 +10,6 @@ import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -25,7 +24,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -38,6 +36,8 @@ import androidx.navigation.navArgument
 import com.example.healt4u.Storage.clearMessagesByConversation
 import com.example.healt4u.Storage.createConversation
 import com.example.healt4u.Storage.deleteMessage
+import com.example.healt4u.Storage.getDoctorById
+import com.example.healt4u.Storage.refundPaymentIfEligible
 import com.example.healt4u.ViewModel.AdminManagementViewModel
 import com.example.healt4u.ViewModel.FamilyModeViewModel
 import com.example.healt4u.ViewModel.HospitalViewModel
@@ -70,7 +70,6 @@ import com.example.healt4u.screen.Patient.PatientSettingsScreen
 import com.example.healt4u.notification.DailyRefreshScheduler
 import com.example.healt4u.Session.CurrentSession
 import com.example.healt4u.Storage.createPayment
-import com.example.healt4u.Storage.getDoctorById
 import com.example.healt4u.Storage.getHospitalById
 import com.example.healt4u.screen.Medicine.AddMedicineScreen
 import com.example.healt4u.screen.Medicine.EditMedicineScreen
@@ -83,29 +82,28 @@ import kotlinx.coroutines.launch
 import com.example.healt4u.Storage.getMessagesByConversation
 import com.example.healt4u.Storage.getPatientById
 import com.example.healt4u.Storage.sendMessage
+import com.example.healt4u.Storage.startChatRealtimeListener
 import com.example.healt4u.ViewModel.FindMedicineViewModel
 import com.example.healt4u.model.Hospital
-import com.example.healt4u.model.PatientUser
 import com.example.healt4u.model.Payment
 import com.example.healt4u.screen.AppointmentScreen
-import com.example.healt4u.screen.Dashboard.DoctorDashboardScreen
-import com.example.healt4u.screen.DoctorPatientChat.Notification
+import com.example.healt4u.notification.Notification
 import com.example.healt4u.screen.PatientListScreen
 import com.example.healt4u.screen.Payment.PaymentScreen
-import com.example.healt4u.screen.ScanScreen.AddReminderScreen
-import com.example.healt4u.screen.ScanScreen.HistoryScreen
 import com.example.healt4u.screen.ScanScreen.ScanResult
 import com.example.healt4u.screen.ScanScreen.getCurrentDate
 import com.example.healt4u.screen.Statistics.AdherenceStatisticScreen
 import com.example.healt4u.screen.Statistics.RevenueStatisticScreen
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
-import java.util.Locale
+import kotlin.time.Duration.Companion.milliseconds
 
 @SuppressLint("MissingPermission")
 @RequiresApi(Build.VERSION_CODES.O)
-@androidx.camera.core.ExperimentalGetImage
-@OptIn(ExperimentalGetImage::class, DelicateCoroutinesApi::class)
+@ExperimentalGetImage
+@OptIn(ExperimentalGetImage::class, DelicateCoroutinesApi::class, DelicateCoroutinesApi::class,
+    DelicateCoroutinesApi::class, DelicateCoroutinesApi::class
+)
 @Composable
 fun AppNavGraph(
     navController: NavHostController = rememberNavController(),
@@ -119,13 +117,11 @@ fun AppNavGraph(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // ✅ Load from persisted session if available
     var currentUserId by remember { mutableStateOf(CurrentSession.getUserId(context)) }
     var currentUserRole by remember { mutableStateOf(CurrentSession.getUserRole(context)) }
     var loggedInAdminUsername by remember { mutableStateOf(if (CurrentSession.getUserRole(context) == "admin") CurrentSession.getUserName(context) else "") }
     var currentUserName by remember { mutableStateOf(CurrentSession.getUserName(context)) }
     var currentUserPhone by remember { mutableStateOf(CurrentSession.getUserPhone(context)) }
-    val patient = remember { mutableStateOf<PatientUser?>(null) }
 
     val startDest = remember {
         if (CurrentSession.isLoggedIn(context)) {
@@ -149,14 +145,10 @@ fun AppNavGraph(
     LaunchedEffect(Unit) {
         vm_med.loadFromLocal(context)
         vm_med.cleanUpOrphanedMedicines(context)
-
     }
 
     LaunchedEffect(Unit) {
         Notification.createChannel(context)
-        // Books the recurring 06:00 background refresh (DailyRefreshReceiver)
-        // so dose/stock notifications keep firing even on days the user never
-        // opens the app. BootReceiver re-books this chain after every reboot.
         DailyRefreshScheduler.scheduleNextRefresh(context)
     }
 
@@ -164,8 +156,8 @@ fun AppNavGraph(
     val success by vm_med.success.collectAsStateWithLifecycle()
     var showManualDialog by remember { mutableStateOf(false) }
     val mutedConversations = remember { mutableStateListOf<String>() }
-    LaunchedEffect(Unit) {
 
+    LaunchedEffect(Unit) {
         vm_med.clearSuccessState()
         vm_med.clearError()
         vm_med.clearValidationErrors()
@@ -199,9 +191,19 @@ fun AppNavGraph(
                 },
                 onDoctorSuccessClick = {
                     currentUserRole = "doctor"
-                    CurrentSession.saveSession(context, 2, "doctor", "Doctor")
+                    val doctorId = 2
+                    CurrentSession.saveSession(context, doctorId, "doctor", "Doctor")
+                    val appCtx = context.applicationContext
+                    GlobalScope.launch {
+                        startChatRealtimeListener(
+                            currentUserId = doctorId,
+                            appContext = appCtx
+                        ) { newMessage ->
+                            Log.d("LoginStart", "New message: ${newMessage.content}")
+                        }
+                    }
                     navController.navigate("doctor") {
-                         popUpTo("login") { inclusive = true }
+                        popUpTo("login") { inclusive = true }
                     }
                 }
             )
@@ -216,6 +218,15 @@ fun AppNavGraph(
                     currentUserRole = "patient"
                     CurrentSession.saveSession(context, userId, "patient", userName, userPhone)
                     vm_family.savePatientPhone(context, userPhone)
+                    val appCtx = context.applicationContext
+                    GlobalScope.launch {
+                        startChatRealtimeListener(
+                            currentUserId = userId,
+                            appContext = appCtx
+                        ) { newMessage ->
+                            Log.d("LoginStart", "New message: ${newMessage.content}")
+                        }
+                    }
                     navController.navigate("dashboard") {
                         popUpTo("login") { inclusive = true }
                     }
@@ -305,7 +316,6 @@ fun AppNavGraph(
                     currentUserName = ""
                     currentUserPhone = ""
                     CurrentSession.clearSession(context)
-                    // Navigate to patient login directly
                     navController.navigate("patient_login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -327,20 +337,15 @@ fun AppNavGraph(
             val context = LocalContext.current
             val reloadKey = remember { mutableIntStateOf(0) }
 
-            //Reloads EVERY TIME screen appears
             LaunchedEffect(Unit, reloadKey.intValue) {
-                // ✅ Directly use YOUR load function
                 val allLogs = com.example.healt4u.data.local.loadReminderLogs(context)
                 Log.d("SCHEDULE", "Total logs found: ${allLogs.size}")
                 allLogs.forEach {
                     Log.d("SCHEDULE", "→ ${it.date} | ${it.medicineName}")
                 }
-
-                //Tell ViewModel to reload
-                vm_reminder.loadTodaySchedule(context,currentUserId)
+                vm_reminder.loadTodaySchedule(context, currentUserId)
             }
 
-            // Listen for refresh signal from Appointment
             LaunchedEffect(Unit) {
                 navController.currentBackStackEntry
                     ?.savedStateHandle
@@ -363,14 +368,10 @@ fun AppNavGraph(
         }
 
         composable("list") {
-
             LaunchedEffect(Unit) {
-                // Make sure patientId is set
                 val patientId = CurrentSession.patientId
-
                 if (patientId != null && patientId > 0) {
                     vm_med.loadFromLocal(context)
-                } else {
                 }
             }
 
@@ -381,10 +382,10 @@ fun AppNavGraph(
                     vm_med.deleteMedicineBoth(medicine, context)
                 },
                 onEdit = { medicine ->
-                    navController.navigate("edit/${medicine?.id ?: -1}")
+                    navController.navigate("edit/${medicine.id}")
                 },
                 onClickRow = { medicine ->
-                    navController.navigate("viewMedicine/${medicine?.id ?: -1}")
+                    navController.navigate("viewMedicine/${medicine.id}")
                 },
                 onCloudSync = {
                     vm_med.syncWithServer(context)
@@ -542,7 +543,6 @@ fun AppNavGraph(
             )
         }
 
-
         composable(
             route = "appointment_screen/{patientId}",
             arguments = listOf(navArgument("patientId") { type = NavType.IntType })
@@ -552,7 +552,6 @@ fun AppNavGraph(
                 patientId = patientId,
                 onBack = { navController.popBackStack() },
                 onConfirm = { _, _, _, _ ->
-                    // Tell schedule to refresh
                     navController.previousBackStackEntry
                         ?.savedStateHandle
                         ?.set("refresh_schedule", true)
@@ -575,7 +574,7 @@ fun AppNavGraph(
         composable("patient_list") {
             PatientListScreen(
                 doctorId = currentUserId,
-                onPatientClick = { patientId, conversation ->
+                onPatientClick = { patientId ->
                     navController.navigate("adherence_statistics/$patientId")
                 },
                 onBack = { navController.popBackStack() }
@@ -589,8 +588,7 @@ fun AppNavGraph(
             ChatListScreen(
                 userId = currentUserId,
                 userRole = currentUserRole,
-                onConversationClick = { conversation, chatName ->
-                    val expiryTime = System.currentTimeMillis() + 24 * 60 * 60 * 1000
+                onConversationClick = { conversation, expiryTime->
                     navController.navigate(
                         "chat_with_expiry/${conversation.id}/${conversation.doctorId}/${conversation.patientId}/$expiryTime"
                     )
@@ -631,7 +629,6 @@ fun AppNavGraph(
             }
 
             val selectedHospital by vm_hospital.selectedHospital.collectAsState()
-            val doctors by vm_hospital.doctors.collectAsState()
 
             if (selectedHospital?.id == hospitalId) {
                 DoctorListScreen(
@@ -640,7 +637,11 @@ fun AppNavGraph(
                         navController.navigate("payment/${doctor.id}/$hospitalId")
                     },
                     onBack = { navController.popBackStack() },
-                    getDoctorStatus = { "available" } // Provide a default status for now
+                    getDoctorStatus = { doctorId ->
+                        kotlinx.coroutines.runBlocking {
+                            getDoctorById(doctorId)?.status?.lowercase() ?: "offline"
+                        }
+                    }
                 )
             } else {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -670,7 +671,7 @@ fun AppNavGraph(
                 }
             }
 
-            PaymentScreen (
+            PaymentScreen(
                 doctorId = doctorId,
                 hospitalId = hospitalId,
                 doctorName = doctorName,
@@ -688,7 +689,7 @@ fun AppNavGraph(
                             hospitalName = hospitalName
                         )
 
-                        if (conversation != null) {
+                        if (conversation != null && conversation.id != null) {
                             val paymentId = java.util.UUID.randomUUID().toString()
 
                             val payment = Payment(
@@ -704,17 +705,18 @@ fun AppNavGraph(
                             )
 
                             Log.d("PAYMENT", "Saving payment: id=$paymentId, patient=$currentUserId, doctor=$doctorId")
-
                             val saved = createPayment(payment)
                             if (saved != null) {
-                                Log.d("PAYMENT", "✅ Payment saved! ID=${saved.id}")
+                                Log.d("PAYMENT", "Payment saved! ID=${saved.id}")
                             } else {
-                                Log.e("PAYMENT", "❌ Failed to save payment")
+                                Log.e("PAYMENT", "Payment save returned null")
                             }
 
                             navController.navigate(
                                 "chat_with_expiry/${conversation.id}/${conversation.doctorId}/${conversation.patientId}/$chatExpiryTime"
                             )
+                        } else {
+                            Log.e("NAV_ERROR", "FAILED: conversation=$conversation, id=${conversation?.id}")
                         }
                     }
                 },
@@ -812,6 +814,11 @@ fun AppNavGraph(
                     },
                     onClearAllMessages = {
                         GlobalScope.launch { clearMessagesByConversation(convId) }
+                    },
+                    getDoctorStatus = { docId ->
+                        kotlinx.coroutines.runBlocking {
+                            getDoctorById(docId)?.status?.lowercase() ?: "offline"
+                        }
                     }
                 )
             }
@@ -850,7 +857,6 @@ fun AppNavGraph(
                     currentUserName = ""
                     currentUserPhone = ""
                     CurrentSession.clearSession(context)
-                    // Go back to login (Role Selection) for doctor switch
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
                     }
@@ -868,11 +874,10 @@ fun AppNavGraph(
             )
         }
 
-        composable("revenue_statistic/{doctorId}") {
-            val doctorId = it.arguments?.getString("doctorId") ?: ""
+        composable("revenue_statistic/{doctorId}") { backStackEntry ->
+            val doctorId = backStackEntry.arguments?.getString("doctorId") ?: ""
             RevenueStatisticScreen(doctorId = doctorId, onBack = { navController.popBackStack() })
         }
-
 
         composable("admin") {
             AdminDashboardScreen(
@@ -909,7 +914,6 @@ fun AppNavGraph(
                     currentUserId = 0
                     currentUserRole = "patient"
                     CurrentSession.clearSession(context)
-                    // Go back to login screen but tell it to show Admin form immediately
                     navController.currentBackStackEntry?.savedStateHandle?.set("start_role", "admin")
                     navController.navigate("login") {
                         popUpTo(0) { inclusive = true }
@@ -927,7 +931,7 @@ fun AppNavGraph(
             AdminDoctorScreen(
                 vm = vm_admin,
                 onBack = { navController.popBackStack() },
-                onAddDoctor = {navController.navigate("admin_add_doctor")}
+                onAddDoctor = { navController.navigate("admin_add_doctor") }
             )
         }
 
@@ -949,7 +953,7 @@ fun AppNavGraph(
                 onAddCaregiverClick = { navController.navigate("add_caregiver") },
                 onSetPhoneClick = { navController.navigate("set_patient_phone") },
                 onViewAllResolved = { navController.navigate("all_resolved_alerts") },
-                onViewAllPatients = { navController.navigate("all_patients") },
+                onViewAllPatients = { navController.navigate("all_patients") }
             )
         }
 
@@ -987,7 +991,5 @@ fun AppNavGraph(
                 onSaved = { navController.popBackStack() }
             )
         }
-
     }
 }
-

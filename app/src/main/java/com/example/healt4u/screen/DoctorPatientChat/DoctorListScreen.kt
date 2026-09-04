@@ -35,7 +35,7 @@ fun DoctorListScreen(
     hospital: Hospital,
     onDoctorSelected: (Doctor) -> Unit,
     onBack: () -> Unit,
-    getDoctorStatus: (Int) -> String, // "available" / "busy" / "offline"
+    getDoctorStatus: (Int) -> String,
     viewModel: HospitalViewModel = viewModel()
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -70,15 +70,6 @@ fun DoctorListScreen(
                             text = "Select Doctor",
                             style = MaterialTheme.typography.headlineMedium,
                             color = Color.White,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .wrapContentWidth(Alignment.CenterHorizontally)
-                                .padding(end = 48.dp)
-                        )
-                        Text(
-                            text = hospital.name,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .wrapContentWidth(Alignment.CenterHorizontally)
@@ -248,7 +239,7 @@ fun DoctorListScreen(
                         selectedDoctor = null
                     }
                 ) {
-                    Text("Cancel")
+                    Text("Cancel", color = Color.Red)
                 }
             },
             onDismissRequest = {
@@ -280,9 +271,9 @@ fun DoctorCard(
             .then(if (isClickable) Modifier.clickable { onClick() } else Modifier),
         colors = CardDefaults.cardColors(
             containerColor = if (isClickable)
-                MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.onPrimary
             else
-                MaterialTheme.colorScheme.surface.copy(alpha = 0.65f)
+                MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.65f)
         ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = if (isClickable) 2.dp else 0.dp),
@@ -337,20 +328,17 @@ fun DoctorCard(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isClickable)
-                            MaterialTheme.colorScheme.onSurface
+                            MaterialTheme.colorScheme.secondary
                         else
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        StatusBadge(status = doctor.verificationStatus)
-                        // Live Status Badge — all lowercase
-                        Text(
-                            text = safeStatus,
-                            fontSize = 10.sp,
-                            color = statusColor,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                    // Live Status Badge — all lowercase
+                    Text(
+                        text = safeStatus,
+                        fontSize = 10.sp,
+                        color = statusColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
                 Text(
                     text = doctor.specialization,
@@ -398,27 +386,6 @@ fun DoctorCard(
     }
 }
 
-@Composable
-fun StatusBadge(status: String) {
-    val safeStatus = status.lowercase()
-    val (color, text) = when (safeStatus) {
-        "verified" -> Color(0xFF4CAF50) to "verified"
-        "pending" -> Color(0xFFFF9800) to "pending"
-        "rejected" -> Color(0xFFF44336) to "rejected"
-        else -> Color(0xFF9E9E9E) to "unknown"
-    }
-
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-        Text(text = text, fontSize = 10.sp, color = color, fontWeight = FontWeight.Medium)
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun PreviewDoctorListScreen() {
@@ -430,7 +397,6 @@ fun PreviewDoctorListScreen() {
             phone = "04-2225333"
         )
 
-        // Simulate different statuses — all lowercase
         val doctorStatuses = mapOf(
             1 to "available",
             2 to "busy",

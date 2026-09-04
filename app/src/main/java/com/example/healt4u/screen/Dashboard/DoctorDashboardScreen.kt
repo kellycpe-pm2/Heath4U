@@ -367,7 +367,7 @@ private fun DashboardTile(
     Card(
         modifier = modifier.clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.onPrimary)
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(vertical = 18.dp),
